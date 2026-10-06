@@ -28,7 +28,6 @@ export const FIELD = {
 export const COLORS = {
   grassA: 0x3f8e39,
   grassB: 0x48993f,
-  grassOut: 0x2f6e2c, // gramado fora das linhas
   line: 0xffffff,
   scrimmage: 0x2f7cf6,
   firstDown: 0xffd23f,
@@ -53,8 +52,8 @@ export const TEAMS: Record<'home' | 'away', TeamConfig> = {
 export const FONT_TITLE = '"Press Start 2P", monospace';
 export const FONT_LABEL = '"Silkscreen", monospace';
 
-/** Escala dos sprites (desenhados em 2x) no ponto de foco, perto do QB. */
-export const SPRITE_SCALE = 0.76;
+/** Escala dos sprites (desenhados em 2x): mesma altura das pessoas do design (44 px × 0,72). */
+export const SPRITE_SCALE = 0.63;
 
 /** Seed padrão da partida (torcida, posições das laterais...). */
 export const MATCH_SEED = 20261006;

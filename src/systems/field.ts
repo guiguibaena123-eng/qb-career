@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, FIELD, FONT_TITLE, TEAMS } from '../config';
 import { drawGoalPost, drawPylon } from '../entities/GoalPost';
-import { fillQuad, wallQuad } from './ground';
+import { fillQuad } from './ground';
 import type { Projection } from './projection';
 
 const a = { x: 0, y: 0, s: 0 };
@@ -20,7 +20,7 @@ export class FieldRenderer {
   private props: Phaser.GameObjects.Graphics;
   private numbers: { t: Phaser.GameObjects.Text; x: number; y: number }[] = [];
   private ezTexts: { t: Phaser.GameObjects.Text; y: number }[] = [];
-  private wallTexts: { t: Phaser.GameObjects.Text; x: number }[] = [];
+  private wallText: Phaser.GameObjects.Text;
 
   /** Linha de scrimmage e de first down (em jardas, eixo y). */
   scrimmageY = 25;
@@ -55,14 +55,11 @@ export class FieldRenderer {
         .setDepth(1);
       this.ezTexts.push({ t, y: e.y });
     }
-    // "QB CAREER" no muro do fundo
-    for (const x of [4, FIELD.width / 2, FIELD.width - 4]) {
-      const t = scene.add
-        .text(0, 0, 'QB CAREER', { fontFamily: FONT_TITLE, fontSize: '32px', color: '#ffffff' })
-        .setOrigin(0.5, 1)
-        .setDepth(1);
-      this.wallTexts.push({ t, x });
-    }
+    // "QB CAREER" na faixa do muro do fundo
+    this.wallText = scene.add
+      .text(0, 0, 'QB CAREER :: QB CAREER :: QB CAREER :: QB CAREER', { fontFamily: FONT_TITLE, fontSize: '32px', color: TEAMS.home.colorHex })
+      .setOrigin(0.5, 0.5)
+      .setDepth(1);
   }
 
   /** Retângulo no chão (x0..x1, y0..y1) recortado pela faixa visível. */
@@ -85,21 +82,6 @@ export class FieldRenderer {
     const W = FIELD.width;
     g.clear();
 
-    // Gramado externo (área das laterais)
-    this.quad(-14, -24, W + 14, 124, COLORS.grassOut);
-
-    // Muro baixo em volta do gramado (laterais e fundo), com faixas nas cores dos times
-    const WALL_H = 1.8;
-    for (const [ax, ay, bx, by] of [
-      [-14, -24, -14, 124],
-      [W + 14, -24, W + 14, 124],
-      [-14, 124, W + 14, 124],
-    ] as const) {
-      wallQuad(g, this.proj, ax, ay, bx, by, 0, WALL_H, 0x171a2b);
-      wallQuad(g, this.proj, ax, ay, bx, by, WALL_H - 0.5, WALL_H - 0.12, TEAMS.home.color);
-      wallQuad(g, this.proj, ax, ay, bx, by, 0.15, 0.4, TEAMS.away.color);
-    }
-
     // Listras de 5 em 5 jardas (inclui as end zones)
     for (let y = 0; y < 100; y += 5) {
       this.quad(0, y, W, y + 5, (y / 5) % 2 === 0 ? COLORS.grassA : COLORS.grassB);
@@ -119,8 +101,8 @@ export class FieldRenderer {
       for (const hx of FIELD.hashX) this.quad(hx - 0.35, y - 0.08, hx + 0.35, y + 0.08, COLORS.line, 0.9);
       for (const hx of FIELD.sideHashX) this.quad(hx - 0.35, y - 0.08, hx + 0.35, y + 0.08, COLORS.line, 0.9);
     }
-    // Linhas de limite (laterais e fundo), mais grossas
-    const t = 0.45;
+    // Borda branca grossa em volta do campo (como no design)
+    const t = 0.9;
     this.quad(-t, -10 - t, 0, 110 + t, COLORS.line);
     this.quad(W, -10 - t, W + t, 110 + t, COLORS.line);
     this.quad(-t, -10 - t, W + t, -10, COLORS.line);
@@ -152,10 +134,8 @@ export class FieldRenderer {
     const near = this.proj.nearY + 2;
     for (const n of this.numbers) this.layFlat(n.t, n.x, n.y, 2.2 / 40, near);
     for (const e of this.ezTexts) this.layFlat(e.t, FIELD.width / 2, e.y, 4.2 / 64, near);
-    for (const w of this.wallTexts) {
-      const p = this.proj.project(w.x, 124, 0.5, a);
-      w.t.setPosition(p.x, p.y).setScale((p.s * 6.75 * 0.9) / 32);
-    }
+    // Ocupa a largura da faixa do muro (55 jardas)
+    this.layFlat(this.wallText, FIELD.width / 2, 118.5, 55.3 / this.wallText.width, near);
   }
 
   private layFlat(t: Phaser.GameObjects.Text, x: number, y: number, ydPerPx: number, near: number) {
@@ -164,7 +144,7 @@ export class FieldRenderer {
       return;
     }
     const p = this.proj.project(x, y, 0, a);
-    const sx = p.s * 6.75 * ydPerPx * 1.0;
+    const sx = p.s * 10 * ydPerPx * 1.0;
     t.setVisible(true)
       .setPosition(p.x, p.y)
       .setScale(sx, sx * this.proj.flattenAt(y));

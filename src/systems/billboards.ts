@@ -51,7 +51,7 @@ export class BillboardLayer {
       // Profundidade: quanto menor o y (mais perto), mais na frente
       b.img.setVisible(true).setPosition(p.x, p.y).setScale(sc).setDepth(10 + (1000 - b.y) / 1000);
       if (b.shadow > 0) {
-        const u = p.s * 6.75;
+        const u = p.s * 10;
         g.fillStyle(0x000000, 0.3);
         g.fillEllipse(p.x + u * 0.3, p.y, u * b.shadow, u * b.shadow * 0.32);
       }

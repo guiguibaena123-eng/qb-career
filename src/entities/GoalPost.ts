@@ -14,7 +14,7 @@ export function drawGoalPost(g: Phaser.GameObjects.Graphics, proj: Projection, y
   if (y < proj.nearY) return;
   const cx = FIELD.width / 2;
   const base = proj.project(cx, y, 0, { x: 0, y: 0, s: 0 });
-  const unit = base.s * 6.75; // px por jarda nesta profundidade
+  const unit = base.s * 10; // px por jarda nesta profundidade
 
   // Sombra oval no chão
   g.fillStyle(0x000000, 0.28);
@@ -48,7 +48,7 @@ export function drawGoalPost(g: Phaser.GameObjects.Graphics, proj: Projection, y
 export function drawPylon(g: Phaser.GameObjects.Graphics, proj: Projection, x: number, y: number) {
   if (y < proj.nearY) return;
   const b = proj.project(x, y, 0, p);
-  const unit = b.s * 6.75;
+  const unit = b.s * 10;
   const w = Math.max(2, unit * 0.5);
   const h = Math.max(3, unit * 1.0);
   g.fillStyle(0x000000, 0.3);
