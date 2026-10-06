@@ -15,6 +15,8 @@ export const CAMERA = {
   pxPerYard: 7.5, // px por jarda na largura, no ponto de foco (antes do zoom)
   depthPxBase: 24.4, // profundidade por jarda = base × sen(tilt)
   followLerp: 0.12, // suavidade da câmera seguindo o alvo
+  minY: 20, // a câmera não recua além disso (perto da end zone dos LOBOS)
+  maxY: 100,
 };
 
 /** Dimensões do campo em jardas. y=0 é a nossa linha de gol, y=100 a do adversário. */

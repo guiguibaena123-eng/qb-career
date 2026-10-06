@@ -7,28 +7,58 @@ import { Rng } from './rng';
 
 /*
  * Arquibancada só no FUNDO do campo (atrás da end zone adversária), como no design.
- * Não é um fundo parado: cada fileira é um objeto no mundo (posição + altura), projetado
- * pela mesma câmera do campo. Quando a câmera avança, a arquibancada cresce e se aproxima.
+ * Cada fileira é um objeto no mundo (posição + altura) projetado pela mesma câmera do campo:
+ * quando a câmera avança, a arquibancada cresce e se aproxima.
  *
- * Fileiras sobem em degraus: a fileira k fica em y = FRONT_Y + k·DEPTH e altura k·RISE.
- * Escadas verticais atravessam todas as fileiras; as SAÍDAS são túneis colados nas escadas.
+ * Os cantos são arredondados: cada fileira segue o muro — reta no fundo e um arco de 90°
+ * em cada canto, até encostar na lateral. Quanto mais alta a fileira, maior o raio.
+ * A posição ao longo da fileira é `u` (jardas), da ponta esquerda até a direita.
  */
 
-const FRONT_Y = 114; // primeira fileira (4 jd depois da linha de fundo)
-const X0 = -75; // largura total da arquibancada (jardas)
-const X1 = 128;
+const CX_L = -2; // centro do arco do canto esquerdo (x)
+const CX_R = 55.3; // centro do arco do canto direito (x)
+const CY = 103.2; // y dos centros dos arcos (onde a arquibancada encosta na lateral)
+const R0 = 16.9; // raio da 1ª fileira (logo atrás do muro)
 const ROWS = 70;
 const DEPTH = 1.0; // jardas entre fileiras
 const RISE = 1.15; // quanto cada fileira sobe
 const TPY = 8; // texels por jarda na textura das fileiras
-const ROW_TEX_H = 14; // altura de cada fileira na textura (texels)
-const W_TEX = Math.round((X1 - X0) * TPY);
+const ROW_TEX_H = 14;
 const WALL_H = 1.6;
-
-/** Escadas (x central, em jardas) — mesmas posições do design. */
-const STAIRS = [-35, -11, 6.6, 45, 64, 88];
+const ARC_SEGS = 12; // pedaços de cada arco
 const STAIR_W = 1.8;
-/** Saídas: túnel ao lado de uma escada, ocupando 3 fileiras. */
+const EXIT_W = 3.6;
+const EXIT_ROWS = 3;
+
+const STRAIGHT = CX_R - CX_L;
+
+/** Geometria de uma fileira de raio r. */
+function rowGeom(r: number) {
+  const arc = (r * Math.PI) / 2;
+  return { r, arc, len: arc * 2 + STRAIGHT };
+}
+
+/** Ponto no chão da fileira, na posição u (jardas desde a ponta esquerda). */
+function pointAt(r: number, u: number): [number, number] {
+  const arc = (r * Math.PI) / 2;
+  if (u < arc) {
+    const t = Math.PI - u / r;
+    return [CX_L + r * Math.cos(t), CY + r * Math.sin(t)];
+  }
+  if (u < arc + STRAIGHT) return [CX_L + (u - arc), CY + r];
+  const t = Math.PI / 2 - (u - arc - STRAIGHT) / r;
+  return [CX_R + r * Math.cos(t), CY + r * Math.sin(t)];
+}
+
+/** Posições das escadas (u) numa fileira: radiais nos cantos + duas no fundo. */
+function stairsU(r: number) {
+  const { arc } = rowGeom(r);
+  const onArcL = (deg: number) => r * (Math.PI - (deg * Math.PI) / 180); // ângulo → u no arco esquerdo
+  const onArcR = (deg: number) => arc + STRAIGHT + r * (Math.PI / 2 - (deg * Math.PI) / 180);
+  return [onArcL(150), onArcL(118), arc + 8.6, arc + 47, onArcR(62), onArcR(30)];
+}
+
+/** Saídas: túnel colado numa escada (lado +1/−1), ocupando 3 fileiras. */
 const EXITS = [
   { stair: 0, row: 14, side: 1 },
   { stair: 1, row: 30, side: -1 },
@@ -41,62 +71,61 @@ const EXITS = [
   { stair: 3, row: 46, side: 1 },
   { stair: 5, row: 46, side: -1 },
 ];
-const EXIT_W = 3.6;
-const EXIT_ROWS = 3;
-/** Setor visitante: entre as escadas de x=45 e x=64, nas fileiras do meio. */
-const AWAY = { x0: 45 + STAIR_W / 2, x1: 64 - STAIR_W / 2, r0: 18, r1: 40 };
+/** Setor visitante: entre a 4ª e a 5ª escada, nas fileiras do meio. */
+const AWAY_ROWS = [18, 40];
 
 const SKIN = ['#f1c7a5', '#d9a07a', '#c68b59', '#8d5524', '#6b3f1f'];
 const HAIR = ['#2a1a10', '#5a3a1a', '#111111', '#b8862e', '#3b2412', '#8a8a8a'];
 const OTHER = ['#f2f2f2', '#1d1d24', '#6b6f7a', '#2a9d8f', '#b33a3a', '#e6c34a', '#5c2a86'];
 
-const tx = (x: number) => Math.round((x - X0) * TPY); // jarda → texel
-
-function exitRange(e: (typeof EXITS)[number]) {
-  const sx = STAIRS[e.stair];
-  const a = sx + (e.side * STAIR_W) / 2;
-  return e.side > 0 ? [a, a + EXIT_W] : [a - EXIT_W, a];
-}
-
 /** Desenha a textura de uma fileira: degrau, cadeiras, torcedores, escadas e saídas. */
-function makeRowTexture(scene: Phaser.Scene, key: string, row: number, rng: Rng) {
-  const tex = scene.textures.createCanvas(key, W_TEX, ROW_TEX_H)!;
-  const ctx = tex.getContext();
+function makeRowTexture(scene: Phaser.Scene, key: string, row: number, r: number, rng: Rng) {
+  const { len } = rowGeom(r);
+  const W = Math.ceil(len * TPY);
   const H = ROW_TEX_H;
+  const tex = scene.textures.createCanvas(key, W, H)!;
+  const ctx = tex.getContext();
+  const tx = (u: number) => Math.round(u * TPY);
   const home = [hex(TEAMS.home.color), shade(TEAMS.home.color, 0.25), shade(TEAMS.home.color, -0.2)];
   const away = [hex(TEAMS.away.color), shade(TEAMS.away.color, 0.3), shade(TEAMS.away.color, -0.25)];
-  const isAway = (x: number) => x > AWAY.x0 && x < AWAY.x1 && row >= AWAY.r0 && row <= AWAY.r1;
+  const stairs = stairsU(r);
+  const awayRow = row >= AWAY_ROWS[0] && row <= AWAY_ROWS[1];
+  const awayA = stairs[3] + STAIR_W / 2;
+  const awayB = stairs[4] - STAIR_W / 2;
+  const isAway = (u: number) => awayRow && u > awayA && u < awayB;
+  const exitRange = (e: (typeof EXITS)[number]) => {
+    const a = stairs[e.stair] + (e.side * STAIR_W) / 2;
+    return e.side > 0 ? [a, a + EXIT_W] : [a - EXIT_W, a];
+  };
 
   // Degrau azul-acinzentado + encosto das cadeiras
   ctx.fillStyle = row % 2 ? '#3e4560' : '#394058';
-  ctx.fillRect(0, 0, W_TEX, H);
+  ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = '#4a5270';
-  ctx.fillRect(0, H - 6, W_TEX, 3);
+  ctx.fillRect(0, H - 6, W, 3);
   ctx.fillStyle = '#262a3d';
-  ctx.fillRect(0, H - 3, W_TEX, 3);
-  // Encosto azul no setor visitante, com bordas escuras separando
-  if (row >= AWAY.r0 && row <= AWAY.r1) {
+  ctx.fillRect(0, H - 3, W, 3);
+  if (awayRow) {
     ctx.fillStyle = shade(TEAMS.away.color, -0.3);
-    ctx.fillRect(tx(AWAY.x0), H - 6, tx(AWAY.x1) - tx(AWAY.x0), 3);
+    ctx.fillRect(tx(awayA), H - 6, tx(awayB) - tx(awayA), 3);
   }
 
-  const blocked = (x: number) =>
-    STAIRS.some((s) => Math.abs(x - s) < STAIR_W / 2 + 0.35) ||
+  const blocked = (u: number) =>
+    stairs.some((s) => Math.abs(u - s) < STAIR_W / 2 + 0.35) ||
     EXITS.some((e) => {
       const [a, b] = exitRange(e);
-      return row >= e.row && row < e.row + EXIT_ROWS && x > a - 0.3 && x < b + 0.3;
+      return row >= e.row && row < e.row + EXIT_ROWS && u > a - 0.3 && u < b + 0.3;
     });
 
   // Torcedores (cada um sorteado)
-  for (let px = 3; px < W_TEX - 4; px += rng.int(6, 8)) {
-    const x = X0 + px / TPY;
-    if (blocked(x) || rng.chance(0.06)) continue;
-    const team = isAway(x) ? away : home;
-    const r = rng.next();
-    const shirt = r < 0.68 ? rng.pick(team) : r < 0.8 ? '#f2f2f2' : rng.pick(OTHER);
+  for (let px = 3; px < W - 4; px += rng.int(6, 8)) {
+    const u = px / TPY;
+    if (blocked(u) || rng.chance(0.06)) continue;
+    const team = isAway(u) ? away : home;
+    const rr = rng.next();
+    const shirt = rr < 0.68 ? rng.pick(team) : rr < 0.8 ? '#f2f2f2' : rng.pick(OTHER);
     const skin = rng.pick(SKIN);
-    const standing = rng.chance(0.3);
-    const bodyH = standing ? 6 : 4;
+    const bodyH = rng.chance(0.3) ? 6 : 4;
     const top = H - 3 - bodyH;
     ctx.fillStyle = shirt;
     ctx.fillRect(px - 2, top, 5, bodyH);
@@ -105,15 +134,14 @@ function makeRowTexture(scene: Phaser.Scene, key: string, row: number, rng: Rng)
     ctx.fillStyle = rng.chance(0.3) ? rng.pick([...team, '#1d1d24']) : rng.pick(HAIR);
     ctx.fillRect(px - 1, top - 4, 3, 1);
     if (rng.chance(0.07)) {
-      // braços para cima
-      ctx.fillStyle = skin;
+      ctx.fillStyle = skin; // braços para cima
       ctx.fillRect(px - 3, top - 3, 1, 3);
       ctx.fillRect(px + 3, top - 3, 1, 3);
     }
   }
 
   // Escadas: cinza com degrau escuro e bordas claras (corrimão)
-  for (const s of STAIRS) {
+  for (const s of stairs) {
     const a = tx(s - STAIR_W / 2);
     const b = tx(s + STAIR_W / 2);
     ctx.fillStyle = '#6e7389';
@@ -127,14 +155,14 @@ function makeRowTexture(scene: Phaser.Scene, key: string, row: number, rng: Rng)
 
   // Saídas: túnel escuro colado na escada + placa verde "SAÍDA" na fileira de cima
   for (const e of EXITS) {
-    const [xa, xb] = exitRange(e);
-    const a = tx(xa);
-    const b = tx(xb);
+    const [ua, ub] = exitRange(e);
+    const a = tx(ua);
+    const b = tx(ub);
     if (row >= e.row && row < e.row + EXIT_ROWS) {
       ctx.fillStyle = '#8c91a8';
       ctx.fillRect(a, 0, b - a, H);
       ctx.fillStyle = '#07080d';
-      ctx.fillRect(a + 2, row === e.row ? 0 : 0, b - a - 4, row === e.row ? H - 2 : H);
+      ctx.fillRect(a + 2, 0, b - a - 4, row === e.row ? H - 2 : H);
     }
     if (row === e.row + EXIT_ROWS) {
       ctx.fillStyle = '#8c91a8';
@@ -150,16 +178,41 @@ function makeRowTexture(scene: Phaser.Scene, key: string, row: number, rng: Rng)
   }
   tex.refresh();
   tex.setFilter(Phaser.Textures.FilterMode.NEAREST);
+
+  // Pedaços (frames) da fileira: arcos em vários pedaços, a reta inteira
+  const g = rowGeom(r);
+  const cuts: number[] = [];
+  for (let i = 0; i <= ARC_SEGS; i++) cuts.push((g.arc * i) / ARC_SEGS);
+  for (let i = 1; i <= ARC_SEGS; i++) cuts.push(g.arc + STRAIGHT + (g.arc * i) / ARC_SEGS);
+  const pieces: { frame: string; u0: number; u1: number }[] = [];
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const a = tx(cuts[i]);
+    const b = Math.min(W, tx(cuts[i + 1]) + 1); // 1 texel de sobra evita frestas
+    const frame = `p${i}`;
+    tex.add(frame, 0, a, 0, b - a, H);
+    pieces.push({ frame, u0: cuts[i], u1: cuts[i + 1] });
+  }
+  return pieces;
 }
 
 const pa: ScreenPoint = { x: 0, y: 0, s: 0 };
+const pb: ScreenPoint = { x: 0, y: 0, s: 0 };
+
+interface Piece {
+  img: Phaser.GameObjects.Image;
+  k: number;
+  r: number;
+  u0: number;
+  u1: number;
+}
 
 export class Grandstand {
-  private rows: { img: Phaser.GameObjects.Image; k: number; phase: number }[] = [];
+  private pieces: Piece[] = [];
+  private phases: number[] = [];
   private g: Phaser.GameObjects.Graphics; // muro da frente + flashes
   private wallText: Phaser.GameObjects.Text;
   private fx = new Rng(MATCH_SEED + 9);
-  private flashes: { k: number; x: number; life: number }[] = [];
+  private flashes: { k: number; u: number; life: number }[] = [];
   private time = 0;
   /** Empolgação (0..1): as fileiras pulam e os flashes aumentam. */
   excite = 0;
@@ -167,58 +220,86 @@ export class Grandstand {
   constructor(scene: Phaser.Scene, private proj: Projection) {
     const rng = new Rng(MATCH_SEED);
     for (let k = 0; k < ROWS; k++) {
+      const r = R0 + 0.5 + k * DEPTH;
       const key = `stand_row_${k}`;
-      if (!scene.textures.exists(key)) makeRowTexture(scene, key, k, rng);
-      // A fileira de trás é desenhada primeiro (profundidade menor)
-      const img = scene.add.image(0, 0, key).setOrigin(0, 1).setDepth(3 - k * 0.001);
-      this.rows.push({ img, k, phase: rng.range(0, Math.PI * 2) });
+      const pieces = makeRowTexture(scene, key, k, r, rng);
+      for (const p of pieces) {
+        const img = scene.add.image(0, 0, key, p.frame).setOrigin(0, 1);
+        this.pieces.push({ img, k, r, u0: p.u0, u1: p.u1 });
+      }
+      this.phases.push(rng.range(0, Math.PI * 2));
     }
-    this.g = scene.add.graphics().setDepth(3.5);
+    this.g = scene.add.graphics().setDepth(3.9);
     this.wallText = scene.add
-      .text(0, 0, 'QB CAREER :: QB CAREER :: QB CAREER :: QB CAREER :: QB CAREER', {
-        fontFamily: FONT_TITLE,
-        fontSize: '32px',
-        color: TEAMS.home.colorHex,
-      })
+      .text(0, 0, 'QB CAREER :: QB CAREER :: QB CAREER', { fontFamily: FONT_TITLE, fontSize: '32px', color: TEAMS.home.colorHex })
       .setOrigin(0.5, 0.5)
-      .setDepth(3.6);
+      .setDepth(3.95);
   }
 
   cheer(amount = 1) {
     this.excite = Math.min(1, this.excite + amount);
   }
 
+  private rowH(k: number) {
+    return WALL_H + k * RISE;
+  }
+
   update(dt: number) {
     this.time += dt;
     this.excite = Math.max(0, this.excite - dt * 0.45);
     const proj = this.proj;
+    const near = proj.nearY;
 
-    // Fileiras: canto esquerdo da fileira projetado no mundo, escala pela profundidade
-    for (const r of this.rows) {
-      const y = FRONT_Y + r.k * DEPTH;
-      const jump = this.excite > 0.01 ? Math.max(0, Math.sin(this.time * 11 + r.phase)) * 0.35 * this.excite : 0;
-      proj.project(X0, y, WALL_H + r.k * RISE + jump, pa);
-      const sc = (pa.s * 10) / TPY; // texel → px na tela
-      r.img.setPosition(pa.x, pa.y).setScale(sc);
+    // Cada pedaço: ponta esquerda projetada, largura até a ponta direita, altura pela profundidade
+    for (const p of this.pieces) {
+      const [x0, y0] = pointAt(p.r, p.u0);
+      const [x1, y1] = pointAt(p.r, p.u1);
+      if (Math.max(y0, y1) < near) {
+        p.img.setVisible(false);
+        continue;
+      }
+      const jump = this.excite > 0.01 ? Math.max(0, Math.sin(this.time * 11 + this.phases[p.k])) * 0.35 * this.excite : 0;
+      const h = this.rowH(p.k) + jump;
+      proj.project(x0, y0, h, pa);
+      proj.project(x1, y1, h, pb);
+      const w = p.img.frame.width;
+      const sy = (pa.s * 10) / TPY;
+      const sx = Math.max(0.0001, (pb.x - pa.x) / w);
+      // Mais perto da câmera (y menor) na frente; fileira de fora atrás
+      const ymid = (y0 + y1) / 2;
+      p.img
+        .setVisible(pa.y > -40 && pa.x < proj.w + 20 && pb.x > -20)
+        .setPosition(pa.x, Math.max(pa.y, pb.y))
+        .setScale(sx, sy)
+        .setDepth(3 + (300 - ymid) * 0.001 - p.k * 0.00001);
     }
 
-    // Muro escuro na frente da arquibancada, com faixa e "QB CAREER"
+    // Muro escuro na frente, seguindo a curva dos cantos
     const g = this.g;
     g.clear();
-    wallQuad(g, proj, X0, FRONT_Y - 0.3, X1, FRONT_Y - 0.3, 0, WALL_H + 0.4, 0x0d0d12);
-    wallQuad(g, proj, X0, FRONT_Y - 0.3, X1, FRONT_Y - 0.3, WALL_H + 0.25, WALL_H + 0.4, 0x555b73);
-    proj.project(26.65, FRONT_Y - 0.3, WALL_H * 0.5, pa);
-    const u = pa.s * 10;
-    this.wallText.setPosition(pa.x, pa.y).setScale((WALL_H * 0.55 * u) / 32);
+    const wr = R0;
+    const wl = rowGeom(wr).len;
+    const N = 40;
+    for (let i = 0; i < N; i++) {
+      const [ax, ay] = pointAt(wr, (wl * i) / N);
+      const [bx, by] = pointAt(wr, (wl * (i + 1)) / N);
+      wallQuad(g, proj, ax, ay, bx, by, 0, WALL_H + 0.4, 0x0d0d12);
+      wallQuad(g, proj, ax, ay, bx, by, WALL_H + 0.25, WALL_H + 0.4, 0x555b73);
+    }
+    proj.project((CX_L + CX_R) / 2, CY + wr, WALL_H * 0.5, pa);
+    this.wallText.setPosition(pa.x, pa.y).setScale((WALL_H * 0.55 * pa.s * 10) / 32);
 
     // Flashes de câmera aleatórios na torcida
     if (this.fx.next() < (2 + this.excite * 16) * dt) {
-      this.flashes.push({ k: this.fx.int(0, ROWS - 1), x: this.fx.range(X0 + 2, X1 - 2), life: 0.14 });
+      const k = this.fx.int(0, ROWS - 1);
+      this.flashes.push({ k, u: this.fx.range(0, rowGeom(R0 + 0.5 + k * DEPTH).len), life: 0.14 });
     }
     for (const f of this.flashes) {
       f.life -= dt;
       if (f.life <= 0) continue;
-      proj.project(f.x, FRONT_Y + f.k * DEPTH, WALL_H + f.k * RISE + 1, pa);
+      const [x, y] = pointAt(R0 + 0.5 + f.k * DEPTH, f.u);
+      if (y < near) continue;
+      proj.project(x, y, this.rowH(f.k) + 1, pa);
       if (pa.x < 0 || pa.x > proj.w || pa.y < 0) continue;
       const k = f.life / 0.14;
       const fu = pa.s * 10;

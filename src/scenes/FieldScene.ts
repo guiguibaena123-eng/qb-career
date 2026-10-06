@@ -34,7 +34,7 @@ export class FieldScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => (lastY = p.y));
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       if (!p.isDown) return;
-      this.targetY = Phaser.Math.Clamp(this.targetY + (p.y - lastY) * 0.12, -5, 100);
+      this.targetY = Phaser.Math.Clamp(this.targetY + (p.y - lastY) * 0.12, CAMERA.minY, CAMERA.maxY);
       lastY = p.y;
     });
 
