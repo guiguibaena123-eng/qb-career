@@ -17,7 +17,9 @@ import { Rng } from './rng';
 
 const CX_L = -2; // centro do arco do canto esquerdo (x)
 const CX_R = 55.3; // centro do arco do canto direito (x)
-const CY = 103.2; // y dos centros dos arcos (onde a arquibancada encosta na lateral)
+/** Distância extra entre o campo e a arquibancada (jardas). */
+export const STAND_GAP = 5;
+const CY = 103.2 + STAND_GAP; // y dos centros dos arcos (onde a arquibancada encosta na lateral)
 const R0 = 16.9; // raio da 1ª fileira (logo atrás do muro)
 const ROWS = 70;
 const DEPTH = 1.0; // jardas entre fileiras

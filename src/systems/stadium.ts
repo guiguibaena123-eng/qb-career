@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CAMERA, GAME_H, GAME_W, TEAMS } from '../config';
+import { STAND_GAP } from './grandstand';
 import { PLANE, type Projection } from './projection';
 
 /*
@@ -20,6 +21,9 @@ uniform float uCos;
 uniform vec3 uTeam;
 uniform vec3 uOpp;
 varying vec2 fragCoord;
+
+// Recuo do muro/gramado no fundo, acompanhando a arquibancada (px do plano)
+const float GAP = ${(STAND_GAP * PLANE.pxPerYard).toFixed(1)};
 
 const float PERS = ${PLANE.persp.toFixed(1)};
 const float Z = ${CAMERA.zoom.toFixed(3)};
@@ -47,17 +51,17 @@ void main() {
   vec3 col = vec3(0.051, 0.051, 0.071);
 
   // Muro em volta do gramado (cantos arredondados) com faixas nas cores dos times
-  if (topRounded(p, -139.0, 772.0, 89.0, 169.0)) {
+  if (topRounded(p, -139.0, 772.0, 89.0 - GAP, 169.0)) {
     col = vec3(0.333, 0.357, 0.451);
-    if (topRounded(p, -136.0, 769.0, 92.0, 166.0)) col = vec3(0.051, 0.051, 0.071);
-    if (topRounded(p, -136.0, 769.0, 92.0, 166.0) && !topRounded(p, -133.0, 766.0, 95.0, 163.0)) col = vec3(0.165, 0.18, 0.251);
+    if (topRounded(p, -136.0, 769.0, 92.0 - GAP, 166.0)) col = vec3(0.051, 0.051, 0.071);
+    if (topRounded(p, -136.0, 769.0, 92.0 - GAP, 166.0) && !topRounded(p, -133.0, 766.0, 95.0 - GAP, 163.0)) col = vec3(0.165, 0.18, 0.251);
     if (p.y >= 280.0 && mod(p.y - 280.0, 110.0) < 70.0) {
       if (p.x >= -132.0 && p.x < -114.0) col = uTeam;
       if (p.x >= 747.0 && p.x < 765.0) col = uOpp;
     }
   }
   // Gramado em volta do campo
-  if (topRounded(p, -110.0, 743.0, 118.0, 140.0)) col = vec3(0.176, 0.416, 0.169);
+  if (topRounded(p, -110.0, 743.0, 118.0 - GAP, 140.0)) col = vec3(0.176, 0.416, 0.169);
 
   gl_FragColor = vec4(col, 1.0);
 }
