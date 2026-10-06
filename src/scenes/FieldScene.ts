@@ -3,6 +3,7 @@ import { CAMERA, FONT_LABEL, FONT_TITLE, GAME_H, GAME_W, TEAMS } from '../config
 import { Sideline } from '../entities/Sideline';
 import { FieldRenderer } from '../systems/field';
 import { Projection } from '../systems/projection';
+import { Grandstand } from '../systems/grandstand';
 import { StadiumShader } from '../systems/stadium';
 
 /**
@@ -14,6 +15,7 @@ export class FieldScene extends Phaser.Scene {
   private field!: FieldRenderer;
   private targetY = 25;
   private stadium!: StadiumShader;
+  private stand!: Grandstand;
   private sideline!: Sideline;
   private fps!: Phaser.GameObjects.Text;
 
@@ -24,6 +26,7 @@ export class FieldScene extends Phaser.Scene {
   create() {
     this.field = new FieldRenderer(this, this.proj);
     this.stadium = new StadiumShader(this, this.proj);
+    this.stand = new Grandstand(this, this.proj);
     this.sideline = new Sideline(this, this.proj);
 
     // Arrastar o dedo move a câmera ao longo do campo (com lerp)
@@ -49,7 +52,7 @@ export class FieldScene extends Phaser.Scene {
 
     this.button(80, GAME_H - 70, 'IR P/ TRAVE', () => (this.targetY = this.targetY > 60 ? 25 : 92));
     this.button(GAME_W - 80, GAME_H - 70, 'TORCIDA!', () => {
-      this.stadium.cheer(1);
+      this.stand.cheer(1);
       navigator.vibrate?.([20, 40, 20]);
     });
 
@@ -77,7 +80,9 @@ export class FieldScene extends Phaser.Scene {
     this.proj.camY += (this.targetY - this.proj.camY) * CAMERA.followLerp;
     this.field.draw();
     this.sideline.draw();
-    this.stadium.update(Math.min(dtMs, 50) / 1000);
+    const dt = Math.min(dtMs, 50) / 1000;
+    this.stadium.update();
+    this.stand.update(dt);
     this.fps.setText(`${Math.round(this.game.loop.actualFps)} FPS`);
   }
 }

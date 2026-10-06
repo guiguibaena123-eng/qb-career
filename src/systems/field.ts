@@ -20,7 +20,6 @@ export class FieldRenderer {
   private props: Phaser.GameObjects.Graphics;
   private numbers: { t: Phaser.GameObjects.Text; x: number; y: number }[] = [];
   private ezTexts: { t: Phaser.GameObjects.Text; y: number }[] = [];
-  private wallText: Phaser.GameObjects.Text;
 
   /** Linha de scrimmage e de first down (em jardas, eixo y). */
   scrimmageY = 25;
@@ -55,11 +54,6 @@ export class FieldRenderer {
         .setDepth(1);
       this.ezTexts.push({ t, y: e.y });
     }
-    // "QB CAREER" na faixa do muro do fundo
-    this.wallText = scene.add
-      .text(0, 0, 'QB CAREER :: QB CAREER :: QB CAREER :: QB CAREER', { fontFamily: FONT_TITLE, fontSize: '32px', color: TEAMS.home.colorHex })
-      .setOrigin(0.5, 0.5)
-      .setDepth(1);
   }
 
   /** Retângulo no chão (x0..x1, y0..y1) recortado pela faixa visível. */
@@ -134,8 +128,6 @@ export class FieldRenderer {
     const near = this.proj.nearY + 2;
     for (const n of this.numbers) this.layFlat(n.t, n.x, n.y, 2.2 / 40, near);
     for (const e of this.ezTexts) this.layFlat(e.t, FIELD.width / 2, e.y, 4.2 / 64, near);
-    // Ocupa a largura da faixa do muro (55 jardas)
-    this.layFlat(this.wallText, FIELD.width / 2, 118.5, 55.3 / this.wallText.width, near);
   }
 
   private layFlat(t: Phaser.GameObjects.Text, x: number, y: number, ydPerPx: number, near: number) {
