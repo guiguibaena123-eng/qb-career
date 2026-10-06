@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
 import { COLORS, FIELD, FONT_TITLE, TEAMS } from '../config';
 import { drawGoalPost, drawPylon } from '../entities/GoalPost';
+import { fillQuad } from './ground';
 import type { Projection } from './projection';
 
 const a = { x: 0, y: 0, s: 0 };
 const b = { x: 0, y: 0, s: 0 };
 const c = { x: 0, y: 0, s: 0 };
 const d = { x: 0, y: 0, s: 0 };
-const pts = [a, b, c, d];
 
 /**
  * Desenha o gramado em perspectiva: listras, linhas, hash marks, números,
@@ -16,6 +16,8 @@ const pts = [a, b, c, d];
  */
 export class FieldRenderer {
   private g: Phaser.GameObjects.Graphics;
+  /** Traves e pylons ficam numa camada acima do estádio. */
+  private props: Phaser.GameObjects.Graphics;
   private numbers: { t: Phaser.GameObjects.Text; x: number; y: number }[] = [];
   private ezTexts: { t: Phaser.GameObjects.Text; y: number }[] = [];
 
@@ -25,6 +27,7 @@ export class FieldRenderer {
 
   constructor(scene: Phaser.Scene, private proj: Projection) {
     this.g = scene.add.graphics().setDepth(0);
+    this.props = scene.add.graphics().setDepth(5);
 
     // Números a cada 10 jardas, dos dois lados do campo
     for (let yd = 10; yd <= 90; yd += 10) {
@@ -65,7 +68,7 @@ export class FieldRenderer {
     this.proj.project(x1, y1, 0, c);
     this.proj.project(x0, y1, 0, d);
     this.g.fillStyle(color, alpha);
-    this.g.fillPoints(pts, true);
+    fillQuad(this.g, a, b, c, d);
   }
 
   draw() {
@@ -109,16 +112,18 @@ export class FieldRenderer {
     this.updateTexts();
 
     // Objetos em pé: do mais distante para o mais perto
-    drawGoalPost(g, this.proj, 110);
-    drawPylon(g, this.proj, 0, 110);
-    drawPylon(g, this.proj, W, 110);
-    drawPylon(g, this.proj, 0, 100);
-    drawPylon(g, this.proj, W, 100);
-    drawPylon(g, this.proj, 0, 0);
-    drawPylon(g, this.proj, W, 0);
-    drawPylon(g, this.proj, 0, -10);
-    drawPylon(g, this.proj, W, -10);
-    drawGoalPost(g, this.proj, -10);
+    const pg = this.props;
+    pg.clear();
+    drawGoalPost(pg, this.proj, 110);
+    drawPylon(pg, this.proj, 0, 110);
+    drawPylon(pg, this.proj, W, 110);
+    drawPylon(pg, this.proj, 0, 100);
+    drawPylon(pg, this.proj, W, 100);
+    drawPylon(pg, this.proj, 0, 0);
+    drawPylon(pg, this.proj, W, 0);
+    drawPylon(pg, this.proj, 0, -10);
+    drawPylon(pg, this.proj, W, -10);
+    drawGoalPost(pg, this.proj, -10);
   }
 
   /** Posiciona os textos deitados no gramado (escala + achatamento da perspectiva). */

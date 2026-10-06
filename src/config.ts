@@ -52,3 +52,9 @@ export const TEAMS: Record<'home' | 'away', TeamConfig> = {
 
 export const FONT_TITLE = '"Press Start 2P", monospace';
 export const FONT_LABEL = '"Silkscreen", monospace';
+
+/** Escala dos sprites (desenhados em 2x) no ponto de foco, perto do QB. */
+export const SPRITE_SCALE = 0.76;
+
+/** Seed padrão da partida (torcida, posições das laterais...). */
+export const MATCH_SEED = 20261006;

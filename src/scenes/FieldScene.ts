@@ -1,16 +1,21 @@
 import Phaser from 'phaser';
-import { CAMERA, COLORS, FONT_LABEL, FONT_TITLE, GAME_H, GAME_W, TEAMS } from '../config';
+import { CAMERA, COLORS, FIELD, FONT_LABEL, FONT_TITLE, GAME_H, GAME_W, TEAMS } from '../config';
+import { Sideline } from '../entities/Sideline';
 import { FieldRenderer } from '../systems/field';
 import { Projection } from '../systems/projection';
+import { Stadium } from '../systems/stadium';
 
 /**
- * Etapa 1: cena de teste do campo.
- * Arraste para cima/baixo para percorrer o campo; botões mudam a inclinação da câmera.
+ * Cena de teste do campo + estádio (etapas 1 e 2).
+ * Arraste para percorrer o campo (vertical) e olhar as laterais (horizontal).
  */
 export class FieldScene extends Phaser.Scene {
   private proj = new Projection();
   private field!: FieldRenderer;
   private targetY = 25;
+  private targetX = FIELD.width / 2;
+  private stadium!: Stadium;
+  private sideline!: Sideline;
   private fps!: Phaser.GameObjects.Text;
   private tiltLabel!: Phaser.GameObjects.Text;
 
@@ -21,13 +26,21 @@ export class FieldScene extends Phaser.Scene {
   create() {
     this.drawSky();
     this.field = new FieldRenderer(this, this.proj);
+    this.sideline = new Sideline(this, this.proj);
+    this.stadium = new Stadium(this, this.proj);
 
     // Arrastar o dedo move a câmera ao longo do campo (com lerp)
+    let lastX = 0;
     let lastY = 0;
-    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => (lastY = p.y));
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      lastX = p.x;
+      lastY = p.y;
+    });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       if (!p.isDown) return;
       this.targetY = Phaser.Math.Clamp(this.targetY + (p.y - lastY) * 0.12, -5, 100);
+      this.targetX = Phaser.Math.Clamp(this.targetX - (p.x - lastX) * 0.08, -8, FIELD.width + 8);
+      lastX = p.x;
       lastY = p.y;
     });
 
@@ -37,7 +50,7 @@ export class FieldScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(100);
     this.add
-      .text(GAME_W / 2, 66, 'ARRASTE PARA PERCORRER O CAMPO', { fontFamily: FONT_LABEL, fontSize: '12px', color: '#ffffff' })
+      .text(GAME_W / 2, 66, 'ARRASTE PARA OLHAR O ESTÁDIO', { fontFamily: FONT_LABEL, fontSize: '12px', color: '#ffffff' })
       .setOrigin(0.5)
       .setAlpha(0.7)
       .setDepth(100);
@@ -48,8 +61,18 @@ export class FieldScene extends Phaser.Scene {
       .setDepth(100);
     this.button(70, GAME_H - 60, 'TILT -', () => this.setTilt(this.proj.tilt - 4));
     this.button(GAME_W - 70, GAME_H - 60, 'TILT +', () => this.setTilt(this.proj.tilt + 4));
-    this.button(GAME_W / 2, GAME_H - 110, 'IR P/ TRAVE', () => (this.targetY = this.targetY > 60 ? 25 : 92));
+    this.button(70, GAME_H - 110, 'IR P/ TRAVE', () => (this.targetY = this.targetY > 60 ? 25 : 92));
+    this.button(GAME_W - 70, GAME_H - 110, 'TORCIDA!', () => {
+      this.stadium.cheer(1);
+      navigator.vibrate?.([20, 40, 20]);
+    });
+    this.button(GAME_W / 2, GAME_H - 160, 'CENTRALIZAR', () => (this.targetX = FIELD.width / 2));
     this.setTilt(this.proj.tilt);
+
+    // Parâmetros de depuração na URL: ?x=-5&y=50 posiciona a câmera
+    const q = new URLSearchParams(location.search);
+    if (q.has('x')) this.targetX = this.proj.camX = Number(q.get('x'));
+    if (q.has('y')) this.targetY = this.proj.camY = Number(q.get('y'));
   }
 
   private setTilt(v: number) {
@@ -81,9 +104,12 @@ export class FieldScene extends Phaser.Scene {
     g.fillRect(0, this.proj.horizonY + 4, GAME_W, GAME_H);
   }
 
-  update() {
+  update(_t: number, dtMs: number) {
     this.proj.camY += (this.targetY - this.proj.camY) * CAMERA.followLerp;
+    this.proj.camX += (this.targetX - this.proj.camX) * CAMERA.followLerp;
     this.field.draw();
+    this.sideline.draw();
+    this.stadium.update(Math.min(dtMs, 50) / 1000);
     this.fps.setText(`${Math.round(this.game.loop.actualFps)} FPS`);
   }
 }
