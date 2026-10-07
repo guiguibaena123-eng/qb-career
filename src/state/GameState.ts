@@ -1,4 +1,4 @@
-import { TEAMS } from '../config';
+import { QUARTER_SECONDS, TEAMS } from '../config';
 
 /** Estado central da partida. Tudo que o HUD mostra sai daqui. */
 export interface QbStats {
@@ -10,18 +10,18 @@ export interface QbStats {
 }
 
 export class GameState {
-  score = { home: 14, away: 10 };
+  score = { home: 0, away: 0 };
   /** Retrospecto da temporada (vitórias-derrotas). */
   record = { home: [4, 2], away: [2, 3] };
-  quarter = 3;
+  quarter = 1;
   /** Relógio do quarto, em segundos. */
-  clock = 8 * 60 + 42;
+  clock = QUARTER_SECONDS;
   /** Play clock (segundos para dar o snap). */
   playClock = 25;
-  down = 2;
-  distance = 7;
+  down = 1;
+  distance = 10;
   /** Linha de scrimmage em jardas (0 = nossa linha de gol, 100 = a deles). */
-  los = 35;
+  los = 25;
   possession: 'home' | 'away' = 'home';
   qb = { number: 12, level: 'ROOKIE', ovr: 68 };
   stats: QbStats = { comp: 0, att: 0, yards: 0, td: 0, int: 0 };

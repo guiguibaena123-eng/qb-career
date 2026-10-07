@@ -50,7 +50,7 @@ export function simulateDrive(start: number, rng: Rng, home = 'LOB', away = 'TOU
   for (let n = 0; n < 16; n++) {
     const label = dd();
     const at = sp(y);
-    seconds += rng.int(26, 40);
+    seconds += rng.int(10, 20);
 
     // 4ª descida: decide
     if (down === 4) {

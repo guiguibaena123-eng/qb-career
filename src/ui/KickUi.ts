@@ -20,6 +20,8 @@ export class KickUi {
   private zone: Phaser.GameObjects.Graphics;
   private bar: Phaser.GameObjects.Graphics;
   private barY = 0;
+  private timerG: Phaser.GameObjects.Graphics;
+  private timerT: Phaser.GameObjects.Text;
   /** Fase da agulha (rad); posição = sin(fase) em −1..1. */
   private phase = 0;
   running = false;
@@ -47,7 +49,9 @@ export class KickUi {
 
     this.wind = scene.add.container(0, 0).setDepth(D);
     this.info = scene.add.container(0, 0).setDepth(D);
-    this.items.push(grad, bar, this.zone, this.needle, this.btn, this.wind, this.info);
+    this.timerG = scene.add.graphics().setDepth(D);
+    this.timerT = title(scene, W / 2 + 62, 168, '', 9, '#FFFFFF').setOrigin(1, 0.5).setDepth(D + 1);
+    this.items.push(grad, bar, this.zone, this.needle, this.btn, this.wind, this.info, this.timerG, this.timerT);
     this.show(false);
   }
 
@@ -135,7 +139,45 @@ export class KickUi {
     g.strokeRoundedRect(this.barX, by, this.barW, 22, 11);
   }
 
+  /** Timer de pressão da defesa (field goal): barra que esvazia; null esconde. */
+  setTimer(left: number | null, total = 2) {
+    const g = this.timerG;
+    g.clear();
+    this.timerT.setVisible(left !== null);
+    if (left === null) return;
+    const W = this.scene.scale.width;
+    const x = W / 2 - 100;
+    const y = 154;
+    const k = Math.max(0, Math.min(1, left / total));
+    const col = k > 0.5 ? 0xffb02e : 0xe5484d;
+    g.fillStyle(0x000000, 0.3);
+    g.fillRoundedRect(x, y + 4, 200, 28, 12);
+    g.fillStyle(0x22284a, 0.9);
+    g.fillRoundedRect(x, y, 200, 28, 12);
+    g.lineStyle(1, 0xffffff, 0.16);
+    g.strokeRoundedRect(x, y, 200, 28, 12);
+    g.fillStyle(0x3a4060, 1);
+    g.fillRect(x + 66, y + 10, 74, 8);
+    g.fillStyle(col, 1);
+    g.fillRect(x + 66, y + 10, 74 * k, 8);
+    this.timerT.setText(`${left.toFixed(1)}s`).setColor(k > 0.5 ? '#FFB02E' : '#FF7B80').setX(x + 192);
+    if (!this.timerLbl) this.timerLbl = label(this.scene, 0, 0, 'PRESSÃO', 9, '#FFFFFF').setOrigin(0, 0.5).setDepth(96);
+    this.timerLbl.setPosition(x + 12, y + 14).setVisible(true);
+  }
+  private timerLbl: Phaser.GameObjects.Text | null = null;
+
+  /** Para a agulha (bloqueio do chute). */
+  cancel() {
+    this.running = false;
+    this.btn.setEnabled(false);
+  }
+
   show(on: boolean) {
+    if (!on) {
+      this.timerG.clear();
+      this.timerT.setVisible(false);
+      this.timerLbl?.setVisible(false);
+    }
     this.items.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(on));
     if (!on) this.running = false;
   }

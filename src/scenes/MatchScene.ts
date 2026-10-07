@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CAMERA, FIELD, FONT_TITLE, MATCH_SEED, TEAMS } from '../config';
+import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, MATCH_SEED, QUARTER_SECONDS, TEAMS } from '../config';
 import {
   FORMATION_NAME,
   HOT_ROUTE_CYCLE,
@@ -54,6 +54,9 @@ const hexStr = (c: number) => '#' + c.toString(16).padStart(6, '0');
  *  live → lance ao vivo: pocket, passe estilingue, bola no ar, recepção, corrida com a bola
  *  post → resultado rápido (toque para pular) e volta ao pré-snap
  */
+/** Tempo (s) até a defesa chegar no chutador do field goal. O timer mostra 2,0 s; o resto é a corrida do chutador. */
+const RUSH_ARRIVE = 2.45;
+
 export class MatchScene extends Phaser.Scene {
   private state = new GameState();
   private world!: World;
@@ -94,7 +97,7 @@ export class MatchScene extends Phaser.Scene {
   private kick: {
     kind: 'pat' | 'fg' | 'punt';
     t: number;
-    stage: 'aim' | 'approach' | 'flight' | 'done';
+    stage: 'aim' | 'approach' | 'flight' | 'blocked' | 'done';
     off: number;
     good: boolean;
     from: [number, number, number];
@@ -103,6 +106,9 @@ export class MatchScene extends Phaser.Scene {
     T: number;
     land: number;
     chance?: number;
+    clock: number;
+    rush?: boolean;
+    rushers?: { p: Player; sx: number; sy: number; tx: number; ty: number }[];
     window?: number;
     post?: boolean;
     short?: boolean;
@@ -1231,7 +1237,7 @@ export class MatchScene extends Phaser.Scene {
     this.aimTag.setVisible(false);
     this.statusTags.forEach((t) => t.setVisible(false));
     this.ctl = null;
-    this.tickClock(Math.round(live.t + (kind === 'inc' || kind === 'out' ? 1 : 6)));
+    this.tickClock(Math.round((live.t + (kind === 'inc' || kind === 'out' ? 1 : 6)) * CLOCK_RATE));
 
     const c = live.carrier;
     const spot = kind === 'sack' ? this.qb.y : kind === 'inc' || kind === 'int' ? s.los : (c?.y ?? s.los);
@@ -1354,8 +1360,8 @@ export class MatchScene extends Phaser.Scene {
     if (s.quarter < 4) {
       const q = s.quarter;
       s.quarter++;
-      s.clock = 15 * 60;
-      this.time.delayedCall(900, () => this.ui.caption(`FIM DO ${q}º QUARTO`, 330, 1300, '#0D0D12', 0xffd23f));
+      s.clock = QUARTER_SECONDS;
+      this.time.delayedCall(900, () => this.ui.caption(q === 2 ? 'INTERVALO · FIM DO 2º QUARTO' : `FIM DO ${q}º QUARTO`, 330, 1300, '#0D0D12', 0xffd23f));
     } else {
       s.clock = 0;
       this.gameOver = true;
@@ -1521,7 +1527,7 @@ export class MatchScene extends Phaser.Scene {
       s.distance = 10;
     }
     this.phase = 'kick';
-    this.kick = { kind, t: 0, stage: 'aim', off: 0, good: false, from: [0, 0, 0], to: [0, 0, 0], apex: 0, T: 1, land: 0 };
+    this.kick = { kind, t: 0, clock: 0, stage: 'aim', off: 0, good: false, from: [0, 0, 0], to: [0, 0, 0], apex: 0, T: 1, land: 0 };
     this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
     this.windowTag.setVisible(false);
     this.liveUi.show('none');
@@ -1575,6 +1581,20 @@ export class MatchScene extends Phaser.Scene {
     }
     this.hud.setBar('result');
     this.kickUi.onKick = (off) => this.kickBall(off);
+    // Field goal: a defesa vem em cima do chutador. Você tem 2 s para chutar
+    if (kind === 'fg') {
+      const kicker = this.recv('E');
+      const rs = this.defense.filter((p) => p.role === 'DL' || p.role === 'LB' || p.role === 'NB');
+      this.kick.rush = true;
+      this.kick.rushers = rs.map((p, i) => ({
+        p,
+        sx: p.x,
+        sy: p.y,
+        tx: kicker.x + (i - (rs.length - 1) / 2) * 0.9,
+        ty: kicker.y + 1.0,
+      }));
+      this.kickUi.setTimer(2);
+    } else this.kickUi.setTimer(null);
   }
 
   private kickBall(off: number) {
@@ -1614,7 +1634,21 @@ export class MatchScene extends Phaser.Scene {
     const kk = this.kick;
     if (!kk) return;
     const k = this.recv('E');
-    if (kk.stage === 'aim') return;
+    if (kk.rush) {
+      kk.clock += dt;
+      this.rushStep(dt);
+    }
+    if (kk.stage === 'aim') {
+      if (kk.rush) {
+        this.kickUi.setTimer(Math.max(0, 2 - kk.clock));
+        if (kk.clock >= 2) this.blockKick();
+      }
+      return;
+    }
+    if (kk.stage === 'blocked') {
+      if (kk.clock >= RUSH_ARRIVE) this.blockedResult();
+      return;
+    }
     kk.t += dt;
     if (kk.stage === 'approach') {
       // Corrida curta até a bola
@@ -1650,6 +1684,56 @@ export class MatchScene extends Phaser.Scene {
       }
       if (u >= 1) this.kickResult();
     }
+  }
+
+  /** Defensores correm até o chutador: chegam em RUSH_ARRIVE s (o chute precisa sair antes). */
+  private rushStep(dt: number) {
+    const kk = this.kick!;
+    const u = Math.min(1, kk.clock / RUSH_ARRIVE);
+    const e = Math.pow(u, 1.35);
+    for (const r of kk.rushers ?? []) {
+      const nx = r.sx + (r.tx - r.sx) * e;
+      const ny = r.sy + (r.ty - r.sy) * e;
+      r.p.vx = (nx - r.p.x) / Math.max(dt, 0.001);
+      r.p.vy = (ny - r.p.y) / Math.max(dt, 0.001);
+      r.p.x = nx;
+      r.p.y = ny;
+      if (u >= 1) r.p.vx = r.p.vy = 0;
+    }
+  }
+
+  /** O timer de 2 s acabou: a defesa chega e bloqueia. */
+  private blockKick() {
+    const kk = this.kick!;
+    kk.stage = 'blocked';
+    this.kickUi.cancel();
+    this.kickUi.setTimer(0);
+    vibrate(VIBE.sack);
+    this.ui.pop('PRESSÃO!', '#E5484D', 18, 200, 450);
+  }
+
+  private blockedResult() {
+    const kk = this.kick!;
+    const s = this.state;
+    kk.stage = 'done';
+    this.kickUi.show(false);
+    this.phase = 'post';
+    this.postTimer = 2.2;
+    this.ui.pop('BLOQUEADO!', '#E5484D', 26, 200, 1300);
+    this.ui.edgeFlash(0xe5484d, 0.7);
+    this.feedback.shake(0.012, 300);
+    vibrate(VIBE.turnover);
+    const k = this.recv('E');
+    k.angle = 70;
+    k.hop = 0;
+    this.ball.state = 'loose';
+    this.ball.y -= 3;
+    this.ball.h = 0.4;
+    for (const r of kk.rushers ?? []) r.p.pose = 'catch';
+    this.hud.setResult('FIELD GOAL BLOQUEADO', 'X', 0xe5484d, ['FG', 0xffd23f, '#0D0D12']);
+    const at = Math.max(20, s.los - 7);
+    this.afterPost = () => this.opponentDrive(at, false);
+    this.hud.refresh();
   }
 
   private kickResult() {
@@ -1818,7 +1902,7 @@ export class MatchScene extends Phaser.Scene {
     s.xp = xp;
     s.score = { home: 0, away: 0 };
     s.quarter = 1;
-    s.clock = 15 * 60;
+    s.clock = QUARTER_SECONDS;
     s.down = 1;
     s.distance = 10;
     s.los = 25;

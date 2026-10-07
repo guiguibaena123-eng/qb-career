@@ -19,6 +19,10 @@ export const CAMERA = {
   maxY: 100,
 };
 
+/** Duração de cada período (s) e quanto o relógio anda mais rápido que o tempo real da jogada. */
+export const QUARTER_SECONDS = 5 * 60;
+export const CLOCK_RATE = 2;
+
 /** Dimensões do campo em jardas. y=0 é a nossa linha de gol, y=100 a do adversário. */
 export const FIELD = {
   width: 53.3,
