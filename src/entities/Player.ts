@@ -1,6 +1,6 @@
 import { difficulty } from '../systems/difficulty';
 import Phaser from 'phaser';
-import { FONT_TITLE, SPRITE_SCALE, TEAMS } from '../config';
+import { FONT_TITLE, SPRITE_SCALE, TEAMS, TEX_PX } from '../config';
 import type { RecvKey, Role, Side, Slot } from '../data/plays';
 import type { Billboard, BillboardLayer } from '../systems/billboards';
 import { hex } from '../systems/pixelart';
@@ -13,7 +13,7 @@ import { hex } from '../systems/pixelart';
 
 const SKINS = ['#8D5524', '#C68B59', '#F1C27D', '#6B3F1F', '#E0AC69'];
 const OUTLINE = '#141414';
-const PX = 2; // desenhado em 2x
+const PX = TEX_PX; // desenhado em alta resolução
 const BOX_W = 28;
 const BOX_H = 50; // 44 do design + espaço para a bola erguida
 
@@ -44,8 +44,9 @@ const BASE: Record<Role, Attributes> = {
 /** Poses (frames) desenhadas para cada jogador. */
 export const POSES = ['idle', 'run1', 'run2', 'throw', 'catch', 'carry'] as const;
 export type Pose = (typeof POSES)[number];
-const FRAME_W = BOX_W * PX + 4;
-const FRAME_H = BOX_H * PX + 4;
+const MARGIN = PX;
+const FRAME_W = BOX_W * PX + 2 * MARGIN;
+const FRAME_H = BOX_H * PX + 2 * MARGIN;
 
 interface Look {
   front: boolean;
@@ -172,7 +173,7 @@ export function makePlayerTexture(scene: Phaser.Scene, side: Side, num: number, 
   };
   POSES.forEach((pose, i) => {
     ctx.save();
-    ctx.translate(i * FRAME_W + 2, 2); // margem para o contorno
+    ctx.translate(i * FRAME_W + MARGIN, MARGIN); // margem para o contorno
     drawPlayer(ctx, look, pose);
     ctx.restore();
     tex.add(pose, 0, i * FRAME_W, 0, FRAME_W, FRAME_H);

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TEAMS } from '../config';
+import { GAME_H, GAME_W, TEAMS } from '../config';
 import type { DriveResult } from '../systems/oppdrive';
 import { GlassButton, label, title, UI } from './widgets';
 
@@ -69,8 +69,8 @@ export class DefenseScreen {
   private build(img: HTMLImageElement) {
     const sc = this.scene;
     const o = this.o!;
-    const W = sc.scale.width;
-    const H = sc.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     // Desfoque barato: reduz 10x e amplia com suavização
     const small = document.createElement('canvas');
     small.width = Math.max(1, Math.round(W / 10));
@@ -173,7 +173,7 @@ export class DefenseScreen {
     const sc = this.scene;
     const o = this.o!;
     const r = o.drive.rows[i];
-    const W = sc.scale.width;
+    const W = GAME_W;
     const L = 14;
     const R = W - 14;
     // Rola para cima quando passa do limite
@@ -214,8 +214,8 @@ export class DefenseScreen {
     this.done = true;
     o.onFinish?.();
     this.dots.forEach((d) => d.setVisible(false));
-    const W = sc.scale.width;
-    const H = sc.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     const L = 14;
     const R = W - 14;
     const bh = 140;

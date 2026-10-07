@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, MATCH_SEED, QUARTER_SECONDS, TEAMS } from '../config';
+import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS } from '../config';
 import {
   FORMATION_NAME,
   HOT_ROUTE_CYCLE,
@@ -31,6 +31,7 @@ import { LiveUi } from '../ui/LiveUi';
 import { ResultCard, type CardOpts } from '../ui/ResultCard';
 import { difficulty } from '../systems/difficulty';
 import { Replay } from '../systems/replay';
+import { setupHiRes } from '../systems/hires';
 import { pickWeather, Weather } from '../systems/weather';
 import { simulateDrive, spotName } from '../systems/oppdrive';
 import { KickUi } from '../ui/KickUi';
@@ -185,6 +186,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   create() {
+    setupHiRes(this);
     const s = this.state;
     this.world = new World(this, s.los);
     this.fx = this.add.graphics().setDepth(0.8);
@@ -294,7 +296,7 @@ export class MatchScene extends Phaser.Scene {
     this.windowTag = new Tag(this, '', C_OPEN, '#0D0D12', 8).setDepth(41).setVisible(false);
 
     // Dica central
-    this.hint = this.add.container(this.scale.width / 2, 600).setDepth(95);
+    this.hint = this.add.container(GAME_W / 2, 600).setDepth(95);
     const ht = label(this, 0, 0, 'TOQUE NUMA LETRA PARA MUDAR A ROTA', 10, '#E8EAF2').setOrigin(0.5);
     const hb = this.add.graphics();
     hb.fillStyle(UI.dark, 1);
@@ -313,8 +315,8 @@ export class MatchScene extends Phaser.Scene {
 
   /** Botão de pause (canto direito, abaixo da dificuldade) + menu de pausa. */
   private buildPause() {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     const btn = (this.pauseBtn = new GlassButton(this, W - 12 - 20, 190, { w: 40, h: 40, radius: 20 }));
     btn.setDepth(98);
     const ic = this.add.graphics();
@@ -417,7 +419,7 @@ export class MatchScene extends Phaser.Scene {
 
   /** Botão de dificuldade (canto direito, abaixo do placar): toque para trocar FÁCIL / NORMAL / DIFÍCIL. */
   private buildDifficulty() {
-    const W = this.scale.width;
+    const W = GAME_W;
     const btn = new GlassButton(this, W - 12 - 52, 138, { w: 104, h: 36, radius: 12 });
     const t = label(this, 0, -6, '', 10, '#FFFFFF').setOrigin(0.5);
     const sub = label(this, 0, 8, 'DIFICULDADE', 7, UI.muted).setOrigin(0.5);
@@ -436,8 +438,8 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private buildBottom() {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     const L = 14;
     const R = W - 14;
     bottomGradient(this, 300, 90);
@@ -532,7 +534,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private buildTactical() {
-    const W = this.scale.width;
+    const W = GAME_W;
     // Legenda no topo (no lugar da barra de descida)
     this.legend = this.add.container(0, 0).setDepth(110).setVisible(false);
     const lg = this.add.graphics();
@@ -653,7 +655,7 @@ export class MatchScene extends Phaser.Scene {
   /** Texto grande que entra com "pop" (escala + leve rotação) e some. */
   private toast(text: string, color: string, size: number, y = 470) {
     const t = this.add
-      .text(this.scale.width / 2, y, text, { fontFamily: FONT_TITLE, fontSize: `${size}px`, color, stroke: '#0D0D12', strokeThickness: 6 })
+      .text(GAME_W / 2, y, text, { fontFamily: FONT_TITLE, fontSize: `${size}px`, color, stroke: '#0D0D12', strokeThickness: 6 })
       .setOrigin(0.5)
       .setDepth(150)
       .setScale(0.3)
@@ -914,7 +916,7 @@ export class MatchScene extends Phaser.Scene {
       bg.fillRoundedRect(-t.width / 2 - 14, -13, t.width + 30, 26, 10);
       const dot = this.add.circle(-t.width / 2 - 2, 0, 3.5, 0xe5484d);
       this.tweens.add({ targets: dot, alpha: 0.3, yoyo: true, repeat: -1, duration: 420 });
-      this.replayPill = this.add.container(this.scale.width / 2, 128, [bg, t, dot]).setDepth(141).setVisible(false);
+      this.replayPill = this.add.container(GAME_W / 2, 128, [bg, t, dot]).setDepth(141).setVisible(false);
     }
 
     // Passe estilingue: toque no campo, arraste para trás e solte
@@ -924,15 +926,15 @@ export class MatchScene extends Phaser.Scene {
       if (this.phase === 'post') return this.finishPost();
       if (this.phase === 'replay') return this.endReplay();
       if (this.phase !== 'live' || this.live?.phase !== 'pocket') return;
-      if (p.y < 110 || p.y > this.scale.height - 110) return;
-      this.aim = { active: true, sx: p.x, sy: p.y, cx: p.x, cy: p.y, mx: 0, my: 0, used: true };
+      if (p.worldY < 110 || p.worldY > GAME_H - 110) return;
+      this.aim = { active: true, sx: p.worldX, sy: p.worldY, cx: p.worldX, cy: p.worldY, mx: 0, my: 0, used: true };
       this.liveUi.showDragHint(false);
       this.qb.pose = 'throw';
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       if (!this.aim.active) return;
-      this.aim.cx = p.x;
-      this.aim.cy = p.y;
+      this.aim.cx = p.worldX;
+      this.aim.cy = p.worldY;
     });
     const release = () => {
       if (!this.aim.active) return;
@@ -1094,7 +1096,7 @@ export class MatchScene extends Phaser.Scene {
       this.hud.setPocket(left, Math.min(1, left / 3.3));
       if (!this.aim.used) {
         const q = this.world.proj.project(this.qb.x, this.qb.y, 0);
-        this.liveUi.showDragHint(true, q.x, Math.min(this.scale.height - 150, q.y + 46));
+        this.liveUi.showDragHint(true, q.x, Math.min(GAME_H - 150, q.y + 46));
       }
     }
 
@@ -1272,7 +1274,7 @@ export class MatchScene extends Phaser.Scene {
     n = Math.round(n * difficulty.d.xp);
     this.state.xp += n;
     this.playXp += n;
-    const p = at ? this.world.proj.project(at.x, at.y, 4.2) : { x: this.scale.width / 2, y: 330 };
+    const p = at ? this.world.proj.project(at.x, at.y, 4.2) : { x: GAME_W / 2, y: 330 };
     this.ui.xp(p.x, p.y, `+${n} XP`);
   }
 

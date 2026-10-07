@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
-import { FONT_TITLE, matchConfig, ROSTER, setUserTeam, type TeamName, type WeatherChoice } from '../config';
+import { FONT_TITLE, GAME_H, GAME_W, ROSTER, matchConfig, setUserTeam, type TeamName, type WeatherChoice } from '../config';
 import { difficulty, LEVELS, type Level } from '../systems/difficulty';
 import { helmet } from '../ui/Intro';
 import { GlassButton, label, title, UI } from '../ui/widgets';
+import { setupHiRes } from '../systems/hires';
 import { MatchScene } from './MatchScene';
 
 /*
@@ -31,6 +32,7 @@ export class MainMenu extends Phaser.Scene {
   }
 
   create() {
+    setupHiRes(this);
     // Parâmetros de depuração entram direto na partida
     const q = new URLSearchParams(location.search);
     const debug = ['auto', 'los', 'fim', 'chute', 'defesa', 'descida', 'tatica', 'semintro', 'semmenu', 'jog', 'intro'].some((k) => q.has(k));
@@ -53,8 +55,8 @@ export class MainMenu extends Phaser.Scene {
   // ------------------------------------------------------------ fundo
 
   private drawBackground() {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     const g = this.add.graphics();
     g.fillGradientStyle(0x0a0c1a, 0x0a0c1a, 0x16204a, 0x16204a, 1);
     g.fillRect(0, 0, W, H);
@@ -82,12 +84,12 @@ export class MainMenu extends Phaser.Scene {
     const g = this.fxG;
     if (!g) return;
     g.clear();
-    const H = this.scale.height;
+    const H = GAME_H;
     for (const b of this.bits) {
       b.y -= b.v * dt;
       if (b.y < -6) {
         b.y = H + 6;
-        b.x = Math.random() * this.scale.width;
+        b.x = Math.random() * GAME_W;
       }
       g.fillStyle(b.c, 0.35);
       g.fillRect(b.x, b.y, b.s, b.s);
@@ -107,8 +109,8 @@ export class MainMenu extends Phaser.Scene {
   // ------------------------------------------------------------ menu inicial
 
   private home() {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     const v = this.fresh();
     const t1 = this.add
       .text(W / 2, 112, 'QB', { fontFamily: FONT_TITLE, fontSize: '54px', color: UI.yellow, stroke: '#0D0D12', strokeThickness: 10, shadow: { offsetX: 6, offsetY: 9, color: '#0D0D12', fill: true, stroke: true } })
@@ -167,8 +169,8 @@ export class MainMenu extends Phaser.Scene {
   // ------------------------------------------------------------ partida rápida
 
   private setup() {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     const v = this.fresh();
     v.add(title(this, W / 2, 50, 'PARTIDA RÁPIDA', 15, UI.yellow).setOrigin(0.5));
     v.add(label(this, W / 2, 78, 'MONTE SEU JOGO', 10, '#C9CEE0').setOrigin(0.5));

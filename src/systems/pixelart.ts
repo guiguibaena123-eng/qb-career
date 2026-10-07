@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { TEX_PX } from '../config';
 
 /**
  * Cria uma textura de pixel art a partir de uma grade de caracteres.
@@ -10,7 +11,7 @@ export function makePixelTexture(
   key: string,
   rows: string[],
   palette: Record<string, string>,
-  px = 2,
+  px = TEX_PX,
 ) {
   if (scene.textures.exists(key)) return;
   const w = Math.max(...rows.map((r) => r.length));

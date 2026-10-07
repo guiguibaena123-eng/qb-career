@@ -88,8 +88,19 @@ export function setUserTeam(name: TeamName) {
 export const FONT_TITLE = '"Press Start 2P", monospace';
 export const FONT_LABEL = '"Silkscreen", monospace';
 
-/** Escala dos sprites (desenhados em 2x): mesma altura das pessoas do design (44 px × 0,72). */
-export const SPRITE_SCALE = 0.63;
+/** Escala dos sprites: mesma altura das pessoas do design (44 px × 0,72). */
+/** Fator de resolução: o canvas é desenhado em RES x o tamanho lógico (390×844), então fica nítido em telas de alta densidade. */
+export const RES = (() => {
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('res') : null;
+  if (q) return Math.max(1, Math.min(3, Number(q) || 1));
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  return dpr >= 1.5 ? 2 : 1;
+})();
+
+/** Texturas de pixel art são desenhadas em TEX_PX x (4x = bem nítidas ao ampliar). */
+export const TEX_PX = 4;
+
+export const SPRITE_SCALE = 1.26 / TEX_PX;
 
 /** Seed padrão da partida (torcida, posições das laterais...). */
 export const MATCH_SEED = 20261006;

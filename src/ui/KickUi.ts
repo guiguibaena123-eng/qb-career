@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TEAMS } from '../config';
+import { GAME_H, GAME_W, TEAMS } from '../config';
 import { bottomGradient, GlassButton, label, title, UI } from './widgets';
 
 /*
@@ -29,8 +29,8 @@ export class KickUi {
   onKick?: (offset: number) => void;
 
   constructor(private scene: Phaser.Scene) {
-    const W = scene.scale.width;
-    const H = scene.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     const D = 95;
     const grad = bottomGradient(scene, 300, 90);
     this.barX = 20;
@@ -59,7 +59,7 @@ export class KickUi {
   /** Abre a barra: vento (km/h, sinal = direção), distância e chance. */
   open(opts: { windKmh: number; windDir: number; dist: number; chance: number; color: number; label?: string; window: number; info?: string }) {
     const sc = this.scene;
-    const W = sc.scale.width;
+    const W = GAME_W;
     this.show(true);
     this.btn.setFill(opts.color, 1, true);
     this.btnText.setText(opts.label ?? 'CHUTAR');
@@ -146,7 +146,7 @@ export class KickUi {
     g.clear();
     this.timerT.setVisible(left !== null);
     if (left === null) return;
-    const W = this.scene.scale.width;
+    const W = GAME_W;
     const x = W / 2 - 100;
     const y = 154;
     const k = Math.max(0, Math.min(1, left / total));
@@ -198,6 +198,6 @@ export class KickUi {
       this.btn.setEnabled(true);
       this.phase += dt * ((Math.PI * 2) / 1.6);
     }
-    this.needle.x = this.scene.scale.width / 2 + Math.sin(this.phase) * (this.barW / 2 - 6);
+    this.needle.x = GAME_W / 2 + Math.sin(this.phase) * (this.barW / 2 - 6);
   }
 }

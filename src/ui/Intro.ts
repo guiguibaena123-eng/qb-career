@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_TITLE, TEAMS } from '../config';
+import { FONT_TITLE, GAME_H, GAME_W, TEAMS } from '../config';
 import type { Rng } from '../systems/rng';
 import { GlassButton, label, title, UI } from './widgets';
 
@@ -53,8 +53,8 @@ export class Intro {
   show(onDone: (receive: boolean) => void) {
     this.hide();
     const sc = this.scene;
-    const W = sc.scale.width;
-    const H = sc.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     const root = (this.root = sc.add.container(0, 0).setDepth(150));
     const dim = sc.add.rectangle(0, 0, W, H, 0x0a0c1a, 0.93).setOrigin(0);
     root.add(dim);
@@ -75,8 +75,8 @@ export class Intro {
 
   private presentation(next: () => void) {
     const sc = this.scene;
-    const W = sc.scale.width;
-    const H = sc.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     this.clear();
     this.add(label(sc, W / 2, 62, 'QB CAREER · TEMPORADA 1 · SEMANA 3', 10, UI.muted).setOrigin(0.5));
     this.add(title(sc, W / 2, 92, 'HOJE NO ESTÁDIO', 12, '#FFFFFF').setOrigin(0.5));
@@ -173,8 +173,8 @@ export class Intro {
 
   private toss(onDone: (receive: boolean) => void) {
     const sc = this.scene;
-    const W = sc.scale.width;
-    const H = sc.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     this.clear();
     this.add(label(sc, W / 2, 70, 'SORTEIO DO COMEÇO', 10, UI.muted).setOrigin(0.5));
     const head = this.add(title(sc, W / 2, 104, 'CARA OU COROA?', 16, UI.yellow).setOrigin(0.5));

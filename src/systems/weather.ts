@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_LABEL, FONT_TITLE, matchConfig } from '../config';
+import { FONT_LABEL, FONT_TITLE, GAME_H, GAME_W, matchConfig } from '../config';
 import type { Projection, ScreenPoint } from './projection';
 import type { Rng } from './rng';
 
@@ -44,8 +44,8 @@ export class Weather {
 
   constructor(private scene: Phaser.Scene, kind: WeatherKind, private rng: Rng) {
     this.kind = kind;
-    const W = scene.scale.width;
-    const H = scene.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     this.tint = scene.add
       .rectangle(0, 0, W, H, kind === 'rain' ? 0x0a1426 : 0xf2f6ff, kind === 'rain' ? 0.32 : kind === 'snow' ? 0.48 : 0)
       .setOrigin(0)
@@ -110,8 +110,8 @@ export class Weather {
   }
 
   private newDrop(anyY: boolean): Drop {
-    const W = this.scene.scale.width;
-    const H = this.scene.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     const r = this.rng;
     const snow = this.kind === 'snow';
     return {
@@ -129,8 +129,8 @@ export class Weather {
     if (this.kind === 'clear') return;
     const g = this.g;
     g.clear();
-    const H = this.scene.scale.height;
-    const W = this.scene.scale.width;
+    const H = GAME_H;
+    const W = GAME_W;
     if (this.kind === 'rain') {
       // Gotas inclinadas 11°
       const sx = -Math.sin((11 * Math.PI) / 180);

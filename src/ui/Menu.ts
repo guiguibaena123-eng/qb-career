@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_TITLE, TEAMS } from '../config';
+import { FONT_TITLE, GAME_H, GAME_W, TEAMS } from '../config';
 import { bottomGradient, GlassButton, label, title, UI } from './widgets';
 
 /*
@@ -27,8 +27,8 @@ export class Menu {
   show(o: { big: string; chip: string; sub: string; buttons: MenuButton[] }) {
     this.hide();
     const sc = this.scene;
-    const W = sc.scale.width;
-    const H = sc.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     const root = (this.root = sc.add.container(0, 0).setDepth(120));
     const big = sc.add
       .text(W / 2, 200, o.big, {

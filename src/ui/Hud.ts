@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TEAMS } from '../config';
+import { GAME_W, TEAMS } from '../config';
 import type { GameState } from '../state/GameState';
 import { label, title, UI } from './widgets';
 
@@ -17,7 +17,7 @@ export class Hud {
   private playBox: Phaser.GameObjects.Graphics;
 
   constructor(private scene: Phaser.Scene, private state: GameState, depth = 100) {
-    const W = scene.scale.width;
+    const W = GAME_W;
     const L = 12;
     const R = W - 12;
     const g = scene.add.graphics().setDepth(depth);
@@ -122,7 +122,7 @@ export class Hud {
   private buildBars(depth: number) {
     const sc = this.scene;
     const L = 12;
-    const R = sc.scale.width - 12;
+    const R = GAME_W - 12;
     const by = 72;
     const bh = 34;
     // POCKET: "2ª & 7" + segmentos + segundos
@@ -192,7 +192,7 @@ export class Hud {
   setResult(text: string, yards: string, color: number, chip?: [string, number, string]) {
     if (!this.pocketBar) this.buildBars(this.downBar.depth);
     const L = 12;
-    const R = this.scene.scale.width - 12;
+    const R = GAME_W - 12;
     const by = 72;
     const bh = 34;
     this.resultDown.setText(chip ? chip[0] : this.state.downText).setColor(chip ? chip[2] : '#0D0D12');

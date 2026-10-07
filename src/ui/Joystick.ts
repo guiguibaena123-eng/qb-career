@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TEAMS } from '../config';
+import { GAME_H, GAME_W, TEAMS } from '../config';
 import { UI } from './widgets';
 
 /*
@@ -39,7 +39,7 @@ export class Joystick extends Phaser.GameObjects.Container {
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (!this.visible || this.pointerId !== null) return;
       // Área do joystick: metade esquerda, parte de baixo
-      if (p.x < scene.scale.width * 0.45 && p.y > scene.scale.height - 260) {
+      if (p.worldX < GAME_W * 0.45 && p.worldY > GAME_H - 260) {
         this.pointerId = p.id;
         this.track(p);
       }
@@ -69,8 +69,8 @@ export class Joystick extends Phaser.GameObjects.Container {
   }
 
   private track(p: Phaser.Input.Pointer) {
-    let dx = p.x - this.x;
-    let dy = p.y - this.y;
+    let dx = p.worldX - this.x;
+    let dy = p.worldY - this.y;
     const d = Math.hypot(dx, dy);
     const max = this.R - 20;
     if (d > max) {

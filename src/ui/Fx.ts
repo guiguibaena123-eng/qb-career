@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_LABEL, FONT_TITLE } from '../config';
+import { FONT_LABEL, FONT_TITLE, GAME_H, GAME_W } from '../config';
 import { UI } from './widgets';
 
 /*
@@ -17,7 +17,7 @@ export class Fx {
   constructor(private scene: Phaser.Scene) {
     this.edge = scene.add.graphics().setDepth(140);
     // Selo "CÂMERA LENTA" com bolinha vermelha pulsando
-    const W = scene.scale.width;
+    const W = GAME_W;
     this.slowPill = scene.add.container(W / 2, 128).setDepth(141).setVisible(false);
     const t = scene.add.text(6, 0, 'CÂMERA LENTA', { fontFamily: FONT_LABEL, fontSize: '10px', color: '#FFFFFF' }).setOrigin(0.5);
     const bg = scene.add.graphics();
@@ -31,7 +31,7 @@ export class Fx {
   /** Texto grande que entra com pop (escala + rotação de −4°) e some. */
   pop(text: string, color: string, size = 26, y = 190, hold = 900) {
     const t = this.scene.add
-      .text(this.scene.scale.width / 2, y, text, {
+      .text(GAME_W / 2, y, text, {
         fontFamily: FONT_TITLE,
         fontSize: `${size}px`,
         color,
@@ -57,7 +57,7 @@ export class Fx {
 
   /** Legenda pequena numa caixa escura (entra deslizando). */
   caption(text: string, y = 236, hold = 1200, color = '#FFFFFF', bg = UI.dark) {
-    const c = this.scene.add.container(this.scene.scale.width / 2, y + 10).setDepth(150).setAlpha(0);
+    const c = this.scene.add.container(GAME_W / 2, y + 10).setDepth(150).setAlpha(0);
     const t = this.scene.add.text(0, 0, text, { fontFamily: FONT_LABEL, fontSize: '11px', color }).setOrigin(0.5);
     const g = this.scene.add.graphics();
     g.fillStyle(UI.dark, 1);
@@ -96,7 +96,7 @@ export class Fx {
 
   /** Confete de pixels (touchdown). */
   burst(n = 70) {
-    const W = this.scene.scale.width;
+    const W = GAME_W;
     const colors = [0xffd23f, 0xf26b1d, 0xffffff, 0x3fd0ff, 0x3ccb5a, 0xff6fb5];
     for (let i = 0; i < n; i++) {
       const o = this.scene.add
@@ -112,8 +112,8 @@ export class Fx {
     if (this.edgeLife > 0) {
       this.edgeLife -= dt;
       const k = Math.max(0, this.edgeLife / this.edgeMax);
-      const W = this.scene.scale.width;
-      const H = this.scene.scale.height;
+      const W = GAME_W;
+      const H = GAME_H;
       for (let i = 0; i < 6; i++) {
         const w = 4 + i * 6;
         g.lineStyle(w, this.edgeColor, 0.16 * k * (1 - i / 6));
@@ -127,7 +127,7 @@ export class Fx {
       c.o.rotation += c.vr * dt;
     }
     this.confetti = this.confetti.filter((c) => {
-      if (c.o.y > this.scene.scale.height + 20) {
+      if (c.o.y > GAME_H + 20) {
         c.o.destroy();
         return false;
       }

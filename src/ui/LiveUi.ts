@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { GAME_W, GAME_H } from '../config';
 import { Joystick } from './Joystick';
 import { bottomGradient, GlassButton, label, title, UI } from './widgets';
 
@@ -30,8 +31,8 @@ export class LiveUi {
   private carryHintText: Phaser.GameObjects.Text;
 
   constructor(private scene: Phaser.Scene, h: LiveUiHandlers) {
-    const W = scene.scale.width;
-    const H = scene.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     const D = 95;
 
     // ---------- POCKET
@@ -139,7 +140,7 @@ export class LiveUi {
 
   setStamina(v: number) {
     const g = this.stamina;
-    const H = this.scene.scale.height;
+    const H = GAME_H;
     const x = 160 + 18;
     const y = H - 30 - 60;
     g.clear();

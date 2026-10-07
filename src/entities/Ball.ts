@@ -26,8 +26,9 @@ export class Ball {
 
   constructor(scene: Phaser.Scene, private proj: Projection, private ground: Phaser.GameObjects.Graphics, private fxTop: Phaser.GameObjects.Graphics) {
     if (!scene.textures.exists('ball')) {
-      const t = scene.textures.createCanvas('ball', 20, 12)!;
+      const t = scene.textures.createCanvas('ball', 60, 36)!;
       const c = t.getContext();
+      c.scale(3, 3);
       c.fillStyle = '#0d0d12';
       c.fillRect(2, 0, 16, 12);
       c.fillRect(0, 2, 20, 8);
@@ -94,7 +95,7 @@ export class Ball {
     });
     this.img
       .setPosition(p.x, p.y)
-      .setScale(Math.max(0.35, p.s * 0.9))
+      .setScale(Math.max(0.35, p.s * 0.9) / 3)
       .setAngle(Math.sin(this.spin) * 25 - 20);
   }
 

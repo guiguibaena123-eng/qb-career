@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_TITLE, TEAMS } from '../config';
+import { FONT_TITLE, GAME_H, GAME_W, TEAMS } from '../config';
 import { bottomGradient, GlassButton, label, title, UI } from './widgets';
 
 /*
@@ -55,8 +55,8 @@ export class ResultCard {
   show(o: CardOpts) {
     this.hide();
     const sc = this.scene;
-    const W = sc.scale.width;
-    const H = sc.scale.height;
+    const W = GAME_W;
+    const H = GAME_H;
     const root = (this.root = sc.add.container(0, 0).setDepth(120));
 
     // Título grande torto + selo
