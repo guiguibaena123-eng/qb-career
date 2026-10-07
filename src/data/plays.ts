@@ -96,6 +96,9 @@ export const PASS_PLAYS: PassPlay[] = [
   { name: 'FOUR VERTS', routes: { A: 'FLY', B: 'FLY', C: 'FLY', D: 'FLY', E: 'FLAT' } },
   { name: 'MESH DIG', routes: { A: 'POST', B: 'DIG', C: 'OUT', D: 'SLANT', E: 'WHEEL' } },
   { name: 'SMASH', routes: { A: 'CURL', B: 'CORNER', C: 'CURL', D: 'CORNER', E: 'FLAT' } },
+  { name: 'QUICK GAME', routes: { A: 'SLANT', B: 'OUT', C: 'SLANT', D: 'OUT', E: 'FLAT' } },
+  { name: 'DEEP SHOT', routes: { A: 'POST', B: 'DIG', C: 'FLY', D: 'CORNER', E: 'CURL' } },
+  { name: 'CORNER FLOOD', routes: { A: 'CORNER', B: 'OUT', C: 'FLY', D: 'FLAT', E: 'WHEEL' } },
 ];
 
 /** Jogadas de corrida: o RB recebe a bola e ataca o buraco `gapX`. */
@@ -107,6 +110,9 @@ export const RUN_PLAYS: RunPlay[] = [
   { name: 'INSIDE ZONE', gapX: 25.6 },
   { name: 'OFF TACKLE', gapX: 31.8 },
   { name: 'STRETCH', gapX: 36 },
+  { name: 'DRAW', gapX: 27 },
+  { name: 'COUNTER', gapX: 20 },
+  { name: 'SWEEP', gapX: 44 },
 ];
 
 export const FORMATION_NAME = 'SHOTGUN TRIPS';
