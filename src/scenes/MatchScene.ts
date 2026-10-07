@@ -36,6 +36,7 @@ import { simulateDrive, spotName } from '../systems/oppdrive';
 import { KickUi } from '../ui/KickUi';
 import { DefenseScreen } from '../ui/DefenseScreen';
 import { Menu } from '../ui/Menu';
+import { Intro } from '../ui/Intro';
 import { bottomGradient, GlassButton, label, Tag, title, UI } from '../ui/widgets';
 
 const KEYS: RecvKey[] = ['A', 'B', 'C', 'D', 'E'];
@@ -89,7 +90,24 @@ export class MatchScene extends Phaser.Scene {
   private fps?: Phaser.GameObjects.Text;
 
   // ---- lance ao vivo
-  private phase: 'pre' | 'live' | 'post' | 'card' | 'replay' | 'kick' | 'defense' = 'pre';
+  private phase: 'pre' | 'live' | 'post' | 'card' | 'replay' | 'kick' | 'defense' | 'intro' | 'kickoff' = 'pre';
+  private intro!: Intro;
+  private ko: {
+    stage: 'setup' | 'run' | 'fly' | 'catch' | 'return' | 'end';
+    t: number;
+    kickers: Player[];
+    recvs: Player[];
+    kicker: Player;
+    returner: Player;
+    dir: number;
+    yK: number;
+    land: number;
+    to: [number, number];
+    receive: boolean;
+    fell: boolean;
+    tackler: Player | null;
+    stumble: number;
+  } | null = null;
   private weather!: Weather;
   private kickUi!: KickUi;
   private defenseScreen!: DefenseScreen;
@@ -206,12 +224,16 @@ export class MatchScene extends Phaser.Scene {
     this.kickUi = new KickUi(this);
     this.defenseScreen = new DefenseScreen(this);
     this.menu = new Menu(this);
+    this.intro = new Intro(this, this.rng);
     // ?chute=fg|punt|pat abre direto no chute; ?defesa abre a campanha deles
     const kq = q.get('chute');
     if (kq === 'fg' || kq === 'punt' || kq === 'pat') this.time.delayedCall(300, () => this.startKick(kq));
     if (q.has('defesa')) this.time.delayedCall(300, () => this.opponentDrive(25, true));
     if (q.has('descida')) this.state.down = Number(q.get('descida'));
-    if (this.state.down === 4) this.time.delayedCall(200, () => this.fourthDown());
+    const debug = ['auto', 'los', 'fim', 'chute', 'defesa', 'descida', 'tatica', 'semintro', 'jog'].some((k) => q.has(k));
+    if (!debug) this.startIntro();
+    else if (this.state.down === 4) this.time.delayedCall(200, () => this.fourthDown());
+    if (q.get('intro') === 'moeda') this.time.delayedCall(100, () => this.startIntro());
   }
 
   // ---------------------------------------------------------------- jogadores
@@ -633,7 +655,7 @@ export class MatchScene extends Phaser.Scene {
 
   update(_t: number, dtMs: number) {
     // Pause: o botão fica visível só quando faz sentido
-    this.pauseBtn.setVisible(!this.paused && (this.phase === 'pre' || this.phase === 'live' || this.phase === 'post' || this.phase === 'kick'));
+    this.pauseBtn.setVisible(!this.paused && (this.phase === 'kickoff' || this.phase === 'pre' || this.phase === 'live' || this.phase === 'post' || this.phase === 'kick'));
     if (this.paused) return;
     const real = Math.min(dtMs, 50) / 1000;
     const dt = this.feedback.tick(real);
@@ -664,6 +686,10 @@ export class MatchScene extends Phaser.Scene {
       const cam = this.replay.step(dt * 0.55, this.ball);
       if (cam === null) this.endReplay();
       else this.world.targetY = cam;
+    } else if (this.phase === 'intro') {
+      // abertura: nada se move
+    } else if (this.phase === 'kickoff') {
+      this.updateKickoff(dt);
     } else if (this.phase === 'kick') {
       this.updateKick(dt);
     } else if (this.phase !== 'card' && this.phase !== 'defense') {
@@ -865,6 +891,7 @@ export class MatchScene extends Phaser.Scene {
     // Passe estilingue: toque no campo, arraste para trás e solte
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (this.paused) return;
+      if (this.phase === 'defense') return this.defenseScreen.tap();
       if (this.phase === 'post') return this.finishPost();
       if (this.phase === 'replay') return this.endReplay();
       if (this.phase !== 'live' || this.live?.phase !== 'pocket') return;
@@ -1857,6 +1884,253 @@ export class MatchScene extends Phaser.Scene {
     });
   }
 
+  // ------------------------------------------------------------ abertura e kickoff
+
+  /** Abertura: apresentação dos times e cara ou coroa; depois o kickoff. */
+  private startIntro() {
+    this.phase = 'intro';
+    this.card.hide();
+    this.menu.hide();
+    this.kickUi.show(false);
+    this.defenseScreen.close();
+    this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
+    this.windowTag.setVisible(false);
+    this.liveUi.show('none');
+    this.hud.setBar('none');
+    this.hud.refresh();
+    this.world.targetY = 50;
+    this.intro.show((receive) => {
+      this.intro.hide();
+      this.startKickoff(receive);
+    });
+  }
+
+  /**
+   * Kickoff animado. receive = true: os TOUROS chutam e os LOBOS recebem (você corre o retorno).
+   * receive = false: os LOBOS chutam e os TOUROS recebem (depois vem a campanha deles).
+   * Coordenadas: y de 0 (nossa linha de gol) a 100; os LOBOS atacam rumo ao y = 100.
+   */
+  private startKickoff(receive: boolean) {
+    const MID = FIELD.width / 2;
+    const kickTeam = receive ? this.defense : this.offense;
+    const recvTeam = receive ? this.offense : this.defense;
+    const dir = receive ? -1 : 1; // sentido do chute
+    const yK = receive ? 65 : 35;
+    const landing = receive ? 14 : 86;
+    const kicker = receive ? this.defense[this.defense.length - 1] : this.recv('E');
+    const returner = receive ? this.recv('B') : this.defense[this.defense.length - 3];
+    const rng = this.rng;
+    for (const p of [...this.offense, ...this.defense]) {
+      p.vx = p.vy = p.angle = p.hop = 0;
+      p.pose = null;
+      p.state = 'idle';
+      p.wait = 0;
+    }
+    // Time que chuta: kicker atrás da bola, os outros em linha
+    const line = kickTeam.filter((p) => p !== kicker);
+    line.forEach((p, i) => {
+      p.x = 5 + (i * 43.3) / Math.max(1, line.length - 1);
+      p.y = yK - dir * 1.2 + rng.range(-0.25, 0.25);
+    });
+    kicker.x = MID;
+    kicker.y = yK - dir * 5.5;
+    // Time que recebe: muro, linha do meio e o retornador no fundo
+    const others = recvTeam.filter((p) => p !== returner);
+    others.forEach((p, i) => {
+      const row = i < 5 ? 0 : 1;
+      const n = row === 0 ? 5 : others.length - 5;
+      const k = row === 0 ? i : i - 5;
+      p.x = 8 + (k * 37) / Math.max(1, n - 1);
+      p.y = row === 0 ? yK + dir * 14 : yK + dir * (Math.abs(landing - yK) * 0.62);
+    });
+    returner.x = MID;
+    returner.y = landing - dir * 4;
+    for (const p of [...this.offense, ...this.defense]) p.sync();
+
+    this.ball.state = 'loose';
+    this.ball.holder = null;
+    this.ball.x = MID;
+    this.ball.y = yK;
+    this.ball.h = 0.25;
+    this.world.targetY = Phaser.Math.Clamp(yK - 3, CAMERA.minY, CAMERA.maxY);
+    this.world.field.scrimmageY = -50;
+    this.world.field.firstDownY = -50;
+    this.hud.setResult(receive ? `${TEAMS.away.name} CHUTAM · VOCÊ RECEBE` : `${TEAMS.home.name} CHUTAM`, '', 0, ['KICKOFF', 0xffd23f, '#0D0D12']);
+    this.hud.setBar('result');
+    this.hud.refresh();
+    this.phase = 'kickoff';
+    this.ko = { stage: 'setup', t: 0, kickers: line, recvs: others, kicker, returner, dir, yK, land: landing, to: [MID + rng.range(-7, 7), landing], receive, fell: false, tackler: null, stumble: 0 };
+    this.ui.pop('KICKOFF', '#FFFFFF', 26, 210, 1000);
+  }
+
+  private moveTo(p: Player, tx: number, ty: number, speed: number, dt: number) {
+    const dx = tx - p.x;
+    const dy = ty - p.y;
+    const d = Math.hypot(dx, dy);
+    const k = Math.min(1, dt * 7);
+    if (d < 0.2) {
+      p.vx += (0 - p.vx) * k;
+      p.vy += (0 - p.vy) * k;
+    } else {
+      p.vx += ((dx / d) * speed - p.vx) * k;
+      p.vy += ((dy / d) * speed - p.vy) * k;
+    }
+    p.x = Phaser.Math.Clamp(p.x + p.vx * dt, 0.5, FIELD.width - 0.5);
+    p.y = Phaser.Math.Clamp(p.y + p.vy * dt, -9, 109);
+  }
+
+  private updateKickoff(dt: number) {
+    const ko = this.ko;
+    if (!ko) return;
+    ko.t += dt;
+    const MID = FIELD.width / 2;
+    const { kicker, returner, dir } = ko;
+    const proj = this.world;
+    switch (ko.stage) {
+      case 'setup': {
+        if (ko.t > 1.3) {
+          ko.stage = 'run';
+          ko.t = 0;
+        }
+        break;
+      }
+      case 'run': {
+        // O chutador corre até a bola e todos arrancam
+        this.moveTo(kicker, MID, ko.yK - dir * 0.9, 7, dt);
+        for (const p of ko.kickers) this.moveTo(p, p.x, p.y + dir * 40, 3 + ko.t * 6, dt);
+        if (ko.t > 0.55) {
+          ko.stage = 'fly';
+          ko.t = 0;
+          kicker.pose = 'throw';
+          this.time.delayedCall(320, () => (kicker.pose = null));
+          this.feedback.shake(0.004, 100);
+          vibrate(VIBE.tap);
+        }
+        break;
+      }
+      case 'fly': {
+        const T = 3.1;
+        const u = Math.min(1, ko.t / T);
+        this.ball.x = MID + (ko.to[0] - MID) * u;
+        this.ball.y = ko.yK + (ko.to[1] - ko.yK) * u;
+        this.ball.h = 0.25 + 18 * 4 * u * (1 - u);
+        proj.targetY = Phaser.Math.Clamp(this.ball.y - 8 * dir * -1 - 8, CAMERA.minY, CAMERA.maxY);
+        for (const p of ko.kickers) this.moveTo(p, p.x + (ko.to[0] - p.x) * 0.25, ko.to[1] - dir * 8, 6.2, dt);
+        this.moveTo(kicker, MID, ko.yK + dir * 14, 5, dt);
+        this.moveTo(returner, ko.to[0], ko.to[1], returner.maxSpeed, dt);
+        ko.recvs.forEach((p) => this.moveTo(p, p.x, p.y - dir * 8, 2.6, dt));
+        if (u >= 1) {
+          ko.stage = 'catch';
+          ko.t = 0;
+          this.ball.give(returner);
+          returner.pose = 'catch';
+          vibrate(VIBE.tap);
+        }
+        break;
+      }
+      case 'catch': {
+        this.moveTo(returner, returner.x, returner.y, 0, dt);
+        for (const p of ko.kickers) this.moveTo(p, ko.to[0], ko.to[1], 6.2, dt);
+        if (ko.t > 0.4) {
+          ko.stage = 'return';
+          ko.t = 0;
+          returner.pose = 'carry';
+          this.ui.caption('RETORNO!', 250, 800);
+        }
+        break;
+      }
+      case 'return': {
+        const dirR = -dir;
+        // Retornador: corre para frente, desviando de quem vem de frente
+        let avoid = 0;
+        for (const p of ko.kickers) {
+          const ahead = (p.y - returner.y) * dirR;
+          if (ahead > 0 && ahead < 8 && Math.abs(p.x - returner.x) < 4.5) avoid += Math.sign(returner.x - p.x || 1) * (1 - ahead / 8);
+        }
+        const vx = Phaser.Math.Clamp(avoid * 4.5 + Math.sin(ko.t * 3.1) * 0.8 + (MID - returner.x) * 0.05, -5, 5);
+        const sp = returner.maxSpeed * 1.02;
+        returner.vx += (vx - returner.vx) * Math.min(1, dt * 6);
+        returner.vy += (dirR * sp - returner.vy) * Math.min(1, dt * 6);
+        returner.x = Phaser.Math.Clamp(returner.x + returner.vx * dt, 0.5, FIELD.width - 0.5);
+        returner.y += returner.vy * dt;
+        // Muro bloqueia: quem encosta num defensor o segura por um instante
+        for (const b of ko.recvs) {
+          let target = ko.kickers[0];
+          let best = Infinity;
+          for (const k of ko.kickers) {
+            const d = Math.hypot(k.x - b.x, k.y - b.y);
+            if (d < best) {
+              best = d;
+              target = k;
+            }
+          }
+          this.moveTo(b, (target.x + returner.x) / 2, target.y + dirR * 0.4, b.maxSpeed, dt);
+          if (best < 1.2 && target.wait <= 0 && this.rng.chance(dt * 2.2)) target.wait = this.rng.range(0.5, 1.1);
+        }
+        // Time que chutou: persegue e tenta o tackle
+        for (const k of ko.kickers) {
+          if (k.wait > 0) {
+            k.wait -= dt;
+            this.moveTo(k, k.x, k.y, 0, dt);
+            continue;
+          }
+          this.moveTo(k, returner.x + returner.vx * 0.3, returner.y + returner.vy * 0.3, k.maxSpeed * 1.04, dt);
+          if (Math.hypot(k.x - returner.x, k.y - returner.y) < 0.95) {
+            if (this.rng.chance(0.6)) {
+              ko.stage = 'end';
+              ko.t = 0;
+              ko.tackler = k;
+              break;
+            }
+            k.wait = 0.5;
+          }
+        }
+        proj.targetY = Phaser.Math.Clamp(returner.y - 4 + (dirR < 0 ? 0 : 0), CAMERA.minY, CAMERA.maxY);
+        // Chegou na end zone ou passou do tempo
+        if (ko.stage === 'return' && (returner.y > 99.5 || returner.y < 0.5 || ko.t > 7)) {
+          ko.stage = 'end';
+          ko.t = 0;
+        }
+        for (const p of ko.kickers) if (p.wait > 0 && ko.stage === 'end') p.wait = 0;
+        if (ko.stage === 'end') {
+          returner.vx = returner.vy = 0;
+          this.feedback.shake(0.01, 200);
+          vibrate(VIBE.tap);
+          returner.pose = null;
+          returner.angle = -75;
+          this.ui.pop('PANCADA!', '#FFFFFF', 18, 230, 500);
+          for (let i = 0; i < 12; i++) this.dust.push({ x: returner.x, y: returner.y, life: 0.7, vx: this.rng.range(-3, 3), vy: this.rng.range(-3, 3) });
+        }
+        break;
+      }
+      case 'end': {
+        for (const p of [...ko.kickers, ...ko.recvs]) this.moveTo(p, p.x, p.y, 0, dt);
+        if (ko.t > 1.3) this.endKickoff();
+        break;
+      }
+    }
+  }
+
+  private endKickoff() {
+    const ko = this.ko!;
+    const s = this.state;
+    this.ko = null;
+    const y = Phaser.Math.Clamp(Math.round(ko.returner.y), 1, 99);
+    if (ko.receive) {
+      // Você recebeu: a bola começa onde o retorno parou (entre a 12 e a 45)
+      s.los = Phaser.Math.Clamp(y, 12, 45);
+      s.down = 1;
+      s.distance = 10;
+      this.phase = 'post';
+      this.backToPreSnap();
+      this.time.delayedCall(250, () => this.ui.caption(`SUA BOLA ${s.spotText}`, 250, 1500, '#0D0D12', 0xffd23f));
+    } else {
+      // Os TOUROS receberam: a campanha deles começa onde o retorno parou
+      this.phase = 'post';
+      this.opponentDrive(Phaser.Math.Clamp(y, 55, 95), false);
+    }
+  }
+
   /** Fim de jogo: placar final, estatísticas e novo jogo. */
   private showFinal() {
     const s = this.state;
@@ -1909,8 +2183,7 @@ export class MatchScene extends Phaser.Scene {
     this.gameOver = false;
     this.card.hide();
     this.defenseScreen.close();
-    this.phase = 'post';
-    this.backToPreSnap();
+    this.startIntro();
   }
 
   /** Toque na tela durante o resultado: pula a espera. */
@@ -1955,6 +2228,19 @@ export class MatchScene extends Phaser.Scene {
         this.afterPost = null;
         return next ? next() : this.backToPreSnap();
       }
+    }
+    if (this.phase === 'kickoff') {
+      const dt = this.game.loop.delta / 1000;
+      for (const d of this.dust) {
+        d.life -= dt;
+        d.x += d.vx * dt;
+        d.y += d.vy * dt;
+        const q = proj.project(d.x, d.y, 0.2 + (0.7 - d.life) * 0.6);
+        g.fillStyle(0xd8c9a0, Math.max(0, Math.min(1, d.life * 1.6)));
+        g.fillRect(q.x - 2, q.y - 2, 3 + q.s * 3, 3 + q.s * 3);
+      }
+      this.dust = this.dust.filter((d) => d.life > 0);
+      return;
     }
     if (this.phase !== 'live' && this.phase !== 'post') return;
     if (this.kick && this.phase === 'post') return;

@@ -87,8 +87,6 @@ export class DefenseScreen {
     const root = (this.root = sc.add.container(0, 0).setDepth(99));
     const bg = sc.add.image(0, 0, this.bgKey).setOrigin(0);
     const dim = sc.add.rectangle(0, 0, W, H, 0x0a0c1a, 0.45).setOrigin(0);
-    // Bloqueia toques no campo enquanto a tela está aberta
-    dim.setInteractive();
     root.add([bg, dim]);
 
     const L = 14;
@@ -159,10 +157,11 @@ export class DefenseScreen {
     this.rowsC = sc.add.container(0, y);
     root.add(this.rowsC);
 
-    // Toque na tela acelera
-    dim.on('pointerdown', () => {
-      if (!this.done) this.timer = 0;
-    });
+  }
+
+  /** Toque na tela (a cena repassa): pula a espera da próxima jogada. */
+  tap() {
+    if (this.root && !this.done) this.timer = 0;
   }
 
   private yToX(y: number) {
