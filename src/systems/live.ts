@@ -102,18 +102,18 @@ export class LivePlay {
   }
 
   /** Corrida desenhada: o RB recebe e a linha bloqueia empurrando os DL para longe do buraco. */
-  startRun(p: Player, gapX: number) {
+  startRun(p: Player, gapX: number, hold = 1, fool = 0) {
     this.startCarry(p);
     this.runGap = gapX;
     for (const o of this.ol) {
       const d = this.blocks.get(o);
       if (!d || d.state === 'free') continue;
       // Disputa de força: bloqueador forte segura mais
-      const hold = 1.2 + (o.attrs.strength - d.attrs.strength) / 45 + this.rng.range(0, 1.1);
-      this.shedAt.set(d, this.t + Math.max(0.5, hold));
+      const h = (1.2 + (o.attrs.strength - d.attrs.strength) / 45 + this.rng.range(0, 1.1)) * hold;
+      this.shedAt.set(d, this.t + Math.max(0.5, h));
     }
     // Segundo nível (LB/S) lê a jogada com um atraso de reação
-    for (const d of this.defense) if (d.role !== 'DL') d.wait = Math.max(d.wait, this.rng.range(0.2, 0.45));
+    for (const d of this.defense) if (d.role !== 'DL') d.wait = Math.max(d.wait, this.rng.range(0.2, 0.45) + fool);
   }
 
   /** Defensor preso num bloqueio agora (a faixa verde quase o ignora). */

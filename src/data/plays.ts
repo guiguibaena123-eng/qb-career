@@ -105,14 +105,25 @@ export const PASS_PLAYS: PassPlay[] = [
 export interface RunPlay {
   name: string;
   gapX: number;
+  /** Segundos até a entrega (draw: o QB finge o passe). */
+  delay: number;
+  /** Multiplicador do tempo que a linha segura os DL. */
+  hold: number;
+  /** Segundos extras que os LB/S demoram para ler a jogada (fingimento). */
+  fool: number;
+  /** Passo falso do RB para o lado contrário antes de atacar o buraco (counter). */
+  jab: number;
+  /** Corrida larga: o RB sai pela lateral (sweep). */
+  wide?: boolean;
+  tip: string;
 }
 export const RUN_PLAYS: RunPlay[] = [
-  { name: 'INSIDE ZONE', gapX: 25.6 },
-  { name: 'OFF TACKLE', gapX: 31.8 },
-  { name: 'STRETCH', gapX: 36 },
-  { name: 'DRAW', gapX: 27 },
-  { name: 'COUNTER', gapX: 20 },
-  { name: 'SWEEP', gapX: 44 },
+  { name: 'INSIDE ZONE', gapX: 25.6, delay: 0.38, hold: 1, fool: 0, jab: 0, tip: 'CORRIDA: SIGA A FAIXA VERDE E LEIA O BLOQUEIO.' },
+  { name: 'OFF TACKLE', gapX: 31.8, delay: 0.38, hold: 1.15, fool: 0, jab: 0, tip: 'OFF TACKLE: A LINHA ABRE O LADO DIREITO. CORTE PARA FORA DO BLOQUEIO.' },
+  { name: 'STRETCH', gapX: 36, delay: 0.38, hold: 0.9, fool: 0, jab: 0, tip: 'STRETCH: CORRA PARA O LADO E CORTE ONDE ABRIR.' },
+  { name: 'DRAW', gapX: 27, delay: 0.95, hold: 1.5, fool: 0.55, jab: 0, tip: 'DRAW: O QB FINGE O PASSE. OS LB SE ENGANAM, ESPERE O BURACO.' },
+  { name: 'COUNTER', gapX: 20, delay: 0.5, hold: 1.2, fool: 0.4, jab: 1.6, tip: 'COUNTER: PASSO FALSO PARA O OUTRO LADO E ATAQUE O BURACO.' },
+  { name: 'SWEEP', gapX: 44, delay: 0.3, hold: 0.8, fool: 0, jab: 0, wide: true, tip: 'SWEEP: CORRIDA LARGA. SIGA OS BLOQUEADORES PELA LATERAL.' },
 ];
 
 export const FORMATION_NAME = 'SHOTGUN TRIPS';

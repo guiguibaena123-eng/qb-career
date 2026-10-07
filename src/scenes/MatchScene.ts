@@ -462,7 +462,7 @@ export class MatchScene extends Phaser.Scene {
     this.windowTag.setVisible(on);
     if (on) {
       this.legendRead.setText(readText(this.scheme));
-      this.tipText.setText(this.mode === 'pass' ? tipText(this.scheme, this.routes) : 'CORRIDA: SIGA A FAIXA VERDE E LEIA O BLOQUEIO.');
+      this.tipText.setText(this.mode === 'pass' ? tipText(this.scheme, this.routes) : RUN_PLAYS[this.runIdx].tip);
       this.windowTag.setLabel(this.scheme.window.label);
     }
   }
@@ -522,6 +522,7 @@ export class MatchScene extends Phaser.Scene {
     const s = this.state;
 
     if (this.auto === 'run' && this.mode !== 'run') this.setMode('run');
+    if (this.auto === 'run' && this.mode === 'run' && this.phase === 'pre' && new URLSearchParams(location.search).has('jog')) this.runIdx = Number(new URLSearchParams(location.search).get('jog')) % RUN_PLAYS.length;
     if (this.auto && this.phase === 'pre' && this.elapsed > 0.6) this.snap();
     if (this.auto === 'pass' && this.live?.phase === 'pocket' && this.live.t > 1.3 && this.ball.state === 'held') {
       const b = this.receivers.find((r) => r.key === 'B')!;
@@ -614,12 +615,13 @@ export class MatchScene extends Phaser.Scene {
     const qb = this.qb;
     const gap = RUN_PLAYS[this.runIdx].gapX;
     const los = this.state.los;
-    const path: [number, number][] = [
-      [rb.x, rb.y],
-      [qb.x - 0.6, qb.y + 0.6],
-      [gap, los - 1],
-      [gap, los + 7],
-    ];
+    const rp = RUN_PLAYS[this.runIdx];
+    const side = gap < rb.x ? 1 : -1;
+    const path: [number, number][] = rp.wide
+      ? [[rb.x, rb.y], [rb.x + (gap - rb.x) * 0.6, rb.y + 1.2], [gap, los - 0.5], [gap + (gap > 27 ? 2 : -2), los + 8]]
+      : rp.jab
+        ? [[rb.x, rb.y], [rb.x + side * rp.jab, rb.y - 0.4], [qb.x - 0.6, qb.y + 0.6], [gap, los - 1], [gap, los + 7]]
+        : [[rb.x, rb.y], [qb.x - 0.6, qb.y + 0.6], [gap, los - 1], [gap, los + 7]];
     groundPath(g, proj, path, 3.2, C_OPEN, 0.25 * alpha);
     groundArrow(g, proj, path, 0.55, C_OPEN, false, alpha);
     for (const k of ['A', 'B', 'C', 'D'] as RecvKey[]) {
@@ -801,7 +803,7 @@ export class MatchScene extends Phaser.Scene {
     if (this.mode === 'run') {
       // Corrida: entrega para o RB e o controle passa para ele
       this.liveUi.show('none');
-      this.time.delayedCall(380, () => this.handoff());
+      this.time.delayedCall(RUN_PLAYS[this.runIdx].delay * 1000, () => this.handoff());
     } else {
       this.playText = PASS_PLAYS[this.playIdx].name;
       this.liveUi.show('pocket');
@@ -814,13 +816,13 @@ export class MatchScene extends Phaser.Scene {
     const rb = this.recv('E');
     this.qb.pose = null;
     this.playText = `CORRIDA · ${RUN_PLAYS[this.runIdx].name}`;
-    this.startCarry(rb, 'ARRASTE PARA CONDUZIR O RB', RUN_PLAYS[this.runIdx].gapX);
+    this.startCarry(rb, 'ARRASTE PARA CONDUZIR O RB', RUN_PLAYS[this.runIdx]);
   }
 
-  private startCarry(p: Player, hint: string, gapX?: number) {
+  private startCarry(p: Player, hint: string, run?: (typeof RUN_PLAYS)[number]) {
     this.ball.give(p);
     p.pose = 'carry';
-    if (gapX !== undefined) this.live!.startRun(p, gapX);
+    if (run) this.live!.startRun(p, run.gapX, run.hold, run.fool);
     else this.live!.startCarry(p);
     this.lane = null;
     this.lanePts = null;
