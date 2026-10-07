@@ -840,9 +840,17 @@ export class MatchScene extends Phaser.Scene {
     }
     if (rOk) {
       const r = recv.p!;
-      let chance = read?.chance ?? 0.5;
-      if (r !== read?.receiver) chance *= 0.6;
-      if (dOk) chance *= 0.75; // recepção disputada
+      // Chance decidida pelo que aconteceu NA CHEGADA (não só pela previsão da mira):
+      // bola na mão de recebedor livre quase sempre é pega.
+      let chance = 0.97 - Math.max(0, recv.d - 0.9) * 0.16;
+      chance += (r.attrs.hands - 75) / 300 - t.dist / 500;
+      const dd = def.d ?? Infinity;
+      if (dd < 1.0) chance -= 0.32;
+      else if (dd < 1.7) chance -= 0.18;
+      else if (dd < 3) chance -= 0.05;
+      else chance = Math.max(chance, 0.9); // livre de verdade: drop raro
+      if (read?.receiver === r) chance = Math.max(chance, read.chance);
+      chance = Math.min(0.98, chance);
       if (this.rng.next() < chance) return this.reception(r, dOk ? 'NO TRÁFEGO' : 'LIVRE');
       r.pose = 'catch';
       this.time.delayedCall(300, () => (r.pose = null));
