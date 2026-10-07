@@ -44,12 +44,12 @@ export class Weather {
     const W = scene.scale.width;
     const H = scene.scale.height;
     this.tint = scene.add
-      .rectangle(0, 0, W, H, kind === 'rain' ? 0x0a1426 : 0xf2f6ff, kind === 'rain' ? 0.32 : kind === 'snow' ? 0.34 : 0)
+      .rectangle(0, 0, W, H, kind === 'rain' ? 0x0a1426 : 0xf2f6ff, kind === 'rain' ? 0.32 : kind === 'snow' ? 0.48 : 0)
       .setOrigin(0)
       .setDepth(60);
     this.g = scene.add.graphics().setDepth(61);
     this.flash = scene.add.rectangle(0, 0, W, H, 0xffffff, 0).setOrigin(0).setDepth(62);
-    const n = kind === 'rain' ? 340 : kind === 'snow' ? 300 : 0;
+    const n = kind === 'rain' ? 150 : kind === 'snow' ? 300 : 0;
     for (let i = 0; i < n; i++) this.drops.push(this.newDrop(true));
 
     if (kind !== 'clear') {
@@ -115,8 +115,8 @@ export class Weather {
       x: r.range(-60, W + 160),
       y: anyY ? r.range(-40, H) : r.range(-60, -10),
       v: snow ? r.range(130, 230) : r.range(1100, 1500),
-      len: r.range(18, 30),
-      a: snow ? r.range(0.7, 1) : r.range(0.45, 0.75),
+      len: r.range(9, 15),
+      a: snow ? r.range(0.7, 1) : r.range(0.35, 0.55),
       size: snow ? r.pick([2, 3, 4, 5]) : 2,
       phase: r.range(0, Math.PI * 2),
     };
@@ -139,7 +139,7 @@ export class Weather {
           if (this.rng.chance(0.45)) this.splashes.push({ x: d.x, y: this.rng.range(360, H - 40), t: 0 });
           Object.assign(d, this.newDrop(false));
         }
-        g.lineStyle(2, 0xcddeff, d.a);
+        g.lineStyle(1.5, 0xcddeff, d.a);
         g.lineBetween(d.x, d.y, d.x - sx * d.len, d.y - cy * d.len);
       }
       // Respingos (ovais que crescem e somem)
