@@ -738,7 +738,7 @@ export class MatchScene extends Phaser.Scene {
     }
     this.ball.draw();
     this.ui.update(real);
-    this.weather.update(real);
+    this.weather.update(real, this.world.proj);
     this.kickUi.update(real);
     this.defenseScreen.update(real);
     this.weather.setPillVisible(this.phase === 'pre' || (this.phase === 'live' && this.live?.phase === 'pocket'));
@@ -1281,6 +1281,9 @@ export class MatchScene extends Phaser.Scene {
     if (this.phase !== 'live') return;
     const s = this.state;
     const live = this.live!;
+    // Quem está com a bola na end zone (ou cruzou a linha de gol) fez touchdown, qualquer que seja o jeito de o lance acabar
+    const holder = live.carrier;
+    if (holder && holder.y >= 100 && (kind === 'tackle' || kind === 'dive' || kind === 'out')) kind = 'td';
     live.phase = 'dead';
     this.phase = 'post';
     this.postTimer = 1.6;

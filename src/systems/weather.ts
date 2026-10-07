@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { FONT_LABEL, FONT_TITLE, matchConfig } from '../config';
+import type { Projection, ScreenPoint } from './projection';
 import type { Rng } from './rng';
 
 /*
@@ -34,7 +35,9 @@ export class Weather {
   private tint: Phaser.GameObjects.Rectangle;
   private flash: Phaser.GameObjects.Rectangle;
   private drops: Drop[] = [];
+  /** Respingos no gramado: posição no MUNDO (jardas), então ficam parados no campo quando a câmera anda. */
   private splashes: { x: number; y: number; t: number }[] = [];
+  private pt: ScreenPoint = { x: 0, y: 0, s: 0 };
   private boltT = 0;
   private boltNext = 6;
   readonly pill: Phaser.GameObjects.Container | null = null;
@@ -122,7 +125,7 @@ export class Weather {
     };
   }
 
-  update(dt: number) {
+  update(dt: number, proj?: Projection) {
     if (this.kind === 'clear') return;
     const g = this.g;
     g.clear();
@@ -136,7 +139,7 @@ export class Weather {
         d.x += sx * d.v * dt;
         d.y += cy * d.v * dt;
         if (d.y > H + 20) {
-          if (this.rng.chance(0.45)) this.splashes.push({ x: d.x, y: this.rng.range(360, H - 40), t: 0 });
+          if (proj && this.rng.chance(0.45)) this.splashes.push({ x: this.rng.range(0.5, 52.8), y: proj.yAtScreen(this.rng.range(330, H - 40)), t: 0 });
           Object.assign(d, this.newDrop(false));
         }
         g.lineStyle(1.5, 0xcddeff, d.a);
@@ -146,8 +149,11 @@ export class Weather {
       for (const s of this.splashes) {
         s.t += dt / 0.6;
         const k = 0.2 + s.t * 1.2;
+        if (!proj) continue;
+        const p = proj.project(s.x, s.y, 0, this.pt);
+        if (p.y < 150 || p.y > H) continue;
         g.lineStyle(1, 0xd2e4ff, 0.9 * (1 - s.t));
-        g.strokeEllipse(s.x, s.y, 12 * k, 4 * k);
+        g.strokeEllipse(p.x, p.y, 12 * k * p.s, 4 * k * p.s);
       }
       this.splashes = this.splashes.filter((s) => s.t < 1);
       // Relâmpago
