@@ -30,6 +30,11 @@ import { Hud } from '../ui/Hud';
 import { LiveUi } from '../ui/LiveUi';
 import { ResultCard, type CardOpts } from '../ui/ResultCard';
 import { Replay } from '../systems/replay';
+import { pickWeather, Weather } from '../systems/weather';
+import { simulateDrive, spotName } from '../systems/oppdrive';
+import { KickUi } from '../ui/KickUi';
+import { DefenseScreen } from '../ui/DefenseScreen';
+import { Menu } from '../ui/Menu';
 import { bottomGradient, GlassButton, label, Tag, title, UI } from '../ui/widgets';
 
 const KEYS: RecvKey[] = ['A', 'B', 'C', 'D', 'E'];
@@ -80,7 +85,26 @@ export class MatchScene extends Phaser.Scene {
   private fps?: Phaser.GameObjects.Text;
 
   // ---- lance ao vivo
-  private phase: 'pre' | 'live' | 'post' | 'card' | 'replay' = 'pre';
+  private phase: 'pre' | 'live' | 'post' | 'card' | 'replay' | 'kick' | 'defense' = 'pre';
+  private weather!: Weather;
+  private kickUi!: KickUi;
+  private defenseScreen!: DefenseScreen;
+  private menu!: Menu;
+  private kick: {
+    kind: 'pat' | 'fg' | 'punt';
+    t: number;
+    stage: 'aim' | 'approach' | 'flight' | 'done';
+    off: number;
+    good: boolean;
+    from: [number, number, number];
+    to: [number, number, number];
+    apex: number;
+    T: number;
+    land: number;
+    chance?: number;
+    window?: number;
+    post?: boolean;
+  } | null = null;
   private card!: ResultCard;
   private replay!: Replay;
   private replayPill!: Phaser.GameObjects.Container;
@@ -164,6 +188,19 @@ export class MatchScene extends Phaser.Scene {
     if (q.has('fps')) {
       this.fps = label(this, 10, 166, '', 12, '#9BE15D').setDepth(200);
     }
+
+    // Clima e vento da partida
+    this.weather = new Weather(this, pickWeather(this.rng), this.rng);
+    this.state.wind = { dir: this.rng.chance(0.5) ? -1 : 1, mph: this.rng.int(0, 18) };
+    this.kickUi = new KickUi(this);
+    this.defenseScreen = new DefenseScreen(this);
+    this.menu = new Menu(this);
+    // ?chute=fg|punt|pat abre direto no chute; ?defesa abre a campanha deles
+    const kq = q.get('chute');
+    if (kq === 'fg' || kq === 'punt' || kq === 'pat') this.time.delayedCall(300, () => this.startKick(kq));
+    if (q.has('defesa')) this.time.delayedCall(300, () => this.opponentDrive(25, true));
+    if (q.has('descida')) this.state.down = Number(q.get('descida'));
+    if (this.state.down === 4) this.time.delayedCall(200, () => this.fourthDown());
   }
 
   // ---------------------------------------------------------------- jogadores
@@ -505,7 +542,9 @@ export class MatchScene extends Phaser.Scene {
       const cam = this.replay.step(dt * 0.55, this.ball);
       if (cam === null) this.endReplay();
       else this.world.targetY = cam;
-    } else if (this.phase !== 'card') {
+    } else if (this.phase === 'kick') {
+      this.updateKick(dt);
+    } else if (this.phase !== 'card' && this.phase !== 'defense') {
       this.updateLive(dt);
       if (this.phase === 'live' || this.phase === 'post') this.replay.record(dt, this.ball, this.world.targetY);
     }
@@ -522,6 +561,11 @@ export class MatchScene extends Phaser.Scene {
     }
     this.ball.draw();
     this.ui.update(real);
+    this.weather.update(real);
+    this.kickUi.update(real);
+    this.defenseScreen.update(real);
+    this.weather.setPillVisible(this.phase === 'pre' || (this.phase === 'live' && this.live?.phase === 'pocket'));
+    this.weather.pill?.setY(this.phase === 'pre' ? 196 : 128);
     this.fps?.setText(`${Math.round(this.game.loop.actualFps)} FPS`);
   }
 
@@ -743,6 +787,7 @@ export class MatchScene extends Phaser.Scene {
       onTackle: (d, r) => this.onTackle(d, r.big),
       onBrokenTackle: (d, how) => this.onBroken(d, how),
     });
+    this.live.slippery = this.weather.slippery;
     this.ball.give(this.qb);
     this.qb.pose = 'carry';
     this.thr = null;
@@ -780,6 +825,12 @@ export class MatchScene extends Phaser.Scene {
     this.lanePts = null;
     this.laneT = 0;
     this.ctl = new CarrierControl(p);
+    this.ctl.slipChance = this.weather.slipChance;
+    this.ctl.rand = () => this.rng.next();
+    this.ctl.onSlip = () => {
+      this.ui.pop('ESCORREGOU!', '#C9CEE0', 14, 230, 500);
+      vibrate(VIBE.tap);
+    };
     this.liveUi.show('carry');
     this.liveUi.setCarryHint(hint);
     this.hud.setBar('result');
@@ -826,7 +877,7 @@ export class MatchScene extends Phaser.Scene {
       this.aim.mx += (this.aim.cx - this.aim.sx - this.aim.mx) * k;
       this.aim.my += (this.aim.cy - this.aim.sy - this.aim.my) * k;
       this.thr = aimFromDrag(this.qb, this.aim.mx, this.aim.my);
-      this.read = this.thr ? readThrow(this.thr, this.receivers, this.defense) : null;
+      this.read = this.thr ? readThrow(this.thr, this.receivers, this.defense, this.weather.accuracyPenalty) : null;
       if (this.thr && this.read) {
         const r = this.read;
         const name = r.key ? `${r.key} · ${ROUTES[this.routes[r.key]].name} · ${r.status}` : 'NINGUÉM';
@@ -920,7 +971,7 @@ export class MatchScene extends Phaser.Scene {
       else if (dd < 3) chance -= 0.05;
       else chance = Math.max(chance, 0.9); // livre de verdade: drop raro
       if (read?.receiver === r) chance = Math.max(chance, read.chance);
-      chance = Math.min(0.98, chance);
+      chance = Math.min(0.98, chance) - this.weather.dropPenalty;
       if (this.rng.next() < chance) return this.reception(r, dOk ? 'NO TRÁFEGO' : 'LIVRE');
       r.pose = 'catch';
       this.time.delayedCall(300, () => (r.pose = null));
@@ -1312,27 +1363,9 @@ export class MatchScene extends Phaser.Scene {
       teamColor: TEAMS.home.color,
       replay: () => this.tryTwo(),
       replayLabel: 'TENTAR 2',
-      next: () => this.kickPat(),
+      next: () => this.startKick('pat'),
       nextLabel: 'CHUTAR +1',
     });
-  }
-
-  /** Ponto extra (o minigame do chute entra na etapa 7). */
-  private kickPat() {
-    const s = this.state;
-    this.card.hide();
-    const good = this.rng.chance(0.94);
-    if (good) {
-      s.score.home += 1;
-      this.ui.pop('É BOA! +1', '#3CCB5A', 22, 220, 1000);
-      this.world.stand.cheer(0.5);
-    } else this.ui.pop('PRA FORA!', '#E5484D', 22, 220, 1000);
-    this.hud.setResult('PONTO EXTRA', good ? '+1' : 'X', good ? 0x3ccb5a : 0xe5484d, ['PAT', 0xffd23f, '#0D0D12']);
-    this.hud.setBar('result');
-    this.hud.refresh();
-    this.phase = 'post';
-    this.postTimer = 1.8;
-    this.afterPost = () => this.opponentDrive(25, true);
   }
 
   private tryTwo() {
@@ -1346,50 +1379,271 @@ export class MatchScene extends Phaser.Scene {
     this.backToPreSnap();
   }
 
+  // ------------------------------------------------------------ times especiais
+
+  /** Distância de um chute a partir da linha de scrimmage (snap de 7 + end zone de 10). */
+  private kickDist() {
+    return Math.round(100 - this.state.los + 17);
+  }
+
+  private fgChance(dist: number) {
+    const w = this.state.wind.mph;
+    return Phaser.Math.Clamp(1.04 - Math.max(0, dist - 20) * 0.0125 - this.weather.kickPenalty - w * 0.004, 0.05, 0.97);
+  }
+
+  /** Chute: PAT (ponto extra), FG (field goal) ou PUNT, com a barra de agulha. */
+  private startKick(kind: 'pat' | 'fg' | 'punt') {
+    const s = this.state;
+    this.card.hide();
+    this.menuHide();
+    if (kind === 'pat') {
+      s.los = 85;
+      s.down = 1;
+      s.distance = 10;
+    }
+    this.phase = 'kick';
+    this.kick = { kind, t: 0, stage: 'aim', off: 0, good: false, from: [0, 0, 0], to: [0, 0, 0], apex: 0, T: 1, land: 0 };
+    this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
+    this.windowTag.setVisible(false);
+    this.liveUi.show('none');
+    this.applyLos();
+    this.weather.setPillVisible(false);
+
+    // Formação de chute: o RB vira o chutador, o QB segura a bola
+    const MID = FIELD.width / 2;
+    const k = this.recv('E');
+    const holder = this.qb;
+    const ballY = kind === 'punt' ? s.los - 13 : s.los - 7;
+    if (kind === 'punt') {
+      k.x = MID;
+      k.y = ballY - 0.4;
+      holder.x = MID + 2.5;
+      holder.y = s.los - 6;
+    } else {
+      holder.x = MID + 0.7;
+      holder.y = ballY;
+      k.x = MID - 1.3;
+      k.y = ballY - 2.4;
+    }
+    holder.pose = null;
+    k.pose = null;
+    this.ball.state = 'loose';
+    this.ball.holder = null;
+    this.ball.x = MID;
+    this.ball.y = ballY;
+    this.ball.h = kind === 'punt' ? 1.1 : 0.25;
+    this.world.targetY = Phaser.Math.Clamp(s.los - 1, CAMERA.minY, CAMERA.maxY);
+
+    const spot = spotName(s.los, TEAMS.home.abbr, TEAMS.away.abbr);
+    const wind = s.wind;
+    if (kind === 'punt') {
+      this.hud.setResult(`PUNT · DA ${spot}`, '', 0, [s.downText, 0xffd23f, '#0D0D12']);
+      this.kickUi.open({ windKmh: wind.mph, windDir: wind.dir, dist: 45, chance: 1, window: 0.3, color: TEAMS.home.color, info: 'PARE NO MEIO', label: 'PUNT' });
+    } else {
+      const dist = this.kickDist();
+      const ch = this.fgChance(dist);
+      this.kick.chance = ch;
+      const win = Math.sin((ch * Math.PI) / 2);
+      this.kick.window = win;
+      if (kind === 'pat') this.hud.setResult(`CHUTE DA ${spot}`, '', 0, ['PONTO EXTRA', 0xffd23f, '#0D0D12']);
+      else this.hud.setResult(`${spot} · FIELD GOAL DE ${dist} JDS`, '', 0, [s.downText, 0xffd23f, '#0D0D12']);
+      this.kickUi.open({ windKmh: wind.mph, windDir: wind.dir, dist, chance: ch, window: win, color: TEAMS.home.color });
+    }
+    this.hud.setBar('result');
+    this.kickUi.onKick = (off) => this.kickBall(off);
+  }
+
+  private kickBall(off: number) {
+    const kk = this.kick!;
+    const s = this.state;
+    kk.off = off;
+    kk.stage = 'approach';
+    kk.t = 0;
+    const MID = FIELD.width / 2;
+    const from: [number, number, number] = [this.ball.x, this.ball.y, this.ball.h];
+    kk.from = from;
+    if (kk.kind === 'punt') {
+      const q = 1 - Math.abs(off);
+      const dist = Math.round(30 + q * 24 + this.rng.range(-3, 3) - this.weather.kickPenalty * 25);
+      kk.land = s.los + dist;
+      kk.to = [Phaser.Math.Clamp(MID + off * 12 + s.wind.dir * s.wind.mph * 0.12, 3, FIELD.width - 3), Math.min(kk.land, 109), 0.2];
+      kk.apex = 9 + q * 6;
+      kk.T = 3.2 + q * 0.9;
+      kk.good = q > 0.7;
+    } else {
+      const win = kk.window ?? 0.5;
+      kk.good = Math.abs(off) < win;
+      // Lado em que passa: |gx − MID| < 3,1 = entre as traves
+      const gx = MID + (off / win) * 2.9 + s.wind.dir * s.wind.mph * 0.02;
+      kk.to = [gx, 114, 4];
+      kk.apex = 4 + this.kickDist() * 0.1;
+      kk.T = 1.3 + this.kickDist() * 0.012;
+      kk.post = Math.abs(off / win) > 0.95 && Math.abs(off / win) < 1.12;
+    }
+    vibrate(VIBE.tap);
+  }
+
+  private updateKick(dt: number) {
+    const kk = this.kick;
+    if (!kk) return;
+    const k = this.recv('E');
+    if (kk.stage === 'aim') return;
+    kk.t += dt;
+    if (kk.stage === 'approach') {
+      // Corrida curta até a bola
+      const tx = this.ball.x - 0.5;
+      const ty = this.ball.y - 0.6;
+      k.vx = (tx - k.x) * 6;
+      k.vy = (ty - k.y) * 6;
+      k.x += k.vx * dt;
+      k.y += k.vy * dt;
+      if (kk.t > 0.38) {
+        kk.stage = 'flight';
+        kk.t = 0;
+        k.pose = 'throw';
+        this.qb.pose = null;
+        this.feedback.shake(0.004, 90);
+        this.time.delayedCall(300, () => (k.pose = null));
+      }
+      return;
+    }
+    if (kk.stage === 'flight') {
+      const u = Math.min(1, kk.t / kk.T);
+      const [x0, y0, h0] = kk.from;
+      const [x1, y1, h1] = kk.to;
+      this.ball.x = x0 + (x1 - x0) * u;
+      this.ball.y = y0 + (y1 - y0) * u;
+      this.ball.h = h0 + (h1 - h0) * u + kk.apex * 4 * u * (1 - u);
+      this.ball.state = 'loose';
+      this.world.targetY = Phaser.Math.Clamp(this.ball.y - 9, CAMERA.minY, CAMERA.maxY);
+      // Todo mundo vira para acompanhar a bola
+      for (const p of this.defense) {
+        p.vx *= 0.9;
+        p.vy *= 0.9;
+      }
+      if (u >= 1) this.kickResult();
+    }
+  }
+
+  private kickResult() {
+    const kk = this.kick!;
+    const s = this.state;
+    kk.stage = 'done';
+    this.kickUi.show(false);
+    this.phase = 'post';
+    this.postTimer = 2;
+    if (kk.kind === 'punt') {
+      const land = kk.land;
+      const dist = Math.round(land - s.los);
+      let start: number;
+      if (land >= 100) {
+        start = 80;
+        this.ui.pop('TOUCHBACK', '#FFFFFF', 18, 200, 1000);
+      } else {
+        const ret = this.rng.int(0, kk.good ? 6 : 12);
+        start = Math.max(1, Math.round(land - ret));
+        this.ui.pop(`PUNT DE ${dist} JDS`, kk.good ? '#3CCB5A' : '#FFFFFF', 16, 200, 1100);
+        if (ret > 0) this.time.delayedCall(500, () => this.ui.caption(`RETORNO DE ${ret} JDS`, 250, 900));
+      }
+      this.hud.setResult(`PUNT DE ${dist} JDS`, '', 0, ['PUNT', 0xffd23f, '#0D0D12']);
+      this.afterPost = () => this.opponentDrive(start, false);
+      this.hud.refresh();
+      return;
+    }
+    const good = kk.good;
+    if (good) {
+      const pts = kk.kind === 'pat' ? 1 : 3;
+      s.score.home += pts;
+      this.ui.pop('É BOA!', '#3CCB5A', 28, 200, 1100);
+      this.ui.edgeFlash(0x3ccb5a, 0.5);
+      this.world.stand.cheer(kk.kind === 'fg' ? 1 : 0.6);
+      vibrate(VIBE.td);
+      this.gainXp(kk.kind === 'fg' ? 30 : 10);
+      this.hud.setResult(kk.kind === 'pat' ? 'PONTO EXTRA' : `FIELD GOAL DE ${this.kickDist()} JDS`, `+${pts}`, 0x3ccb5a, kk.kind === 'pat' ? ['PONTO EXTRA', 0xffd23f, '#0D0D12'] : ['FG', 0xffd23f, '#0D0D12']);
+      this.afterPost = () => this.opponentDrive(25, true);
+    } else {
+      this.ui.pop(kk.post ? 'NA TRAVE!' : 'PRA FORA!', '#E5484D', 24, 200, 1100);
+      vibrate(VIBE.turnover);
+      this.hud.setResult(kk.kind === 'pat' ? 'PONTO EXTRA PERDIDO' : 'FIELD GOAL ERRADO', 'X', 0xe5484d, kk.kind === 'pat' ? ['PONTO EXTRA', 0xffd23f, '#0D0D12'] : ['FG', 0xffd23f, '#0D0D12']);
+      const at = Math.max(20, s.los - 7);
+      this.afterPost = kk.kind === 'pat' ? () => this.opponentDrive(25, true) : () => this.opponentDrive(at, false);
+    }
+    this.hud.refresh();
+  }
+
+  // ------------------------------------------------------------ 4ª descida
+
+  private fourthDown() {
+    const s = this.state;
+    const dist = this.kickDist();
+    const ch = this.fgChance(dist);
+    const fgOk = dist <= 62;
+    this.phase = 'card';
+    this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
+    this.menu.show({
+      big: '4ª DESCIDA',
+      chip: `${s.downText} · ${spotName(s.los, TEAMS.home.abbr, TEAMS.away.abbr)}`,
+      sub: fgOk ? `FIELD GOAL DE ${dist} JDS · CHANCE ${Math.round(ch * 100)}%` : 'FORA DO ALCANCE DO FIELD GOAL',
+      buttons: [
+        { label: 'TENTAR', onTap: () => this.goForIt() },
+        { label: 'PUNT', onTap: () => this.startKick('punt') },
+        { label: 'FIELD GOAL', enabled: fgOk, primary: true, onTap: () => this.startKick('fg') },
+      ],
+    });
+  }
+
+  private goForIt() {
+    this.menuHide();
+    this.phase = 'pre';
+    this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(true));
+    this.refreshPlayUi();
+    this.ui.caption('VAI PRA CIMA!', 300, 900, '#0D0D12', 0xffd23f);
+  }
+
+  private menuHide() {
+    this.menu.hide();
+  }
+
   /**
-   * Campanha deles (por enquanto simulada direto; a tela de defesa entra na etapa 7).
-   * `at` = onde eles pegam a bola, nas NOSSAS jardas (eles atacam rumo à jarda 0).
-   * `kick` = depois de um placar nosso: kickoff, eles começam na 25 deles.
+   * Campanha deles: a tela fica borrada e o feed mostra jogada a jogada.
+   * `at` = onde eles pegam a bola (nossas jardas). `kick` = depois de um placar nosso (começam na 25 deles).
    */
   private opponentDrive(at: number, kick: boolean) {
     const s = this.state;
-    const r = this.rng;
     this.card.hide();
-    const start = kick ? 75 : at; // nossa jarda 75 = 25 deles
-    const pTd = Phaser.Math.Clamp(0.42 - start * 0.0035, 0.1, 0.42);
-    const pFg = 0.2;
-    const pTo = 0.1;
-    const x = r.next();
-    let head: string;
-    let ours: number;
-    if (x < pTd) {
-      s.score.away += 7;
-      head = `TD DOS ${TEAMS.away.name} · +7`;
-      ours = 25;
-    } else if (x < pTd + pFg) {
-      s.score.away += 3;
-      head = `FIELD GOAL DOS ${TEAMS.away.name} · +3`;
-      ours = 25;
-    } else if (x < pTd + pFg + pTo) {
-      ours = Phaser.Math.Clamp(Math.round(start - r.range(5, 35)), 10, 70);
-      head = 'A DEFESA RECUPEROU A BOLA!';
-    } else {
-      ours = r.int(12, 32);
-      head = `${TEAMS.away.name} DERAM PUNT`;
-    }
-    this.tickClock(r.int(100, 260));
-    s.los = ours;
-    s.down = 1;
-    s.distance = 10;
-    this.ui.pop('DEFESA', '#3FD0FF', 18, 190, 1500);
-    this.time.delayedCall(350, () => this.ui.caption(head, 240, 1500, '#FFFFFF', 0x22406b));
-    this.time.delayedCall(800, () => this.ui.caption(`SUA BOLA ${s.spotText}`, 280, 1200));
-    this.hud.setResult(head, '', 0, ['DEFESA', 0x3fd0ff, '#0D0D12']);
-    this.hud.setBar('result');
-    this.hud.refresh();
-    this.phase = 'post';
-    this.postTimer = 2.6;
-    this.afterPost = null;
+    this.menuHide();
+    this.kickUi.show(false);
+    this.weather.setPillVisible(false);
+    this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
+    this.liveUi.show('none');
+    const drive = simulateDrive(kick ? 75 : at, this.rng, TEAMS.home.abbr, TEAMS.away.abbr, TEAMS.away.name);
+    const los = Phaser.Math.Clamp(drive.ourLos, 1, 99);
+    const where = los < 50 ? `NA SUA ${los}` : los === 50 ? 'NO MEIO' : `NA ${TEAMS.away.abbr} ${100 - los}`;
+    this.phase = 'defense';
+    this.hud.setBar('none');
+    this.defenseScreen.open({
+      drive,
+      teamColor: TEAMS.home.color,
+      oppColor: TEAMS.away.color,
+      homeAbbr: TEAMS.home.abbr,
+      awayAbbr: TEAMS.away.abbr,
+      awayName: TEAMS.away.name,
+      clockText: s.clockText,
+      head: `${TEAMS.home.name} ${where} · 1ª & ${Math.min(10, 100 - los)}`,
+      onFinish: () => {
+        s.score.away += drive.points;
+        if (drive.points) this.world.stand.cheer(0.3);
+        this.tickClock(drive.seconds);
+        s.los = los;
+        s.down = 1;
+        s.distance = Math.min(10, 100 - los);
+        this.hud.refresh();
+      },
+      onEnter: () => {
+        this.phase = 'post';
+        this.backToPreSnap();
+      },
+    });
   }
 
   /** Fim de jogo: placar final, estatísticas e novo jogo. */
@@ -1458,6 +1712,9 @@ export class MatchScene extends Phaser.Scene {
       return this.showFinal();
     }
     this.card.hide();
+    this.menu.hide();
+    this.kickUi.show(false);
+    this.kick = null;
     this.replayPill.setVisible(false);
     this.phase = 'pre';
     this.live = null;
@@ -1471,6 +1728,7 @@ export class MatchScene extends Phaser.Scene {
     this.hud.setBar('pre');
     this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(true));
     this.refreshPlayUi();
+    if (this.state.down === 4 && !this.twoPt) this.fourthDown();
   }
 
   private drawLive() {
@@ -1486,7 +1744,8 @@ export class MatchScene extends Phaser.Scene {
         return next ? next() : this.backToPreSnap();
       }
     }
-    if (this.phase === 'card' || this.phase === 'replay') return;
+    if (this.phase !== 'live' && this.phase !== 'post') return;
+    if (this.kick && this.phase === 'post') return;
     // Poeira dos tackles
     const dt = this.game.loop.delta / 1000;
     for (const d of this.dust) {

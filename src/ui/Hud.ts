@@ -162,7 +162,7 @@ export class Hud {
   private segX1 = 0;
 
   /** Qual barra aparece embaixo do placar. */
-  setBar(mode: 'pre' | 'pocket' | 'result') {
+  setBar(mode: 'pre' | 'pocket' | 'result' | 'none') {
     if (!this.pocketBar) this.buildBars(this.downBar.depth);
     this.downBar.setVisible(mode === 'pre');
     this.pocketBar.setVisible(mode === 'pocket');

@@ -27,6 +27,11 @@ export class CarrierControl {
   diveDone = false;
   /** Escorregou (neve): perde o equilíbrio por um instante. */
   slipChance = 0;
+  /** Sorteio (a cena passa o gerador com semente). */
+  rand: () => number = Math.random;
+  /** Escorregou agora (a cena mostra o aviso). */
+  onSlip?: () => void;
+  private slipT = 0;
 
   constructor(private p: Player) {}
 
@@ -42,15 +47,30 @@ export class CarrierControl {
   }
 
   juke(dirX: number) {
-    if (this.cooldown > 0 || this.diving) return false;
+    if (this.cooldown > 0 || this.diving || this.slipT > 0) return false;
+    // Gramado molhado/neve: o corte pode escorregar
+    if (this.rand() < this.slipChance) {
+      this.slip();
+      return false;
+    }
     this.jukeT = JUKE_TIME;
     this.jukeDir = dirX === 0 ? (this.p.x < FIELD.width / 2 ? 1 : -1) : Math.sign(dirX);
     this.cooldown = 0.7;
     return true;
   }
 
+  private slip() {
+    this.slipT = 0.5;
+    this.cooldown = 0.6;
+    this.onSlip?.();
+  }
+
   spin() {
-    if (this.cooldown > 0 || this.diving) return false;
+    if (this.cooldown > 0 || this.diving || this.slipT > 0) return false;
+    if (this.rand() < this.slipChance * 0.7) {
+      this.slip();
+      return false;
+    }
     this.spinT = SPIN_TIME;
     this.cooldown = 0.9;
     return true;
@@ -82,6 +102,14 @@ export class CarrierControl {
         this.diveDone = true;
         p.hop = 0;
       }
+      return;
+    }
+
+    if (this.slipT > 0) {
+      this.slipT -= dt;
+      p.angle = Math.sin(this.slipT * 30) * 12;
+      steer(p, p.vx * 0.35, p.vy * 0.35, dt, 6);
+      if (this.slipT <= 0) p.angle = 0;
       return;
     }
 
