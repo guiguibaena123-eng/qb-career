@@ -4,6 +4,7 @@ import '@fontsource/press-start-2p';
 import '@fontsource/silkscreen';
 import { GAME_H, GAME_W, RES } from './config';
 import { patchText } from './systems/hires';
+import { Boot } from './scenes/Boot';
 import { MainMenu } from './scenes/MainMenu';
 
 async function boot() {
@@ -20,7 +21,7 @@ async function boot() {
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, powerPreference: 'high-performance' },
     fps: { target: 60 },
-    scene: [MainMenu],
+    scene: [Boot, MainMenu],
   });
 }
 

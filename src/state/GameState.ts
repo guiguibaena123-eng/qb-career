@@ -11,8 +11,6 @@ export interface QbStats {
 
 export class GameState {
   score = { home: 0, away: 0 };
-  /** Retrospecto da temporada (vitórias-derrotas). */
-  record = { home: [...TEAMS.home.record], away: [...TEAMS.away.record] };
   quarter = 1;
   /** Relógio do quarto, em segundos. */
   clock = QUARTER_SECONDS;
@@ -55,10 +53,6 @@ export class GameState {
     const m = Math.floor(this.clock / 60);
     const s = Math.floor(this.clock % 60);
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  }
-
-  recordText(side: 'home' | 'away') {
-    return this.record[side].join('-');
   }
 
   teamAbbr(side: 'home' | 'away') {

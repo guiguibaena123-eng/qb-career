@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_W, TEAMS } from '../config';
+import { GAME_W, TEAMS, logoKey } from '../config';
 import type { GameState } from '../state/GameState';
 import { label, title, UI } from './widgets';
 
@@ -37,14 +37,15 @@ export class Hud {
     g.fillRect(L + side + mid, top, side, h);
 
     const t = (k: string, o: Phaser.GameObjects.Text) => (this.texts[k] = o.setDepth(depth + 1));
-    t('homeAbbr', title(scene, L + 10, top + 9, TEAMS.home.abbr, 12, TEAMS.home.fg));
-    t('homeRec', label(scene, L + 10, top + 25, '', 10, TEAMS.home.fg));
+    // Logos dos times
+    scene.add.image(L + 5, top + 4, logoKey(TEAMS.home.id)).setOrigin(0).setDisplaySize(36, 36).setDepth(depth + 1);
+    scene.add.image(R - 5 - 36, top + 4, logoKey(TEAMS.away.id)).setOrigin(0).setDisplaySize(36, 36).setDepth(depth + 1);
+    t('homeAbbr', title(scene, L + 46, top + h / 2, TEAMS.home.abbr, 11, TEAMS.home.fg).setOrigin(0, 0.5));
     t('homeScore', title(scene, L + side - 10, top + h / 2, '', 18, TEAMS.home.fg).setOrigin(1, 0.5));
     t('quarter', label(scene, L + side + mid / 2, top + 13, '', 11, '#0D0D12').setOrigin(0.5));
     t('clock', title(scene, L + side + mid / 2, top + 31, '', 12, '#0D0D12').setOrigin(0.5));
     t('awayScore', title(scene, L + side + mid + 10, top + h / 2, '', 18, TEAMS.away.fg).setOrigin(0, 0.5));
-    t('awayAbbr', title(scene, R - 10, top + 9, TEAMS.away.abbr, 12, TEAMS.away.fg).setOrigin(1, 0));
-    t('awayRec', label(scene, R - 10, top + 25, '', 10, TEAMS.away.fg).setOrigin(1, 0));
+    t('awayAbbr', title(scene, R - 46, top + h / 2, TEAMS.away.abbr, 11, TEAMS.away.fg).setOrigin(1, 0.5));
 
     // Barra de descida / posição / play clock
     this.downBar = scene.add.container(0, 0).setDepth(depth);
@@ -230,8 +231,6 @@ export class Hud {
   /** Atualiza todos os textos a partir do estado. */
   refresh() {
     const s = this.state;
-    this.texts.homeRec.setText(s.recordText('home'));
-    this.texts.awayRec.setText(s.recordText('away'));
     this.texts.homeScore.setText(String(s.score.home));
     this.texts.awayScore.setText(String(s.score.away));
     this.texts.quarter.setText(s.quarterText);

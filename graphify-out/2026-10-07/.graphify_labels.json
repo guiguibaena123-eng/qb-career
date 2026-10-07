@@ -1,1 +1,22 @@
-{"0": "Config, Câmera e Trave", "1": "Cena da Partida (jogadas e chutes)", "2": "Jogadas, Rotas e Formações", "3": "Cena: Interface, Clima e Estado", "4": "Arquibancada e Campanha Adversária", "5": "Bola e Poses", "6": "Projeto npm (Phaser, Vite)", "7": "Sprites das Laterais", "8": "Placar (HUD) e Estado do Jogo", "9": "Configuração TypeScript", "10": "Controle do Corredor", "11": "Efeitos de Tela (Fx)", "12": "Game Feel (Feedback)", "13": "Controles da Jogada", "14": "Etiquetas (Tag)"}
+{
+  "0": "field.ts",
+  "1": "MatchScene",
+  "2": "live.ts",
+  "3": "config.ts",
+  "4": "Weather",
+  "5": "Player.ts",
+  "6": "package.json",
+  "7": "sprites.ts",
+  "8": "Hud",
+  "9": "compilerOptions",
+  "10": "CarrierControl",
+  "11": "Fx",
+  "12": "MatchScene.ts",
+  "13": "LiveUiHandlers",
+  "14": "grandstand.ts",
+  "15": "Sideline.ts",
+  "16": "projection.ts",
+  "17": "Projection",
+  "18": "LiveUi",
+  "19": "GameState"
+}

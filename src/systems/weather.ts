@@ -196,6 +196,8 @@ export function pickWeather(rng: Rng): WeatherKind {
   if (matchConfig.weather === 'clear') return 'clear';
   if (matchConfig.weather === 'rain') return 'rain';
   if (matchConfig.weather === 'snow') return 'snow';
-  const x = rng.next();
-  return x < 0.6 ? 'clear' : x < 0.8 ? 'rain' : 'snow';
+  // Sorteio: um terço para cada (sorteador comum do navegador, não a semente da partida)
+  void rng;
+  const x = Math.random();
+  return x < 1 / 3 ? 'clear' : x < 2 / 3 ? 'rain' : 'snow';
 }

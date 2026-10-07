@@ -65,7 +65,8 @@ export class MatchScene extends Phaser.Scene {
   private offense: Player[] = [];
   private defense: Player[] = [];
   private fx!: Phaser.GameObjects.Graphics;
-  private rng = new Rng(MATCH_SEED + 21);
+  /** Cada partida usa uma semente nova (clima, sorteio e lances mudam); ?seed=N fixa para testes. */
+  private rng = new Rng((Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0);
 
   private mode: 'pass' | 'run' = 'pass';
   private playIdx = 0;
@@ -182,7 +183,7 @@ export class MatchScene extends Phaser.Scene {
 
   /** Cada partida começa sem texturas de partidas anteriores (as cores dos times podem ter mudado). */
   init() {
-    for (const k of this.textures.getTextureKeys()) if (!k.startsWith('__')) this.textures.remove(k);
+    for (const k of this.textures.getTextureKeys()) if (!k.startsWith('__') && !k.startsWith('logo')) this.textures.remove(k);
   }
 
   create() {
@@ -485,7 +486,7 @@ export class MatchScene extends Phaser.Scene {
       primary: true,
       borderAlpha: 0.35,
     }).setDepth(95);
-    snap.add(title(this, 0, 0, 'SNAP', 18, '#0D0D12').setOrigin(0.5));
+    snap.add(title(this, 0, 0, 'SNAP', 18, TEAMS.home.fg).setOrigin(0.5));
     snap.onTap = () => this.snap();
 
     this.refreshPlayUi();
@@ -527,7 +528,7 @@ export class MatchScene extends Phaser.Scene {
       bg.strokeRoundedRect(left, top, total, 44, 22);
       bg.fillStyle(TEAMS.home.color, 1);
       bg.fillRoundedRect(xs[i], top + 3, widths[i], 38, 19);
-      texts.forEach((t, j) => t.setColor(j === i ? '#0D0D12' : '#FFFFFF'));
+      texts.forEach((t, j) => t.setColor(j === i ? TEAMS.home.fg : '#FFFFFF'));
     };
     setMode('pass');
     return { setMode };
@@ -1443,7 +1444,7 @@ export class MatchScene extends Phaser.Scene {
 
   private xpBar() {
     const xp = this.state.xp;
-    return { kind: 'xp' as const, label: 'CARREIRA · TEMP 1 · SEMANA 3', gain: this.playXp, base: ((xp - this.playXp) % 1000) / 1000 };
+    return { kind: 'xp' as const, label: 'PROGRESSO DO QB', gain: this.playXp, base: ((xp - this.playXp) % 1000) / 1000 };
   }
 
   private tdCard(gained: number, pass: boolean, c: Player | null): CardOpts {
@@ -1574,7 +1575,7 @@ export class MatchScene extends Phaser.Scene {
 
   private fgChance(dist: number) {
     const w = this.state.wind.mph;
-    return Phaser.Math.Clamp(1.04 - Math.max(0, dist - 20) * 0.0125 - this.weather.kickPenalty - w * 0.004 + difficulty.d.kick, 0.05, 0.97);
+    return Phaser.Math.Clamp(1.04 - Math.max(0, dist - 20) * 0.0125 - this.weather.kickPenalty - w * 0.004 + difficulty.d.kick + (TEAMS.home.rating.esp - 75) * 0.003, 0.05, 0.97);
   }
 
   /** Chute: PAT (ponto extra), FG (field goal) ou PUNT, com a barra de agulha. */
@@ -1888,7 +1889,7 @@ export class MatchScene extends Phaser.Scene {
     this.weather.setPillVisible(false);
     this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
     this.liveUi.show('none');
-    const drive = simulateDrive(kick ? 75 : at, this.rng, TEAMS.home.abbr, TEAMS.away.abbr, TEAMS.away.name, difficulty.d.oppEdge);
+    const drive = simulateDrive(kick ? 75 : at, this.rng, TEAMS.home.abbr, TEAMS.away.abbr, TEAMS.away.name, Phaser.Math.Clamp(difficulty.d.oppEdge + (TEAMS.away.rating.atk - TEAMS.home.rating.def) / 40, -1.6, 1.6));
     const los = Phaser.Math.Clamp(drive.ourLos, 1, 99);
     const where = los < 50 ? `NA SUA ${los}` : los === 50 ? 'NO MEIO' : `NA ${TEAMS.away.abbr} ${100 - los}`;
     this.phase = 'defense';
@@ -2171,8 +2172,6 @@ export class MatchScene extends Phaser.Scene {
     const h = s.score.home;
     const a = s.score.away;
     const win = h > a;
-    if (win) s.record.home[0]++;
-    else if (h < a) s.record.home[1]++;
     if (win) {
       this.ui.burst(90);
       this.world.stand.cheer(1);
@@ -2192,7 +2191,7 @@ export class MatchScene extends Phaser.Scene {
       chipFg: win ? TEAMS.home.fg : TEAMS.away.fg,
       header: 'FIM DE JOGO',
       head: `${st.comp}/${st.att} · ${st.yards} JDS`,
-      sub: `${st.td} TD · ${st.int} INT · RETROSPECTO ${s.recordText('home')}`,
+      sub: `${st.td} TD · ${st.int} INT`,
       stats: this.statsRow(),
       bar: this.xpBar(),
       teamColor: TEAMS.home.color,
@@ -2205,10 +2204,8 @@ export class MatchScene extends Phaser.Scene {
 
   private newGame() {
     const s = this.state;
-    const rec = s.record;
     const xp = s.xp;
     Object.assign(s, new GameState());
-    s.record = rec;
     s.xp = xp;
     s.score = { home: 0, away: 0 };
     s.quarter = 1;

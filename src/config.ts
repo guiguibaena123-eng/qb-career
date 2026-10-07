@@ -1,4 +1,5 @@
 // Configuração central: resolução, câmera/projeção, cores do campo e times.
+import { autoUniform, fgOn, teamById, uiColor, uniformsOf, type TeamDef, type Uniform } from './data/teams';
 
 export const GAME_W = 390;
 export const GAME_H = 844;
@@ -44,46 +45,85 @@ export const COLORS = {
 };
 
 export interface TeamConfig {
+  id: string;
   name: string;
   abbr: string;
+  /** Cor do time na interface (placar, botões). */
   color: number;
   colorHex: string;
   /** Cor do texto sobre a cor do time (contraste). */
   fg: string;
-  /** Vitórias-derrotas na temporada. */
-  record: [number, number];
-  /** Notas de apresentação. */
-  rating: { atk: number; def: number; esp: number };
+  /** Notas do time (overall, ataque, defesa, especiais). */
+  rating: { ovr: number; atk: number; def: number; esp: number };
+  /** Uniforme em uso e seu índice (0 casa, 1 fora, 2 alternativo). */
+  uniform: Uniform;
+  uniformIdx: number;
 }
 
-/** Os dois times da liga fictícia. */
-export const ROSTER: Record<'LOBOS' | 'TOUROS', TeamConfig> = {
-  LOBOS: { name: 'LOBOS', abbr: 'LOB', color: 0xf26b1d, colorHex: '#F26B1D', fg: '#0D0D12', record: [4, 2], rating: { atk: 74, def: 70, esp: 66 } },
-  TOUROS: { name: 'TOUROS', abbr: 'TOU', color: 0x22406b, colorHex: '#22406B', fg: '#FFFFFF', record: [2, 3], rating: { atk: 71, def: 77, esp: 69 } },
+export type WeatherChoice = 'clear' | 'rain' | 'snow' | 'random';
+
+/** Escolhas do menu (Partida rápida). `awayUni` = null deixa o uniforme do adversário automático (o que mais contrasta). */
+export const matchConfig: { home: string; away: string; homeUni: number; awayUni: number | null; weather: WeatherChoice } = {
+  home: 'kc',
+  away: 'buf',
+  homeUni: 0,
+  awayUni: null,
+  weather: 'random',
 };
+
+try {
+  const saved = JSON.parse(localStorage.getItem('qb-career-match') ?? 'null');
+  if (saved && teamById(saved.home).id === saved.home && teamById(saved.away).id === saved.away && saved.home !== saved.away) {
+    Object.assign(matchConfig, saved);
+  }
+} catch {
+  /* sem armazenamento: usa o padrão */
+}
+
+export function saveMatchConfig() {
+  try {
+    localStorage.setItem('qb-career-match', JSON.stringify(matchConfig));
+  } catch {
+    /* ignora */
+  }
+}
+
+function toConfig(t: TeamDef, idx: number): TeamConfig {
+  const color = uiColor(t);
+  return {
+    id: t.id,
+    name: t.name,
+    abbr: t.abbr,
+    color,
+    colorHex: '#' + color.toString(16).padStart(6, '0'),
+    fg: fgOn(color),
+    rating: { ovr: t.ovr, atk: t.atk, def: t.def, esp: t.esp },
+    uniform: uniformsOf(t)[idx],
+    uniformIdx: idx,
+  };
+}
 
 /**
  * 'home' é SEMPRE o time do jogador (ataca para o fundo da tela, fica à esquerda no placar);
- * 'away' é o adversário. setUserTeam troca quem é quem antes de a partida começar.
+ * 'away' é o adversário. applyMatchup copia o que o menu escolheu para esses objetos (mesmos objetos: quem guardou TEAMS.home continua válido).
  */
 export const TEAMS: Record<'home' | 'away', TeamConfig> = {
-  home: { ...ROSTER.LOBOS, record: [...ROSTER.LOBOS.record] as [number, number] },
-  away: { ...ROSTER.TOUROS, record: [...ROSTER.TOUROS.record] as [number, number] },
+  home: toConfig(teamById(matchConfig.home), matchConfig.homeUni),
+  away: toConfig(teamById(matchConfig.away), 0),
 };
 
-export type TeamName = 'LOBOS' | 'TOUROS';
-export type WeatherChoice = 'clear' | 'rain' | 'snow' | 'random';
-
-/** Escolhas do menu (Partida rápida). */
-export const matchConfig: { team: TeamName; weather: WeatherChoice } = { team: 'LOBOS', weather: 'random' };
-
-export function setUserTeam(name: TeamName) {
-  const other: TeamName = name === 'LOBOS' ? 'TOUROS' : 'LOBOS';
-  matchConfig.team = name;
-  // Mexe nos mesmos objetos (quem já guardou TEAMS.home continua válido)
-  Object.assign(TEAMS.home, ROSTER[name], { record: [...ROSTER[name].record] });
-  Object.assign(TEAMS.away, ROSTER[other], { record: [...ROSTER[other].record] });
+export function applyMatchup() {
+  const h = teamById(matchConfig.home);
+  const a = teamById(matchConfig.away);
+  const hu = toConfig(h, matchConfig.homeUni);
+  Object.assign(TEAMS.home, hu);
+  const awayIdx = matchConfig.awayUni ?? autoUniform(a, parseInt(hu.uniform.jersey.slice(1), 16));
+  Object.assign(TEAMS.away, toConfig(a, awayIdx));
 }
+applyMatchup();
+
+/** Chave da textura da logo: tamanho 's' (64 px), 'm' (128 px) ou 'l' (384 px). */
+export const logoKey = (id: string, size: 's' | 'm' | 'l' = 'm') => `logo${size.toUpperCase()}_${id}`;
 
 export const FONT_TITLE = '"Press Start 2P", monospace';
 export const FONT_LABEL = '"Silkscreen", monospace';

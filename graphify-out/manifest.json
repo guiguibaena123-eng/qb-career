@@ -6,9 +6,9 @@
     "semantic_hash": "b64addede22df13b819875c1a3accb06"
   },
   "src/config.ts": {
-    "mtime": 1791341761.693551,
-    "seen": 1791342178.8495505,
-    "ast_hash": "6f416aabe7ea5fd3de361b4030da7434",
+    "mtime": 1791344279.5272665,
+    "seen": 1791344803.8553245,
+    "ast_hash": "c5fb53e34fab888893c34b0caf350a83",
     "semantic_hash": ""
   },
   "src/data/plays.ts": {
@@ -18,10 +18,10 @@
     "semantic_hash": "46a12c05851e8677a1d563fceb07b7af"
   },
   "src/entities/Ball.ts": {
-    "mtime": 1791331795.981213,
-    "seen": 1791341122.315599,
-    "ast_hash": "d2f449ba449ec50fdd5b9ebe182a5d03",
-    "semantic_hash": "d2f449ba449ec50fdd5b9ebe182a5d03"
+    "mtime": 1791344003.7351625,
+    "seen": 1791344803.855344,
+    "ast_hash": "6c08e1f88fcf1cb4b4d8667ba2047ab4",
+    "semantic_hash": ""
   },
   "src/entities/GoalPost.ts": {
     "mtime": 1791330171.7311327,
@@ -30,10 +30,10 @@
     "semantic_hash": "c28e421ab5ea00945491f940b4c647e1"
   },
   "src/entities/Player.ts": {
-    "mtime": 1791337184.117343,
-    "seen": 1791341122.315611,
-    "ast_hash": "ee41dc238f1ee7f6bd33e46190b9a4e1",
-    "semantic_hash": "ee41dc238f1ee7f6bd33e46190b9a4e1"
+    "mtime": 1791344561.355903,
+    "seen": 1791344803.8553526,
+    "ast_hash": "5969b9abbd1956c5177b3a64fd020d80",
+    "semantic_hash": ""
   },
   "src/entities/Sideline.ts": {
     "mtime": 1791336403.1031468,
@@ -48,21 +48,21 @@
     "semantic_hash": "7cd1d0ae384794d5d592257bfb34e32e"
   },
   "src/main.ts": {
-    "mtime": 1791341864.9622316,
-    "seen": 1791342178.8495846,
-    "ast_hash": "a9b8c155e948d561c0b6ada95049d12a",
+    "mtime": 1791344561.3549266,
+    "seen": 1791344803.8553638,
+    "ast_hash": "46d2d489ab1e3eefb7fb8a8c8a2492ef",
     "semantic_hash": ""
   },
   "src/scenes/MatchScene.ts": {
-    "mtime": 1791341864.9662304,
-    "seen": 1791342178.8495932,
-    "ast_hash": "7c95db08a7a156c118c7ab568156ee4d",
+    "mtime": 1791344708.448528,
+    "seen": 1791344803.8553734,
+    "ast_hash": "0d318b04e847a3c32acf40fa3095b799",
     "semantic_hash": ""
   },
   "src/state/GameState.ts": {
-    "mtime": 1791341761.824152,
-    "seen": 1791342178.8495965,
-    "ast_hash": "d331d7f01da1164b55293181a1ee5d12",
+    "mtime": 1791344279.532286,
+    "seen": 1791344803.8553765,
+    "ast_hash": "c5caca3cacfae437cdac2391a749f92e",
     "semantic_hash": ""
   },
   "src/systems/ai.ts": {
@@ -132,10 +132,10 @@
     "semantic_hash": "24593ab021d2391761cfb074f99d8bdf"
   },
   "src/systems/pixelart.ts": {
-    "mtime": 1791328622.8940916,
-    "seen": 1791341122.3157325,
-    "ast_hash": "11240add9845b5031bcb44f3d0e2439c",
-    "semantic_hash": "11240add9845b5031bcb44f3d0e2439c"
+    "mtime": 1791344003.73116,
+    "seen": 1791344803.855424,
+    "ast_hash": "0ece5a5396c980a71bb58c2dcfe8669d",
+    "semantic_hash": ""
   },
   "src/systems/projection.ts": {
     "mtime": 1791330101.667842,
@@ -192,9 +192,9 @@
     "semantic_hash": "71f4c026c5880560bb02c9e438a92a7e"
   },
   "src/systems/weather.ts": {
-    "mtime": 1791341864.9642308,
-    "seen": 1791342178.8497071,
-    "ast_hash": "0d91605900bcab0853009b5a9cf9b0e0",
+    "mtime": 1791344571.6002553,
+    "seen": 1791344803.8554587,
+    "ast_hash": "40fbdf47d6e16348ce80048889a53ab8",
     "semantic_hash": ""
   },
   "src/systems/world.ts": {
@@ -204,64 +204,64 @@
     "semantic_hash": "8d00e5d18bcb963142133a8b17d97302"
   },
   "src/ui/DefenseScreen.ts": {
-    "mtime": 1791341761.8041573,
-    "seen": 1791342178.8497183,
-    "ast_hash": "0535c46eeaa447fef394ceed58add21f",
+    "mtime": 1791343984.627506,
+    "seen": 1791344803.8554652,
+    "ast_hash": "9a61f3c46530c3d8c878dac86d3f82ff",
     "semantic_hash": ""
   },
   "src/ui/Fx.ts": {
-    "mtime": 1791331921.2909904,
-    "seen": 1791341122.3158033,
-    "ast_hash": "db717c45c112525668cbfd555d395837",
-    "semantic_hash": "db717c45c112525668cbfd555d395837"
+    "mtime": 1791343984.6304748,
+    "seen": 1791344803.855468,
+    "ast_hash": "041c83716c5bfda944cdb2c4d0332fa5",
+    "semantic_hash": ""
   },
   "src/ui/Hud.ts": {
-    "mtime": 1791341761.8201504,
-    "seen": 1791342178.8497286,
-    "ast_hash": "bda6a2d9b1374a71b1e7e2b4a1c16cba",
+    "mtime": 1791344358.2418108,
+    "seen": 1791344803.855471,
+    "ast_hash": "697d5b4c47e5551e4c47e2ec30295d4f",
     "semantic_hash": ""
   },
   "src/ui/Intro.ts": {
-    "mtime": 1791341864.9612567,
-    "seen": 1791342178.8497381,
-    "ast_hash": "e7d2108a4cbfeb0c0a43ec3cd6f21415",
+    "mtime": 1791344584.8085537,
+    "seen": 1791344803.855474,
+    "ast_hash": "dcf7129c45601ac4374f86f530ebe4cf",
     "semantic_hash": ""
   },
   "src/ui/Joystick.ts": {
-    "mtime": 1791331891.2954807,
-    "seen": 1791341122.3158166,
-    "ast_hash": "960f55ca940764c4f5142a5ad9a06b5c",
-    "semantic_hash": "960f55ca940764c4f5142a5ad9a06b5c"
+    "mtime": 1791343984.6485121,
+    "seen": 1791344803.8554766,
+    "ast_hash": "5fd2fc3fd552f8abb3f9617a72dd9204",
+    "semantic_hash": ""
   },
   "src/ui/KickUi.ts": {
-    "mtime": 1791341761.8081458,
-    "seen": 1791342178.8497481,
-    "ast_hash": "801f3fd5eee5d9383e8f04caf80a98c8",
+    "mtime": 1791343984.6394918,
+    "seen": 1791344803.8554795,
+    "ast_hash": "2924a024fb64690474c4230bc5ffce98",
     "semantic_hash": ""
   },
   "src/ui/LiveUi.ts": {
-    "mtime": 1791332024.3297644,
-    "seen": 1791341122.3158286,
-    "ast_hash": "4346d71d9cbfac442fc294785daebf0e",
-    "semantic_hash": "4346d71d9cbfac442fc294785daebf0e"
+    "mtime": 1791343984.6414943,
+    "seen": 1791344803.8554826,
+    "ast_hash": "39bdc96b640f7b95100824d464c9d135",
+    "semantic_hash": ""
   },
   "src/ui/Menu.ts": {
-    "mtime": 1791341761.818147,
-    "seen": 1791342178.8497584,
-    "ast_hash": "1c686943e830f056fdce047af7e1d427",
+    "mtime": 1791343984.6434507,
+    "seen": 1791344803.8554857,
+    "ast_hash": "79bfad00e3f6c0185b83bca4b08ffcf3",
     "semantic_hash": ""
   },
   "src/ui/ResultCard.ts": {
-    "mtime": 1791341761.800213,
-    "seen": 1791342178.8497632,
-    "ast_hash": "b04cad22e8b046d9adc4c789f96f3ba5",
+    "mtime": 1791343984.6455138,
+    "seen": 1791344803.8554888,
+    "ast_hash": "22a4f2612c77077e097d107645f4d134",
     "semantic_hash": ""
   },
   "src/ui/widgets.ts": {
-    "mtime": 1791333274.010679,
-    "seen": 1791341122.3158486,
-    "ast_hash": "924623439045310512da1bfe8d50e0e3",
-    "semantic_hash": "924623439045310512da1bfe8d50e0e3"
+    "mtime": 1791343984.6485121,
+    "seen": 1791344803.8554916,
+    "ast_hash": "d7fd8fb2ee09f0049544bf1343af1c78",
+    "semantic_hash": ""
   },
   "tsconfig.json": {
     "mtime": 1791326235.4464688,
@@ -270,15 +270,609 @@
     "semantic_hash": "2debfbc7ab17b2bdeacbd9296aaa959d"
   },
   "src/scenes/MainMenu.ts": {
-    "mtime": 1791342129.4864993,
-    "seen": 1791342178.849589,
-    "ast_hash": "92bbf5285deb2e221c265c445cc609d7",
+    "mtime": 1791344541.1763794,
+    "seen": 1791344803.8553705,
+    "ast_hash": "475c112004dd2761ac488b23e65dd6e4",
     "semantic_hash": ""
   },
   "index.html": {
     "mtime": 1791326235.344417,
     "seen": 1791342178.849781,
     "ast_hash": "0967c56548203ffaff8452ac294b3cd4",
+    "semantic_hash": ""
+  },
+  "src/data/teams.ts": {
+    "mtime": 1791344245.5322165,
+    "seen": 1791344803.8553393,
+    "ast_hash": "bec81d805b5eb708bd9a24b113f513b8",
+    "semantic_hash": ""
+  },
+  "src/scenes/Boot.ts": {
+    "mtime": 1791344561.1957624,
+    "seen": 1791344803.855367,
+    "ast_hash": "4476cc1a01ad11e68517d90ea673a6a5",
+    "semantic_hash": ""
+  },
+  "src/systems/hires.ts": {
+    "mtime": 1791344022.7696657,
+    "seen": 1791344803.8554094,
+    "ast_hash": "34fc630c58be753506adf7794dcae25e",
+    "semantic_hash": ""
+  },
+  "public/logos/ari_l.png": {
+    "mtime": 1791343869.6979244,
+    "seen": 1791344803.8555021,
+    "ast_hash": "8bebe07ec06e0fe0d2d7a0f88088ea9a",
+    "semantic_hash": ""
+  },
+  "public/logos/ari_m.png": {
+    "mtime": 1791343869.6761544,
+    "seen": 1791344803.8555052,
+    "ast_hash": "2aede1e6be4c24e288b9dd08e393ffc2",
+    "semantic_hash": ""
+  },
+  "public/logos/ari_s.png": {
+    "mtime": 1791343869.7009237,
+    "seen": 1791344803.8555079,
+    "ast_hash": "4b6c2fb18a55231ea2a62f028a9934f9",
+    "semantic_hash": ""
+  },
+  "public/logos/atl_l.png": {
+    "mtime": 1791343869.3248096,
+    "seen": 1791344803.8555105,
+    "ast_hash": "d187c9b56ffb533e3962fdd038815e5d",
+    "semantic_hash": ""
+  },
+  "public/logos/atl_m.png": {
+    "mtime": 1791343869.3082473,
+    "seen": 1791344803.8555136,
+    "ast_hash": "eeaf00ed5dbf105f7646976f055faf0a",
+    "semantic_hash": ""
+  },
+  "public/logos/atl_s.png": {
+    "mtime": 1791343869.327796,
+    "seen": 1791344803.8555167,
+    "ast_hash": "39b887bc3c77a9d572b1fe906c395d8c",
+    "semantic_hash": ""
+  },
+  "public/logos/bal_l.png": {
+    "mtime": 1791343870.4884486,
+    "seen": 1791344803.8555198,
+    "ast_hash": "8851c28637068fc6437e639acd2fb6f2",
+    "semantic_hash": ""
+  },
+  "public/logos/bal_m.png": {
+    "mtime": 1791343870.4644709,
+    "seen": 1791344803.8555226,
+    "ast_hash": "3392f51323f3cfaeae94d7c8b136abfc",
+    "semantic_hash": ""
+  },
+  "public/logos/bal_s.png": {
+    "mtime": 1791343870.4915342,
+    "seen": 1791344803.8555255,
+    "ast_hash": "b103c959f4482ea8d19cfaa2bac528cb",
+    "semantic_hash": ""
+  },
+  "public/logos/buf_l.png": {
+    "mtime": 1791343870.0855472,
+    "seen": 1791344803.855528,
+    "ast_hash": "2fc82d961723dbb7fb870c3f817bdc80",
+    "semantic_hash": ""
+  },
+  "public/logos/buf_m.png": {
+    "mtime": 1791343870.0608635,
+    "seen": 1791344803.8555307,
+    "ast_hash": "ffbc66f1f1c26f2a623f34e7698f0c3b",
+    "semantic_hash": ""
+  },
+  "public/logos/buf_s.png": {
+    "mtime": 1791343870.089635,
+    "seen": 1791344803.8555336,
+    "ast_hash": "7e6cae092b8a223b9a67fecf447daab8",
+    "semantic_hash": ""
+  },
+  "public/logos/car_l.png": {
+    "mtime": 1791343869.4163642,
+    "seen": 1791344803.8555362,
+    "ast_hash": "2c7cb0371475680e7a2b0d3d71c669bd",
+    "semantic_hash": ""
+  },
+  "public/logos/car_m.png": {
+    "mtime": 1791343869.3951972,
+    "seen": 1791344803.8555386,
+    "ast_hash": "5069d4dfdedab12fc6169459404bb9d1",
+    "semantic_hash": ""
+  },
+  "public/logos/car_s.png": {
+    "mtime": 1791343869.422354,
+    "seen": 1791344803.855542,
+    "ast_hash": "b9773cc2c9fcc5d5ba5e9540f2029cf3",
+    "semantic_hash": ""
+  },
+  "public/logos/chi_l.png": {
+    "mtime": 1791343868.8939588,
+    "seen": 1791344803.8555446,
+    "ast_hash": "6d221bcc899c55c90770ac3ad16266d2",
+    "semantic_hash": ""
+  },
+  "public/logos/chi_m.png": {
+    "mtime": 1791343868.874063,
+    "seen": 1791344803.8555472,
+    "ast_hash": "10d37b49f163084541b2119ff5f6618c",
+    "semantic_hash": ""
+  },
+  "public/logos/chi_s.png": {
+    "mtime": 1791343868.8973086,
+    "seen": 1791344803.8555498,
+    "ast_hash": "09cd3bf49395f71304b65e6447c1af9b",
+    "semantic_hash": ""
+  },
+  "public/logos/cin_l.png": {
+    "mtime": 1791343870.5805671,
+    "seen": 1791344803.8555524,
+    "ast_hash": "e34650c2bb6a4a94a24e71f7638e2dfa",
+    "semantic_hash": ""
+  },
+  "public/logos/cin_m.png": {
+    "mtime": 1791343870.561003,
+    "seen": 1791344803.855555,
+    "ast_hash": "2ef93f88ad19cf5657a36d1978e1469d",
+    "semantic_hash": ""
+  },
+  "public/logos/cin_s.png": {
+    "mtime": 1791343870.5844162,
+    "seen": 1791344803.855558,
+    "ast_hash": "9b3900412cbc8e2f7dcbf6489086ab19",
+    "semantic_hash": ""
+  },
+  "public/logos/cle_l.png": {
+    "mtime": 1791343870.7389529,
+    "seen": 1791344803.8555608,
+    "ast_hash": "9ecb8473a048c8ef7f57990f4c04983d",
+    "semantic_hash": ""
+  },
+  "public/logos/cle_m.png": {
+    "mtime": 1791343870.696552,
+    "seen": 1791344803.8555632,
+    "ast_hash": "a4d4ffde8383a98ae4958dc179a6a309",
+    "semantic_hash": ""
+  },
+  "public/logos/cle_s.png": {
+    "mtime": 1791343870.7476885,
+    "seen": 1791344803.855566,
+    "ast_hash": "93344d69e6226637f0585509f5cde09d",
+    "semantic_hash": ""
+  },
+  "public/logos/dal_l.png": {
+    "mtime": 1791343868.1754093,
+    "seen": 1791344803.8555684,
+    "ast_hash": "a43d20b25d7973c3ea9c706852b34399",
+    "semantic_hash": ""
+  },
+  "public/logos/dal_m.png": {
+    "mtime": 1791343868.157815,
+    "seen": 1791344803.855571,
+    "ast_hash": "f2cea5127746b2716c50d5278dddf58b",
+    "semantic_hash": ""
+  },
+  "public/logos/dal_s.png": {
+    "mtime": 1791343868.1794152,
+    "seen": 1791344803.8555737,
+    "ast_hash": "7aceab36e5b206233f5a6c06f7369487",
+    "semantic_hash": ""
+  },
+  "public/logos/den_l.png": {
+    "mtime": 1791343872.066132,
+    "seen": 1791344803.8555765,
+    "ast_hash": "9b07bfc741d6f54be2f5846c59f0d81c",
+    "semantic_hash": ""
+  },
+  "public/logos/den_m.png": {
+    "mtime": 1791343872.051931,
+    "seen": 1791344803.8555794,
+    "ast_hash": "cd0dc02a6599207e18707ecc24fa45b9",
+    "semantic_hash": ""
+  },
+  "public/logos/den_s.png": {
+    "mtime": 1791343872.0786042,
+    "seen": 1791344803.8555822,
+    "ast_hash": "184c2f553ab18022af82dc4d31c48f51",
+    "semantic_hash": ""
+  },
+  "public/logos/det_l.png": {
+    "mtime": 1791343868.997696,
+    "seen": 1791344803.855585,
+    "ast_hash": "99f712e91d7f8832827197f706a7c139",
+    "semantic_hash": ""
+  },
+  "public/logos/det_m.png": {
+    "mtime": 1791343868.9780035,
+    "seen": 1791344803.8555877,
+    "ast_hash": "a65bafaab6080c9c50126f77d694e777",
+    "semantic_hash": ""
+  },
+  "public/logos/det_s.png": {
+    "mtime": 1791343869.0006814,
+    "seen": 1791344803.8555908,
+    "ast_hash": "2f2a5810c897e0da076ffe2ae624e4f4",
+    "semantic_hash": ""
+  },
+  "public/logos/gb_l.png": {
+    "mtime": 1791343869.1089356,
+    "seen": 1791344803.8555937,
+    "ast_hash": "1eae5fc1ffc78eabe4609d1664bc2a69",
+    "semantic_hash": ""
+  },
+  "public/logos/gb_m.png": {
+    "mtime": 1791343869.084382,
+    "seen": 1791344803.8555965,
+    "ast_hash": "7242a71248891e9b6a5d40654c2661da",
+    "semantic_hash": ""
+  },
+  "public/logos/gb_s.png": {
+    "mtime": 1791343869.114781,
+    "seen": 1791344803.8555992,
+    "ast_hash": "399a25a4c3aa4f24d54d81aae85b73a5",
+    "semantic_hash": ""
+  },
+  "public/logos/hou_l.png": {
+    "mtime": 1791343871.0935767,
+    "seen": 1791344803.8556056,
+    "ast_hash": "e253608906732014c861dbb529590912",
+    "semantic_hash": ""
+  },
+  "public/logos/hou_m.png": {
+    "mtime": 1791343871.0430906,
+    "seen": 1791344803.8556082,
+    "ast_hash": "0b51005552b9df970ff5f3a3cbe47c45",
+    "semantic_hash": ""
+  },
+  "public/logos/hou_s.png": {
+    "mtime": 1791343871.1018388,
+    "seen": 1791344803.8556108,
+    "ast_hash": "8dfa5f16e3c383ac94a6b532acb76201",
+    "semantic_hash": ""
+  },
+  "public/logos/ind_l.png": {
+    "mtime": 1791343871.2925105,
+    "seen": 1791344803.8556137,
+    "ast_hash": "e563a18f79fb7e8968c4d253fe43c5a4",
+    "semantic_hash": ""
+  },
+  "public/logos/ind_m.png": {
+    "mtime": 1791343871.2466488,
+    "seen": 1791344803.855617,
+    "ast_hash": "bf3a2cfe0e7695f1da637d9ce6dc8736",
+    "semantic_hash": ""
+  },
+  "public/logos/ind_s.png": {
+    "mtime": 1791343871.3015072,
+    "seen": 1791344803.85562,
+    "ast_hash": "4f5a269c50af00334a51dfe707458f30",
+    "semantic_hash": ""
+  },
+  "public/logos/jax_l.png": {
+    "mtime": 1791343871.516543,
+    "seen": 1791344803.8556228,
+    "ast_hash": "6ce12629e4c19a7587d436fb9d3abe99",
+    "semantic_hash": ""
+  },
+  "public/logos/jax_m.png": {
+    "mtime": 1791343871.4646113,
+    "seen": 1791344803.8556256,
+    "ast_hash": "8c1c757fa0b95f0fe6ea0bbecdac3588",
+    "semantic_hash": ""
+  },
+  "public/logos/jax_s.png": {
+    "mtime": 1791343871.5218992,
+    "seen": 1791344803.8556287,
+    "ast_hash": "4a8e437b869f2d5a140a9a09e1ef705e",
+    "semantic_hash": ""
+  },
+  "public/logos/kc_l.png": {
+    "mtime": 1791343872.1777835,
+    "seen": 1791344803.8556314,
+    "ast_hash": "73dc19d7a1585a480b6702d21ea8f8b6",
+    "semantic_hash": ""
+  },
+  "public/logos/kc_m.png": {
+    "mtime": 1791343872.1552188,
+    "seen": 1791344803.8556342,
+    "ast_hash": "d9361fa36ec60214facd82ad224a0435",
+    "semantic_hash": ""
+  },
+  "public/logos/kc_s.png": {
+    "mtime": 1791343872.1817887,
+    "seen": 1791344803.8556368,
+    "ast_hash": "b81332767f2bacab7e86a20bb3a7cd5e",
+    "semantic_hash": ""
+  },
+  "public/logos/lac_l.png": {
+    "mtime": 1791343869.790527,
+    "seen": 1791344803.8556392,
+    "ast_hash": "121672b16b8ef2d5621f6ddb26c3fd2c",
+    "semantic_hash": ""
+  },
+  "public/logos/lac_m.png": {
+    "mtime": 1791343869.772018,
+    "seen": 1791344803.855642,
+    "ast_hash": "9e0f62d134b1334ff8f9bb8f7203d10a",
+    "semantic_hash": ""
+  },
+  "public/logos/lac_s.png": {
+    "mtime": 1791343869.7954974,
+    "seen": 1791344803.8556447,
+    "ast_hash": "3d23531da3659eae74d74054440a6e5b",
+    "semantic_hash": ""
+  },
+  "public/logos/lar_l.png": {
+    "mtime": 1791343868.0720692,
+    "seen": 1791344803.8556476,
+    "ast_hash": "60f986984e0f982cb3827d0a237a4b99",
+    "semantic_hash": ""
+  },
+  "public/logos/lar_m.png": {
+    "mtime": 1791343868.0476713,
+    "seen": 1791344803.8556502,
+    "ast_hash": "8f06580b573f8c90d92dc146af60e582",
+    "semantic_hash": ""
+  },
+  "public/logos/lar_s.png": {
+    "mtime": 1791343868.075066,
+    "seen": 1791344803.8556533,
+    "ast_hash": "4bc1e6d4e5ab276e24850876c7dcdf51",
+    "semantic_hash": ""
+  },
+  "public/logos/lv_l.png": {
+    "mtime": 1791343872.3191724,
+    "seen": 1791344803.855656,
+    "ast_hash": "12bd259a6c873f71f866a2a98b30c9fd",
+    "semantic_hash": ""
+  },
+  "public/logos/lv_m.png": {
+    "mtime": 1791343872.276823,
+    "seen": 1791344803.8556585,
+    "ast_hash": "b254078a51a9da930f030d60ab85536b",
+    "semantic_hash": ""
+  },
+  "public/logos/lv_s.png": {
+    "mtime": 1791343872.3357008,
+    "seen": 1791344803.8556614,
+    "ast_hash": "669e81492f4c69b7d95f5cda28a1d6e9",
+    "semantic_hash": ""
+  },
+  "public/logos/mia_l.png": {
+    "mtime": 1791343870.1887445,
+    "seen": 1791344803.855664,
+    "ast_hash": "225d59839cb64dd3dac9baf0813b73d0",
+    "semantic_hash": ""
+  },
+  "public/logos/mia_m.png": {
+    "mtime": 1791343870.167565,
+    "seen": 1791344803.8556666,
+    "ast_hash": "6ff6cbdcff7f000df8a75d31226facc8",
+    "semantic_hash": ""
+  },
+  "public/logos/mia_s.png": {
+    "mtime": 1791343870.1917117,
+    "seen": 1791344803.8556695,
+    "ast_hash": "85fa2a7b8b78d6b557035deb2930361f",
+    "semantic_hash": ""
+  },
+  "public/logos/min_l.png": {
+    "mtime": 1791343869.2244613,
+    "seen": 1791344803.8556724,
+    "ast_hash": "c60409f6a8468c2352ff3b1e047076a0",
+    "semantic_hash": ""
+  },
+  "public/logos/min_m.png": {
+    "mtime": 1791343869.2017112,
+    "seen": 1791344803.855675,
+    "ast_hash": "333ea88a5fad76a0eb953aa7b8123a72",
+    "semantic_hash": ""
+  },
+  "public/logos/min_s.png": {
+    "mtime": 1791343869.2285762,
+    "seen": 1791344803.8556776,
+    "ast_hash": "219fbc6ff221fb4c25f08417297f9e70",
+    "semantic_hash": ""
+  },
+  "public/logos/ne_l.png": {
+    "mtime": 1791343870.2845054,
+    "seen": 1791344803.8556805,
+    "ast_hash": "04c032341259a038fb37aaac76fbec84",
+    "semantic_hash": ""
+  },
+  "public/logos/ne_m.png": {
+    "mtime": 1791343870.2666147,
+    "seen": 1791344803.855683,
+    "ast_hash": "2ead4ac7fbc65d2e72ab5a51f48c2aae",
+    "semantic_hash": ""
+  },
+  "public/logos/ne_s.png": {
+    "mtime": 1791343870.287476,
+    "seen": 1791344803.8556857,
+    "ast_hash": "92fb5904554a9607b6ee7c333e5624ab",
+    "semantic_hash": ""
+  },
+  "public/logos/no_l.png": {
+    "mtime": 1791343869.5102324,
+    "seen": 1791344803.855688,
+    "ast_hash": "3e9d3528f449d8d87ecb0b15af8cd2ea",
+    "semantic_hash": ""
+  },
+  "public/logos/no_m.png": {
+    "mtime": 1791343869.4947045,
+    "seen": 1791344803.855691,
+    "ast_hash": "6bad80ae303c69781bbf0639685f2c93",
+    "semantic_hash": ""
+  },
+  "public/logos/no_s.png": {
+    "mtime": 1791343869.5181386,
+    "seen": 1791344803.8556936,
+    "ast_hash": "b395317cf74eb0b06d81cf68ebd4531a",
+    "semantic_hash": ""
+  },
+  "public/logos/nyg_l.png": {
+    "mtime": 1791343868.417758,
+    "seen": 1791344803.8556964,
+    "ast_hash": "88a7844b20222b71591f9b2e3164cdab",
+    "semantic_hash": ""
+  },
+  "public/logos/nyg_m.png": {
+    "mtime": 1791343868.4017196,
+    "seen": 1791344803.8556998,
+    "ast_hash": "22cfae64e7885d3bfc6255fda003de70",
+    "semantic_hash": ""
+  },
+  "public/logos/nyg_s.png": {
+    "mtime": 1791343868.417758,
+    "seen": 1791344803.8557026,
+    "ast_hash": "c0c00dfa442acb2d7847e8c2952fe7ec",
+    "semantic_hash": ""
+  },
+  "public/logos/nyj_l.png": {
+    "mtime": 1791343870.3897414,
+    "seen": 1791344803.8557053,
+    "ast_hash": "fbdfcced65b88c321b1948fcddb3dac2",
+    "semantic_hash": ""
+  },
+  "public/logos/nyj_m.png": {
+    "mtime": 1791343870.364694,
+    "seen": 1791344803.8557084,
+    "ast_hash": "14244046d7813c49cbff4371aa4ad9dc",
+    "semantic_hash": ""
+  },
+  "public/logos/nyj_s.png": {
+    "mtime": 1791343870.393484,
+    "seen": 1791344803.8557112,
+    "ast_hash": "21857b91d7287cbd66aceba62a64d3ac",
+    "semantic_hash": ""
+  },
+  "public/logos/phi_l.png": {
+    "mtime": 1791343868.6279783,
+    "seen": 1791344803.855714,
+    "ast_hash": "ea811c0f9633ab586692c4f6243eb07f",
+    "semantic_hash": ""
+  },
+  "public/logos/phi_m.png": {
+    "mtime": 1791343868.5879753,
+    "seen": 1791344803.8557167,
+    "ast_hash": "563537b4f48aba95bb85f00df1bff78d",
+    "semantic_hash": ""
+  },
+  "public/logos/phi_s.png": {
+    "mtime": 1791343868.6379488,
+    "seen": 1791344803.8557193,
+    "ast_hash": "7d4344e2844ccb7d6470346d37062a8e",
+    "semantic_hash": ""
+  },
+  "public/logos/pit_l.png": {
+    "mtime": 1791343870.9195118,
+    "seen": 1791344803.8557222,
+    "ast_hash": "2fc67a428413875bfc5bcc57545829c9",
+    "semantic_hash": ""
+  },
+  "public/logos/pit_m.png": {
+    "mtime": 1791343870.8702765,
+    "seen": 1791344803.8557248,
+    "ast_hash": "26d86138ee2db07ad73a405bfdfaa9f4",
+    "semantic_hash": ""
+  },
+  "public/logos/pit_s.png": {
+    "mtime": 1791343870.9265087,
+    "seen": 1791344803.8557277,
+    "ast_hash": "a4436ebee347277ab3b7d2ad943458c6",
+    "semantic_hash": ""
+  },
+  "public/logos/sea_l.png": {
+    "mtime": 1791343869.9783595,
+    "seen": 1791344803.8557303,
+    "ast_hash": "5dc0b73711a4c555e7fcc1e490aaee0c",
+    "semantic_hash": ""
+  },
+  "public/logos/sea_m.png": {
+    "mtime": 1791343869.9618735,
+    "seen": 1791344803.855733,
+    "ast_hash": "d6f58cedeb24febe74a73f88cc1a56de",
+    "semantic_hash": ""
+  },
+  "public/logos/sea_s.png": {
+    "mtime": 1791343869.989629,
+    "seen": 1791344803.8557355,
+    "ast_hash": "66d685b5e3d6d2c984061501ce69b5b3",
+    "semantic_hash": ""
+  },
+  "public/logos/sf_l.png": {
+    "mtime": 1791343869.9003568,
+    "seen": 1791344803.8557386,
+    "ast_hash": "69d1597266e4e464b063cfa7bf54b308",
+    "semantic_hash": ""
+  },
+  "public/logos/sf_m.png": {
+    "mtime": 1791343869.8710296,
+    "seen": 1791344803.8557413,
+    "ast_hash": "8b178386433febed810b2f71df89b167",
+    "semantic_hash": ""
+  },
+  "public/logos/sf_s.png": {
+    "mtime": 1791343869.9053142,
+    "seen": 1791344803.855744,
+    "ast_hash": "edbab3963f74e899974505cb1204d43a",
+    "semantic_hash": ""
+  },
+  "public/logos/tb_l.png": {
+    "mtime": 1791343869.594613,
+    "seen": 1791344803.8557467,
+    "ast_hash": "e5f33ab6fc347d0dfa5874787681b513",
+    "semantic_hash": ""
+  },
+  "public/logos/tb_m.png": {
+    "mtime": 1791343869.5886137,
+    "seen": 1791344803.8557494,
+    "ast_hash": "8ce0243f451e8a37b72eb1e53d8422e9",
+    "semantic_hash": ""
+  },
+  "public/logos/tb_s.png": {
+    "mtime": 1791343869.6106088,
+    "seen": 1791344803.8557522,
+    "ast_hash": "b764dbbd15f8109154b6e67c8b0a9b88",
+    "semantic_hash": ""
+  },
+  "public/logos/ten_l.png": {
+    "mtime": 1791343871.9037082,
+    "seen": 1791344803.8557549,
+    "ast_hash": "d042410b611c76bbfb2884fe3f859347",
+    "semantic_hash": ""
+  },
+  "public/logos/ten_m.png": {
+    "mtime": 1791343871.8685954,
+    "seen": 1791344803.8557575,
+    "ast_hash": "bf8d90e1c36af082541adfc08de147ee",
+    "semantic_hash": ""
+  },
+  "public/logos/ten_s.png": {
+    "mtime": 1791343871.9101164,
+    "seen": 1791344803.85576,
+    "ast_hash": "700314e75497d08a0b946703e48c4600",
+    "semantic_hash": ""
+  },
+  "public/logos/was_l.png": {
+    "mtime": 1791343868.7873917,
+    "seen": 1791344803.855763,
+    "ast_hash": "bed7a96dc3965e6ade61541311d54c19",
+    "semantic_hash": ""
+  },
+  "public/logos/was_m.png": {
+    "mtime": 1791343868.7627344,
+    "seen": 1791344803.8557658,
+    "ast_hash": "ffd96be69975b5e6f67d9c79fca48997",
+    "semantic_hash": ""
+  },
+  "public/logos/was_s.png": {
+    "mtime": 1791343868.7913904,
+    "seen": 1791344803.8557682,
+    "ast_hash": "248a6ef46b46733901eb150557e0eb85",
     "semantic_hash": ""
   }
 }

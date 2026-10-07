@@ -58,6 +58,7 @@ interface Look {
   skin: string;
   glove: string;
   num: string;
+  numColor: string;
 }
 
 /** Desenha o jogador no canvas (coordenadas "bottom" do design convertidas para "top"). */
@@ -99,7 +100,7 @@ function drawPlayer(ctx: CanvasRenderingContext2D, L: Look, pose: Pose) {
   r(5, 19, 18, 11, L.jersey);
   ctx.fillStyle = 'rgba(0,0,0,0.22)';
   ctx.fillRect(5 * PX, (BOX_H - 19 - 2) * PX, 18 * PX, 2 * PX);
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = L.numColor;
   ctx.font = `${6 * PX}px ${FONT_TITLE}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -162,14 +163,15 @@ export function makePlayerTexture(scene: Phaser.Scene, side: Side, num: number, 
   const ctx = tex.getContext();
   const look: Look = {
     front: !off,
-    helmet: hex(team.color),
-    jersey: hex(team.color),
-    pants: off ? '#F4F1E8' : '#C9CED6',
-    trim: hex(team.color),
-    sock: off ? '#F4F1E8' : hex(team.color),
+    helmet: team.uniform.helmet,
+    jersey: team.uniform.jersey,
+    pants: team.uniform.pants,
+    trim: team.uniform.trim,
+    sock: team.uniform.sock,
     skin: SKINS[skinIndex % SKINS.length],
     glove: off ? '#F4F1E8' : '#1A1A1A',
     num: String(num),
+    numColor: team.uniform.num,
   };
   POSES.forEach((pose, i) => {
     ctx.save();
@@ -215,7 +217,12 @@ export class Player {
   ) {
     this.x = slot.x;
     this.y = los + slot.d;
-    this.attrs = { ...BASE[slot.role] };
+    // Notas do time: ataque (ou defesa) acima/abaixo de 75 mexem nos atributos dos jogadores
+    const rt = (side === 'off' ? TEAMS.home : TEAMS.away).rating;
+    const q = (side === 'off' ? rt.atk : rt.def) - 75;
+    const b = BASE[slot.role];
+    const sc = (v: number, k: number) => Math.max(5, Math.min(99, Math.round(v * (1 + q * k))));
+    this.attrs = { speed: sc(b.speed, 0.0022), strength: sc(b.strength, 0.004), hands: sc(b.hands, 0.004), coverage: sc(b.coverage, 0.004), tackle: sc(b.tackle, 0.004) };
     const key = makePlayerTexture(scene, side, slot.num, skinIndex);
     this.bb = layer.add(key, this.x, this.y, { scale: PLAYER_SCALE, shadow: 2.2 });
     this.bb.img.setFrame('idle');

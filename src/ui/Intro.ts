@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_TITLE, GAME_H, GAME_W, TEAMS } from '../config';
+import { FONT_TITLE, GAME_H, GAME_W, TEAMS, logoKey } from '../config';
 import type { Rng } from '../systems/rng';
 import { GlassButton, label, title, UI } from './widgets';
 
@@ -10,29 +10,6 @@ import { GlassButton, label, title, UI } from './widgets';
  * Termina chamando onDone(receive): true = seu time recebe, false = seu time chuta o kickoff.
  */
 
-
-export function helmet(sc: Phaser.Scene, color: number, flip: boolean) {
-  const c = sc.add.container(0, 0);
-  const g = sc.add.graphics();
-  g.fillStyle(UI.dark, 1);
-  g.fillRoundedRect(-2, -2, 48, 38, 16);
-  g.fillStyle(color, 1);
-  g.fillRoundedRect(0, 0, 44, 34, { tl: 16, tr: 16, bl: 4, br: 10 });
-  g.fillStyle(0xffffff, 1);
-  g.fillRect(19, 0, 6, 20);
-  g.fillStyle(0x000000, 0.28);
-  g.fillCircle(14, 20, 4);
-  g.fillStyle(0xffffff, 0.35);
-  g.fillRect(6, 5, 8, 3);
-  g.lineStyle(2, 0xd7dbe0, 1);
-  g.lineBetween(38, 14, 48, 14);
-  g.lineBetween(48, 14, 48, 30);
-  g.lineBetween(48, 30, 34, 30);
-  g.lineBetween(48, 22, 40, 22);
-  c.add(g);
-  c.setScale(flip ? -1.6 : 1.6, 1.6);
-  return c;
-}
 
 export class Intro {
   private root: Phaser.GameObjects.Container | null = null;
@@ -78,7 +55,7 @@ export class Intro {
     const W = GAME_W;
     const H = GAME_H;
     this.clear();
-    this.add(label(sc, W / 2, 62, 'QB CAREER · TEMPORADA 1 · SEMANA 3', 10, UI.muted).setOrigin(0.5));
+    this.add(label(sc, W / 2, 62, 'QB CAREER · PARTIDA RÁPIDA', 10, UI.muted).setOrigin(0.5));
     this.add(title(sc, W / 2, 92, 'HOJE NO ESTÁDIO', 12, '#FFFFFF').setOrigin(0.5));
 
     const card = (side: 'home' | 'away', y: number) => {
@@ -94,21 +71,16 @@ export class Intro {
       g.fillRoundedRect(x0, 0, w, 150, 14);
       g.lineStyle(2, t.color, 0.9);
       g.strokeRoundedRect(x0, 0, w, 150, 14);
-      // bloco da cor do time com capacete
+      // bloco da cor do time com a logo
       g.fillStyle(t.color, 1);
       g.fillRoundedRect(x0 + 8, 8, 112, 134, 10);
+      g.fillStyle(0x0a0c1a, 0.35);
+      g.fillRoundedRect(x0 + 8, 8, 112, 134, 10);
       c.add(g);
-      const h = helmet(sc, t.color === 0xffffff ? 0xdddddd : t.color, !fromLeft);
-      // capacete com contorno claro para não sumir sobre o bloco colorido
-      h.setPosition(fromLeft ? x0 + 24 : x0 + 104, 20);
-      const hb = sc.add.graphics();
-      hb.fillStyle(0x0a0c1a, 0.4);
-      hb.fillRoundedRect(x0 + 8, 8, 112, 134, 10);
-      c.add([hb, h]);
-      c.add(title(sc, x0 + 64, 112, t.abbr, 16, '#FFFFFF').setOrigin(0.5).setStroke('#0D0D12', 5));
+      c.add(sc.add.image(x0 + 64, 75, logoKey(t.id, 'l')).setDisplaySize(100, 100));
       const tx = x0 + 136;
       c.add(title(sc, tx, 22, t.name, 14, '#FFFFFF').setOrigin(0, 0.5));
-      c.add(label(sc, tx, 44, `${fromLeft ? 'MANDANTE' : 'VISITANTE'} · ${t.record.join('-')}`, 10, UI.muted).setOrigin(0, 0.5));
+      c.add(label(sc, tx, 44, `${fromLeft ? 'MANDANTE' : 'VISITANTE'} · OVR ${t.rating.ovr}`, 10, UI.muted).setOrigin(0, 0.5));
       const R = t.rating;
       [['ATAQUE', R.atk], ['DEFESA', R.def], ['ESPECIAIS', R.esp]].forEach(([n, v], i) => {
         const yy = 70 + i * 26;
