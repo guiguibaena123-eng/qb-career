@@ -1,3 +1,4 @@
+import { difficulty } from './difficulty';
 import { FIELD } from '../config';
 import type { RecvKey } from '../data/plays';
 import type { Player } from '../entities/Player';
@@ -69,7 +70,7 @@ export class LivePlay {
     this.blocks = new Map(blockAssignments(this.ol, this.dl).map((b) => [b.from, b.to]));
     // Um DL de ponta escapa do bloqueio depois de alguns segundos (pocket curto)
     this.escaper = rng.chance(0.5) ? this.dl[0] : this.dl[3];
-    this.escapeAt = rng.range(2.1, 3.3);
+    this.escapeAt = rng.range(2.1, 3.3) + difficulty.d.pocket;
     for (const p of [...offense, ...defense]) {
       p.state = 'live';
       p.wait = 0;

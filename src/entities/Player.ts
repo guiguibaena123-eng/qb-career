@@ -1,3 +1,4 @@
+import { difficulty } from '../systems/difficulty';
 import Phaser from 'phaser';
 import { FONT_TITLE, SPRITE_SCALE, TEAMS } from '../config';
 import type { RecvKey, Role, Side, Slot } from '../data/plays';
@@ -221,7 +222,7 @@ export class Player {
 
   /** Velocidade máxima (jardas/s) a partir do atributo. */
   get maxSpeed() {
-    return 3.2 + this.attrs.speed * 0.058;
+    return (3.2 + this.attrs.speed * 0.058) * (this.side === 'def' ? difficulty.d.defSpeed : 1);
   }
 
   get role() {

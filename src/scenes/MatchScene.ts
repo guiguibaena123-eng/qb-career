@@ -29,6 +29,7 @@ import { Fx } from '../ui/Fx';
 import { Hud } from '../ui/Hud';
 import { LiveUi } from '../ui/LiveUi';
 import { ResultCard, type CardOpts } from '../ui/ResultCard';
+import { difficulty } from '../systems/difficulty';
 import { Replay } from '../systems/replay';
 import { pickWeather, Weather } from '../systems/weather';
 import { simulateDrive, spotName } from '../systems/oppdrive';
@@ -165,6 +166,7 @@ export class MatchScene extends Phaser.Scene {
     const before = this.children.list.length;
     this.buildFieldTags();
     this.buildBottom();
+    this.buildDifficulty();
     this.preUi = this.children.list.slice(before).filter((o) => o !== this.windowTag);
     this.buildTactical();
     this.buildLive();
@@ -265,6 +267,26 @@ export class MatchScene extends Phaser.Scene {
     hb.fillStyle(UI.dark, 0.8);
     hb.fillRect(-ht.width / 2 - 10, -11, ht.width + 20, 22);
     this.hint.add([hb, ht]);
+  }
+
+  /** Botão de dificuldade (canto direito, abaixo do placar): toque para trocar FÁCIL / NORMAL / DIFÍCIL. */
+  private buildDifficulty() {
+    const W = this.scale.width;
+    const btn = new GlassButton(this, W - 12 - 52, 138, { w: 104, h: 36, radius: 12 });
+    const t = label(this, 0, -6, '', 10, '#FFFFFF').setOrigin(0.5);
+    const sub = label(this, 0, 8, 'DIFICULDADE', 7, UI.muted).setOrigin(0.5);
+    btn.add([t, sub]);
+    btn.setDepth(98);
+    const paint = () => {
+      const l = difficulty.level;
+      t.setText(difficulty.d.label).setColor(l === 'easy' ? '#3CCB5A' : l === 'hard' ? '#FF7B80' : '#FFD23F');
+    };
+    btn.onTap = () => {
+      difficulty.next();
+      paint();
+      vibrate(VIBE.tap);
+    };
+    paint();
   }
 
   private buildBottom() {
@@ -952,7 +974,7 @@ export class MatchScene extends Phaser.Scene {
       const clean = !rOk || recv.d > def.d + 1.2;
       let pInt = clean ? 0.78 - def.d * 0.12 : 0.3 + Math.max(0, recv.d - def.d) * 0.1;
       pInt += (d.attrs.hands - 60) / 200 + (read?.intChance ?? 0) * 0.5;
-      pInt = Math.max(0.12, Math.min(0.88, pInt));
+      pInt = Math.max(0.08, Math.min(0.9, pInt * difficulty.d.intMul));
       if (this.rng.next() < pInt) return this.interception(d);
       d.pose = 'catch';
       d.angle = d.x < t.tx ? 30 : -30; // mergulho para desviar
@@ -974,7 +996,7 @@ export class MatchScene extends Phaser.Scene {
       else if (dd < 3) chance -= 0.05;
       else chance = Math.max(chance, 0.9); // livre de verdade: drop raro
       if (read?.receiver === r) chance = Math.max(chance, read.chance);
-      chance = Math.min(0.98, chance) - this.weather.dropPenalty;
+      chance = Math.min(0.98, chance) - this.weather.dropPenalty + difficulty.d.catch;
       if (this.rng.next() < chance) return this.reception(r, dOk ? 'NO TRÁFEGO' : 'LIVRE');
       r.pose = 'catch';
       this.time.delayedCall(300, () => (r.pose = null));
@@ -1092,6 +1114,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private gainXp(n: number, at?: Player) {
+    n = Math.round(n * difficulty.d.xp);
     this.state.xp += n;
     this.playXp += n;
     const p = at ? this.world.proj.project(at.x, at.y, 4.2) : { x: this.scale.width / 2, y: 330 };
@@ -1391,7 +1414,7 @@ export class MatchScene extends Phaser.Scene {
 
   private fgChance(dist: number) {
     const w = this.state.wind.mph;
-    return Phaser.Math.Clamp(1.04 - Math.max(0, dist - 20) * 0.0125 - this.weather.kickPenalty - w * 0.004, 0.05, 0.97);
+    return Phaser.Math.Clamp(1.04 - Math.max(0, dist - 20) * 0.0125 - this.weather.kickPenalty - w * 0.004 + difficulty.d.kick, 0.05, 0.97);
   }
 
   /** Chute: PAT (ponto extra), FG (field goal) ou PUNT, com a barra de agulha. */
@@ -1619,7 +1642,7 @@ export class MatchScene extends Phaser.Scene {
     this.weather.setPillVisible(false);
     this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
     this.liveUi.show('none');
-    const drive = simulateDrive(kick ? 75 : at, this.rng, TEAMS.home.abbr, TEAMS.away.abbr, TEAMS.away.name);
+    const drive = simulateDrive(kick ? 75 : at, this.rng, TEAMS.home.abbr, TEAMS.away.abbr, TEAMS.away.name, difficulty.d.oppEdge);
     const los = Phaser.Math.Clamp(drive.ourLos, 1, 99);
     const where = los < 50 ? `NA SUA ${los}` : los === 50 ? 'NO MEIO' : `NA ${TEAMS.away.abbr} ${100 - los}`;
     this.phase = 'defense';

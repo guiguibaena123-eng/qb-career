@@ -34,7 +34,9 @@ export function spotName(y: number, homeAbbr: string, awayAbbr: string) {
   return v < 50 ? `${homeAbbr} ${v}` : `${awayAbbr} ${100 - v}`;
 }
 
-export function simulateDrive(start: number, rng: Rng, home = 'LOB', away = 'TOU', teamName = 'TOUROS'): DriveResult {
+export function simulateDrive(start: number, rng: Rng, home = 'LOB', away = 'TOU', teamName = 'TOUROS', edge = 0): DriveResult {
+  const w = 1 - 0.5 * edge; // largura das jogadas ruins para eles
+  const gm = 1 + 0.25 * edge; // ganho das jogadas boas
   const rows: DriveRow[] = [];
   let y = start;
   let down = 1;
@@ -76,25 +78,25 @@ export function simulateDrive(start: number, rng: Rng, home = 'LOB', away = 'TOU
     let tone: DriveRow['tone'] = 'normal';
     let turnover = false;
     if (r < 0.42) {
-      gain = Math.round(rng.range(-2, 8) + (rng.chance(0.08) ? rng.range(8, 25) : 0));
+      gain = Math.round((rng.range(-2, 8) + (rng.chance(0.08) ? rng.range(8, 25) : 0)) * gm);
       text = gain >= 10 ? `CORRIDA LONGA · +${gain} JDS` : gain > 3 ? `CORRIDA PELO MEIO · +${gain} JDS` : gain > 0 ? `CORRIDA CURTA · +${gain} JDS` : `PARADO NA LINHA · ${gain} JDS`;
       if (gain <= 0) tone = 'good';
-    } else if (r < 0.47) {
+    } else if (r < 0.42 + 0.05 * w) {
       gain = -rng.int(5, 9);
       text = `SACK DA SUA DEFESA! ${gain} JDS`;
       tone = 'good';
-    } else if (r < 0.505) {
+    } else if (r < 0.42 + 0.085 * w) {
       turnover = true;
       text = 'INTERCEPTAÇÃO DA SUA DEFESA!';
       tone = 'good';
-    } else if (r < 0.52) {
+    } else if (r < 0.42 + 0.1 * w) {
       turnover = true;
       text = 'FUMBLE! SUA DEFESA RECUPEROU';
       tone = 'good';
     } else if (r < 0.66) {
       text = 'PASSE INCOMPLETO';
     } else {
-      gain = Math.round(rng.range(4, 14) + (rng.chance(0.12) ? rng.range(10, 35) : 0));
+      gain = Math.round((rng.range(4, 14) + (rng.chance(0.12) ? rng.range(10, 35) : 0)) * gm);
       text = `PASSE COMPLETO · +${gain} JDS`;
       if (gain >= 20) tone = 'bad';
     }

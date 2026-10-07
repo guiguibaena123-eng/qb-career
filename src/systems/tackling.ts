@@ -1,3 +1,4 @@
+import { difficulty } from './difficulty';
 import type { Player } from '../entities/Player';
 import type { Rng } from './rng';
 
@@ -24,6 +25,7 @@ export function tryTackle(def: Player, carrier: Player, evasive: 'juke' | 'spin'
   if (evasive === 'juke') p *= 0.38;
   if (evasive === 'spin') p *= 0.45;
   p -= slippery;
+  p += def.side === 'def' ? difficulty.d.tackle : 0;
   p = Math.max(0.05, Math.min(0.95, p));
   const made = rng.next() < p;
   const speed = Math.hypot(def.vx - carrier.vx, def.vy - carrier.vy);
