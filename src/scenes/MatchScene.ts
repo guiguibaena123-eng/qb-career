@@ -191,6 +191,7 @@ export class MatchScene extends Phaser.Scene {
 
     // Clima e vento da partida
     this.weather = new Weather(this, pickWeather(this.rng), this.rng);
+    this.world.sideline.snow = this.weather.kind === 'snow';
     this.state.wind = { dir: this.rng.chance(0.5) ? -1 : 1, mph: this.rng.int(0, 18) };
     this.kickUi = new KickUi(this);
     this.defenseScreen = new DefenseScreen(this);

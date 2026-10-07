@@ -26,6 +26,8 @@ const BENCH = { x0: fx(-12), x1: fx(0), y0: fy(930), y1: fy(690) };
 export class Sideline {
   private g: Phaser.GameObjects.Graphics;
   readonly people: BillboardLayer;
+  /** Neve: montes brancos em volta do campo (a neve tirada de dentro e jogada nas bordas). */
+  snow = false;
 
   constructor(scene: Phaser.Scene, private proj: Projection) {
     buildSidelineTextures(scene);
@@ -85,6 +87,7 @@ export class Sideline {
       groundQuad(g, p, fx(603) - 0.15, y, fx(603) + 0.15, y + 0.7, 0xffffff, 0.9);
     }
 
+    if (this.snow) this.drawSnowBanks();
     for (const side of ['home', 'away'] as const) this.drawBench(side);
     this.people.update(p);
   }
@@ -114,5 +117,44 @@ export class Sideline {
     // Faixa na cor do time na borda virada para o campo
     const stripe = side === 'home' ? [x1 - 0.3, x1] : [x0, x0 + 0.3];
     groundQuad(this.g, this.proj, stripe[0], BENCH.y0, stripe[1], BENCH.y1, shadeNum(color, 0), 1, 0.9);
+  }
+
+  /**
+   * Montes de neve logo fora das 4 linhas: ao longo das laterais (menos nas áreas dos times,
+   * onde ficam reservas e técnicos) e atrás das end zones. Borda irregular + topo mais claro.
+   */
+  private drawSnowBanks() {
+    const g = this.g;
+    const p = this.proj;
+    const W = FIELD.width;
+    const bump = (t: number) => 0.35 * Math.sin(t * 1.7) + 0.25 * Math.sin(t * 4.3 + 1);
+    const pile = (pts: [number, number][], top: [number, number][]) => {
+      groundPoly(g, p, pts, 0xc4cfe6, 1);
+      groundPoly(g, p, top, 0xf7f9ff, 1, 0.22);
+    };
+    // Laterais (passo de 1 jarda)
+    for (let y = -10; y < 110; y += 1) {
+      if (y + 1 > AREA.y0 - 1 && y < AREA.y1 + 1) continue;
+      for (const side of [1, -1]) {
+        const X = (x: number) => (side === 1 ? x : W - x);
+        const o0 = -1.95 - bump(y) * 0.6;
+        const o1 = -1.95 - bump(y + 1) * 0.6;
+        pile(
+          [[X(-1.05), y], [X(o0), y], [X(o1), y + 1], [X(-1.05), y + 1]],
+          [[X(-1.25), y], [X(o0 + 0.35), y], [X(o1 + 0.35), y + 1], [X(-1.25), y + 1]],
+        );
+      }
+    }
+    // Atrás das end zones
+    for (let x = -1.7; x < W + 1.7; x += 1) {
+      for (const [e, d] of [[110, 1], [-10, -1]] as const) {
+        const a0 = e + d * (1.05 + 1.0 + bump(x) * 0.6);
+        const a1 = e + d * (1.05 + 1.0 + bump(x + 1) * 0.6);
+        pile(
+          [[x, e + d * 1.05], [x, a0], [x + 1, a1], [x + 1, e + d * 1.05]],
+          [[x, e + d * 1.25], [x, a0 - d * 0.35], [x + 1, a1 - d * 0.35], [x + 1, e + d * 1.25]],
+        );
+      }
+    }
   }
 }

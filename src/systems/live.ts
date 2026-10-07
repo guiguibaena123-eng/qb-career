@@ -298,7 +298,7 @@ export class LivePlay {
         seek(o, (d.x + c.x) / 2, (d.y + c.y) / 2, o.maxSpeed * 0.9, dt);
         if (dist(o, d) < 0.9 && dd > 1.2) {
           this.engaged.set(d, o);
-          d.wait = 0.5 + (o.attrs.strength - d.attrs.strength + 30) / 60 + this.rng.range(0, 0.6);
+          d.wait = Math.max(0.15, 0.25 + (o.attrs.strength - d.attrs.strength + 20) / 90 + this.rng.range(0, 0.35));
         }
       } else arrive(o, o.x, o.y + 1, 3, dt);
     }
@@ -310,7 +310,7 @@ export class LivePlay {
         continue;
       }
       if (this.engaged.has(d)) this.engaged.delete(d);
-      pursue(d, c, d.maxSpeed * 1.02, dt, 0.9);
+      pursue(d, c, d.maxSpeed * 1.07, dt, 0.9);
       if (dist(d, c) < TACKLE_RANGE) {
         const r = tryTackle(d, c, this.evasive, this.rng, this.slippery);
         if (r.made) {
@@ -318,7 +318,7 @@ export class LivePlay {
           this.ev.onTackle(d, r);
           return;
         }
-        d.wait = 0.9; // errou o tackle e caiu
+        d.wait = 0.55; // errou o tackle e caiu
         d.angle = d.x < c.x ? -75 : 75;
         this.ev.onBrokenTackle(d, this.evasive ?? 'stiff');
       }
