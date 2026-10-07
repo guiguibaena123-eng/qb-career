@@ -5,6 +5,7 @@ import { box, groundPoly, groundQuad } from '../systems/ground';
 import { shadeNum } from '../systems/pixelart';
 import { PLANE, type Projection } from '../systems/projection';
 import { Rng } from '../systems/rng';
+import { STAND_GAP } from '../systems/grandstand';
 import { SKINS, SPRITE_KEYS, buildSidelineTextures } from './sprites';
 
 type Side = 'home' | 'away';
@@ -120,41 +121,41 @@ export class Sideline {
   }
 
   /**
-   * Montes de neve logo fora das 4 linhas: ao longo das laterais (menos nas áreas dos times,
-   * onde ficam reservas e técnicos) e atrás das end zones. Borda irregular + topo mais claro.
+   * Montes de neve encostados no muro (perto da arquibancada, atrás de fotógrafos e câmeras):
+   * seguem a borda do gramado em volta do campo, inclusive os cantos arredondados.
+   * Borda de dentro irregular, base azulada e topo mais branco.
    */
   private drawSnowBanks() {
     const g = this.g;
     const p = this.proj;
-    const W = FIELD.width;
-    const bump = (t: number) => 0.35 * Math.sin(t * 1.7) + 0.25 * Math.sin(t * 4.3 + 1);
-    const pile = (pts: [number, number][], top: [number, number][]) => {
-      groundPoly(g, p, pts, 0xc4cfe6, 1);
-      groundPoly(g, p, top, 0xf7f9ff, 1, 0.22);
-    };
-    // Laterais (passo de 1 jarda)
-    for (let y = -10; y < 110; y += 1) {
-      if (y + 1 > AREA.y0 - 1 && y < AREA.y1 + 1) continue;
-      for (const side of [1, -1]) {
-        const X = (x: number) => (side === 1 ? x : W - x);
-        const o0 = -1.95 - bump(y) * 0.6;
-        const o1 = -1.95 - bump(y + 1) * 0.6;
-        pile(
-          [[X(-1.05), y], [X(o0), y], [X(o1), y + 1], [X(-1.05), y + 1]],
-          [[X(-1.25), y], [X(o0 + 0.35), y], [X(o1 + 0.35), y + 1], [X(-1.25), y + 1]],
-        );
-      }
+    // Borda do gramado (mesma do estádio): X −110..743, topo T 118 − recuo, cantos de raio 140 px
+    const xl = fx(-110);
+    const xr = fx(743);
+    const top = fy(118 - STAND_GAP * PLANE.pxPerYard);
+    const r = 14;
+    const edge: [number, number, number, number][] = []; // x, y, normal para dentro (nx, ny)
+    for (let y = -16; y < top - r; y += 1.2) edge.push([xl, y, 1, 0]);
+    for (let a = 180; a >= 90; a -= 7.5) {
+      const t = (a * Math.PI) / 180;
+      edge.push([xl + r + Math.cos(t) * r, top - r + Math.sin(t) * r, -Math.cos(t), -Math.sin(t)]);
     }
-    // Atrás das end zones
-    for (let x = -1.7; x < W + 1.7; x += 1) {
-      for (const [e, d] of [[110, 1], [-10, -1]] as const) {
-        const a0 = e + d * (1.05 + 1.0 + bump(x) * 0.6);
-        const a1 = e + d * (1.05 + 1.0 + bump(x + 1) * 0.6);
-        pile(
-          [[x, e + d * 1.05], [x, a0], [x + 1, a1], [x + 1, e + d * 1.05]],
-          [[x, e + d * 1.25], [x, a0 - d * 0.35], [x + 1, a1 - d * 0.35], [x + 1, e + d * 1.25]],
-        );
-      }
+    for (let x = xl + r; x < xr - r; x += 1.2) edge.push([x, top, 0, -1]);
+    for (let a = 90; a >= 0; a -= 7.5) {
+      const t = (a * Math.PI) / 180;
+      edge.push([xr - r + Math.cos(t) * r, top - r + Math.sin(t) * r, -Math.cos(t), -Math.sin(t)]);
+    }
+    for (let y = top - r; y > -16; y -= 1.2) edge.push([xr, y, -1, 0]);
+
+    const depth = (i: number) => 2.4 + 0.5 * Math.sin(i * 0.9) + 0.35 * Math.sin(i * 2.3 + 1);
+    for (let i = 0; i < edge.length - 1; i++) {
+      const [x0, y0, nx0, ny0] = edge[i];
+      const [x1, y1, nx1, ny1] = edge[i + 1];
+      const d0 = depth(i);
+      const d1 = depth(i + 1);
+      groundPoly(g, p, [[x0, y0], [x0 + nx0 * d0, y0 + ny0 * d0], [x1 + nx1 * d1, y1 + ny1 * d1], [x1, y1]], 0xc4cfe6, 1);
+      const t0 = d0 - 0.45;
+      const t1 = d1 - 0.45;
+      groundPoly(g, p, [[x0, y0], [x0 + nx0 * t0, y0 + ny0 * t0], [x1 + nx1 * t1, y1 + ny1 * t1], [x1, y1]], 0xf7f9ff, 1, 0.3);
     }
   }
 }
