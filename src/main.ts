@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import '@fontsource/press-start-2p';
 import '@fontsource/silkscreen';
 import { GAME_H, GAME_W } from './config';
-import { PreSnapScene } from './scenes/PreSnapScene';
+import { MatchScene } from './scenes/MatchScene';
 
 async function boot() {
   // Espera as fontes carregarem para os textos do Phaser não nascerem com fonte padrão
@@ -18,7 +18,7 @@ async function boot() {
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, powerPreference: 'high-performance' },
     fps: { target: 60 },
-    scene: [PreSnapScene],
+    scene: [MatchScene],
   });
 }
 

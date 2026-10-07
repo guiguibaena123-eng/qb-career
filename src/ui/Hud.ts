@@ -108,6 +108,119 @@ export class Hud {
   private confX = 0;
   private confY = 0;
 
+  // ---- Barras alternativas (lance ao vivo / resultado), no mesmo lugar da barra de descida
+  private pocketBar!: Phaser.GameObjects.Container;
+  private pocketSegs!: Phaser.GameObjects.Graphics;
+  private pocketTime!: Phaser.GameObjects.Text;
+  private pocketDown!: Phaser.GameObjects.Text;
+  private resultBar!: Phaser.GameObjects.Container;
+  private resultG!: Phaser.GameObjects.Graphics;
+  private resultText!: Phaser.GameObjects.Text;
+  private resultYds!: Phaser.GameObjects.Text;
+  private resultDown!: Phaser.GameObjects.Text;
+
+  private buildBars(depth: number) {
+    const sc = this.scene;
+    const L = 12;
+    const R = sc.scale.width - 12;
+    const by = 72;
+    const bh = 34;
+    // POCKET: "2ª & 7" + segmentos + segundos
+    this.pocketBar = sc.add.container(0, 0).setDepth(depth).setVisible(false);
+    const pg = sc.add.graphics();
+    this.pocketDown = title(sc, L + 10, by + bh / 2, '', 12, '#0D0D12').setOrigin(0, 0.5);
+    const plbl = label(sc, 0, by + bh / 2, 'POCKET', 10, '#C9CEE0').setOrigin(0, 0.5);
+    this.pocketTime = title(sc, R - 10, by + bh / 2, '', 9, '#FFB02E').setOrigin(1, 0.5);
+    this.pocketSegs = sc.add.graphics();
+    this.pocketBar.add([pg, this.pocketDown, plbl, this.pocketTime, this.pocketSegs]);
+    this.layoutPocket = () => {
+      this.pocketDown.setText(this.state.downText);
+      const dw = this.pocketDown.width + 20;
+      pg.clear();
+      pg.fillStyle(UI.dark, 1);
+      pg.fillRect(L - 3, by - 3, dw + 6, bh + 6);
+      pg.fillStyle(0xffd23f, 1);
+      pg.fillRect(L, by, dw, bh);
+      pg.fillStyle(UI.dark, 1);
+      pg.fillRect(L + dw + 8 - 3, by - 3, R - L - dw - 8 + 6, bh + 6);
+      pg.fillStyle(UI.dark, 0.85);
+      pg.fillRect(L + dw + 8, by, R - L - dw - 8, bh);
+      plbl.setX(L + dw + 18);
+      this.segX0 = plbl.x + plbl.width + 8;
+      this.segX1 = R - 50;
+    };
+    // Resultado: "PASSE COMPLETO · SLANT" + "+14"
+    this.resultBar = sc.add.container(0, 0).setDepth(depth).setVisible(false);
+    this.resultG = sc.add.graphics();
+    this.resultDown = title(sc, L + 10, by + bh / 2, '', 12, '#0D0D12').setOrigin(0, 0.5);
+    this.resultText = label(sc, 0, by + bh / 2, '', 11, '#FFFFFF').setOrigin(0, 0.5);
+    this.resultYds = title(sc, R - 10, by + bh / 2, '', 11, '#0D0D12').setOrigin(1, 0.5);
+    this.resultBar.add([this.resultG, this.resultDown, this.resultText, this.resultYds]);
+  }
+  private layoutPocket: () => void = () => {};
+  private segX0 = 0;
+  private segX1 = 0;
+
+  /** Qual barra aparece embaixo do placar. */
+  setBar(mode: 'pre' | 'pocket' | 'result') {
+    if (!this.pocketBar) this.buildBars(this.downBar.depth);
+    this.downBar.setVisible(mode === 'pre');
+    this.pocketBar.setVisible(mode === 'pocket');
+    this.resultBar.setVisible(mode === 'result');
+    this.card.setVisible(mode === 'pre');
+    if (mode === 'pocket') this.layoutPocket();
+  }
+
+  /** Barra POCKET: 7 segmentos (verde → laranja → vermelho) e os segundos que restam. */
+  setPocket(sec: number, frac: number) {
+    const g = this.pocketSegs;
+    g.clear();
+    const n = 7;
+    const gap = 2;
+    const w = (this.segX1 - this.segX0 - gap * (n - 1)) / n;
+    const lit = Math.ceil(Math.max(0, Math.min(1, frac)) * n);
+    for (let i = 0; i < n; i++) {
+      const col = i >= lit ? 0x3a4060 : i < 3 ? 0x3ccb5a : i < 5 ? 0xffb02e : 0xe5484d;
+      g.fillStyle(col, 1);
+      g.fillRect(this.segX0 + i * (w + gap), 72 + 12, w, 10);
+    }
+    this.pocketTime.setText(`${Math.max(0, sec).toFixed(1)}s`);
+    this.pocketTime.setColor(sec < 1 ? '#E5484D' : sec < 2 ? '#FFB02E' : '#3CCB5A');
+  }
+
+  /** Barra de resultado do lance. */
+  setResult(text: string, yards: string, color: number) {
+    if (!this.pocketBar) this.buildBars(this.downBar.depth);
+    const L = 12;
+    const R = this.scene.scale.width - 12;
+    const by = 72;
+    const bh = 34;
+    this.resultDown.setText(this.state.downText);
+    this.resultText.setText(text);
+    this.resultYds.setText(yards);
+    const dw = this.resultDown.width + 20;
+    const yw = yards ? this.resultYds.width + 20 : 0;
+    const g = this.resultG;
+    g.clear();
+    g.fillStyle(UI.dark, 1);
+    g.fillRect(L - 3, by - 3, dw + 6, bh + 6);
+    g.fillStyle(0xffd23f, 1);
+    g.fillRect(L, by, dw, bh);
+    const mx = L + dw + 8;
+    const mw = R - mx - (yw ? yw + 8 : 0);
+    g.fillStyle(UI.dark, 1);
+    g.fillRect(mx - 3, by - 3, mw + 6, bh + 6);
+    g.fillStyle(UI.dark, 0.85);
+    g.fillRect(mx, by, mw, bh);
+    if (yw) {
+      g.fillStyle(UI.dark, 1);
+      g.fillRect(R - yw - 3, by - 3, yw + 6, bh + 6);
+      g.fillStyle(color, 1);
+      g.fillRect(R - yw, by, yw, bh);
+    }
+    this.resultText.setX(mx + 10);
+  }
+
   /** Na visão tática a legenda ocupa o lugar da barra de descida e do card do QB. */
   setTactical(on: boolean) {
     this.downBar.setVisible(!on);

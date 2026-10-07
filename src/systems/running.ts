@@ -1,0 +1,117 @@
+import { FIELD } from '../config';
+import type { Player } from '../entities/Player';
+import { steer } from './steering';
+
+/*
+ * Controle de quem está com a bola (recebedor após a recepção, RB, QB correndo):
+ *   joystick → direção (sem tocar, segue correndo para frente)
+ *   SPRINT   → +25% de velocidade, gasta fôlego
+ *   JUKE     → corte lateral rápido; janela curta que quebra tackles
+ *   SPIN     → giro de 360°; janela que quebra tackles, perde um pouco de velocidade
+ *   MERGULHO → mergulha para frente ~2 jardas e o lance acaba
+ */
+
+const JUKE_TIME = 0.28;
+const SPIN_TIME = 0.42;
+const DIVE_TIME = 0.38;
+
+export class CarrierControl {
+  stamina = 1;
+  sprint = false;
+  private jukeT = 0;
+  private jukeDir = 1;
+  private spinT = 0;
+  private diveT = 0;
+  private cooldown = 0;
+  /** Mergulho terminou: o lance acaba onde ele caiu. */
+  diveDone = false;
+  /** Escorregou (neve): perde o equilíbrio por um instante. */
+  slipChance = 0;
+
+  constructor(private p: Player) {}
+
+  /** Janela de evasão ativa (para o tackle). */
+  get evasive(): 'juke' | 'spin' | null {
+    if (this.jukeT > JUKE_TIME * 0.15) return 'juke';
+    if (this.spinT > 0) return 'spin';
+    return null;
+  }
+
+  get diving() {
+    return this.diveT > 0;
+  }
+
+  juke(dirX: number) {
+    if (this.cooldown > 0 || this.diving) return false;
+    this.jukeT = JUKE_TIME;
+    this.jukeDir = dirX === 0 ? (this.p.x < FIELD.width / 2 ? 1 : -1) : Math.sign(dirX);
+    this.cooldown = 0.7;
+    return true;
+  }
+
+  spin() {
+    if (this.cooldown > 0 || this.diving) return false;
+    this.spinT = SPIN_TIME;
+    this.cooldown = 0.9;
+    return true;
+  }
+
+  dive() {
+    if (this.diving || this.diveDone) return false;
+    this.diveT = DIVE_TIME;
+    return true;
+  }
+
+  /** jx, jy: joystick na tela (−1..1; jy negativo = para cima = para frente). */
+  update(jx: number, jy: number, dt: number) {
+    const p = this.p;
+    this.cooldown = Math.max(0, this.cooldown - dt);
+
+    // Fôlego: gasta no sprint, recupera devagar
+    if (this.sprint && this.stamina > 0) this.stamina = Math.max(0, this.stamina - dt * 0.38);
+    else this.stamina = Math.min(1, this.stamina + dt * 0.12);
+    const sprinting = this.sprint && this.stamina > 0.02;
+
+    if (this.diveT > 0) {
+      this.diveT -= dt;
+      const k = 1 - this.diveT / DIVE_TIME;
+      p.angle = -75 * Math.min(1, k * 2);
+      p.hop = Math.sin(Math.min(1, k) * Math.PI) * 0.9;
+      steer(p, p.vx * 0.3, Math.max(p.vy, 6), dt, 30);
+      if (this.diveT <= 0) {
+        this.diveDone = true;
+        p.hop = 0;
+      }
+      return;
+    }
+
+    // Direção: joystick; sem tocar, continua para frente
+    let dx = jx;
+    let dy = -jy;
+    const mag = Math.min(1, Math.hypot(dx, dy));
+    if (mag < 0.15) {
+      dx = 0;
+      dy = 1;
+    } else {
+      const n = Math.hypot(dx, dy);
+      dx /= n;
+      dy /= n;
+    }
+    let speed = p.maxSpeed * (sprinting ? 1.25 : 1) * (mag < 0.15 ? 0.92 : 0.6 + mag * 0.4);
+    if (this.spinT > 0) speed *= 0.85;
+    let vx = dx * speed;
+    let vy = dy * speed;
+
+    if (this.jukeT > 0) {
+      this.jukeT -= dt;
+      vx += this.jukeDir * 7.5;
+      vy *= 0.75;
+    }
+    if (this.spinT > 0) {
+      this.spinT -= dt;
+      p.angle = (1 - this.spinT / SPIN_TIME) * 360;
+      if (this.spinT <= 0) p.angle = 0;
+    }
+    steer(p, vx, vy, dt, this.jukeT > 0 ? 60 : 20);
+  }
+}

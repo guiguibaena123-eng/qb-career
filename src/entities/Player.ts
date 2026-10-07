@@ -14,7 +14,7 @@ const SKINS = ['#8D5524', '#C68B59', '#F1C27D', '#6B3F1F', '#E0AC69'];
 const OUTLINE = '#141414';
 const PX = 2; // desenhado em 2x
 const BOX_W = 28;
-const BOX_H = 44;
+const BOX_H = 50; // 44 do design + espaço para a bola erguida
 
 export interface Attributes {
   speed: number;
@@ -40,6 +40,12 @@ const BASE: Record<Role, Attributes> = {
   S: { speed: 82, strength: 58, hands: 60, coverage: 76, tackle: 74 },
 };
 
+/** Poses (frames) desenhadas para cada jogador. */
+export const POSES = ['idle', 'run1', 'run2', 'throw', 'catch', 'carry'] as const;
+export type Pose = (typeof POSES)[number];
+const FRAME_W = BOX_W * PX + 4;
+const FRAME_H = BOX_H * PX + 4;
+
 interface Look {
   front: boolean;
   helmet: string;
@@ -53,7 +59,7 @@ interface Look {
 }
 
 /** Desenha o jogador no canvas (coordenadas "bottom" do design convertidas para "top"). */
-function drawPlayer(ctx: CanvasRenderingContext2D, L: Look) {
+function drawPlayer(ctx: CanvasRenderingContext2D, L: Look, pose: Pose) {
   // r(x, bottom, w, h): retângulo com contorno de 1px (como o box-shadow do design)
   const r = (x: number, bottom: number, w: number, h: number, color: string, outline = true) => {
     const y = BOX_H - bottom - h;
@@ -65,22 +71,28 @@ function drawPlayer(ctx: CanvasRenderingContext2D, L: Look) {
     ctx.fillRect(x * PX, y * PX, w * PX, h * PX);
   };
 
-  // Chuteiras, meiões, calça com faixas laterais, cinto
-  r(7, 0, 6, 3, '#111111', false);
-  r(15, 0, 6, 3, '#111111', false);
-  r(8, 3, 4, 6, L.sock);
-  r(16, 3, 4, 6, L.sock);
+  // Chuteiras e meiões (correndo: uma perna levantada de cada vez)
+  const liftL = pose === 'run1' ? 3 : 0;
+  const liftR = pose === 'run2' ? 3 : 0;
+  r(7, liftL, 6, 3, '#111111', false);
+  r(15, liftR, 6, 3, '#111111', false);
+  r(8, 3 + liftL, 4, 6 - liftL, L.sock);
+  r(16, 3 + liftR, 4, 6 - liftR, L.sock);
   r(7, 9, 14, 9, L.pants);
   r(13, 9, 2, 5, 'rgba(0,0,0,0.35)', false);
   r(7, 9, 2, 9, L.trim, false);
   r(19, 9, 2, 9, L.trim, false);
   r(7, 17, 14, 2, '#1A1A1A', false);
-  // Braços: manga, pele, luva
-  for (const ax of [0, 24]) {
-    r(ax, 23, 4, 5, L.jersey);
-    r(ax, 17, 4, 6, L.skin);
-    r(ax, 14, 4, 3, L.glove);
-  }
+  // Braços: para baixo (manga, pele, luva) ou para cima (passe / recepção)
+  const upL = pose === 'catch';
+  const upR = pose === 'catch' || pose === 'throw';
+  const swing = pose === 'run1' ? 2 : pose === 'run2' ? -2 : 0;
+  ([[0, upL, swing], [24, upR, -swing]] as [number, boolean, number][]).forEach(([ax, up, sw]) => {
+    if (up) return;
+    r(ax, 23 + sw, 4, 5, L.jersey);
+    r(ax, 17 + sw, 4, 6, L.skin);
+    r(ax, 14 + sw, 4, 3, L.glove);
+  });
   // Camisa com número
   r(5, 19, 18, 11, L.jersey);
   ctx.fillStyle = 'rgba(0,0,0,0.22)';
@@ -117,6 +129,21 @@ function drawPlayer(ctx: CanvasRenderingContext2D, L: Look) {
   }
   // Brilho no capacete
   r(9, 38, 3, 3, 'rgba(255,255,255,0.55)', false);
+  // Braços levantados por cima de tudo
+  for (const [ax, up] of [[0, upL], [24, upR]] as [number, boolean][]) {
+    if (!up) continue;
+    r(ax, 30, 4, 5, L.jersey);
+    r(ax, 35, 4, 6, L.skin);
+    r(ax, 41, 4, 3, L.glove);
+  }
+  // Bola: na mão (passe) ou presa junto ao peito (carregando)
+  if (pose === 'throw') {
+    r(21, 44, 8, 5, '#8A4B1F');
+    r(24, 46, 3, 1, '#FFFFFF', false);
+  } else if (pose === 'carry') {
+    r(18, 19, 8, 5, '#8A4B1F');
+    r(21, 21, 3, 1, '#FFFFFF', false);
+  }
 }
 
 export function playerTextureKey(side: Side, num: number) {
@@ -129,10 +156,9 @@ export function makePlayerTexture(scene: Phaser.Scene, side: Side, num: number, 
   if (scene.textures.exists(key)) return key;
   const off = side === 'off';
   const team = off ? TEAMS.home : TEAMS.away;
-  const tex = scene.textures.createCanvas(key, BOX_W * PX + 4, BOX_H * PX + 4)!;
+  const tex = scene.textures.createCanvas(key, FRAME_W * POSES.length, FRAME_H)!;
   const ctx = tex.getContext();
-  ctx.translate(2, 2); // margem para o contorno
-  drawPlayer(ctx, {
+  const look: Look = {
     front: !off,
     helmet: hex(team.color),
     jersey: hex(team.color),
@@ -142,6 +168,13 @@ export function makePlayerTexture(scene: Phaser.Scene, side: Side, num: number, 
     skin: SKINS[skinIndex % SKINS.length],
     glove: off ? '#F4F1E8' : '#1A1A1A',
     num: String(num),
+  };
+  POSES.forEach((pose, i) => {
+    ctx.save();
+    ctx.translate(i * FRAME_W + 2, 2); // margem para o contorno
+    drawPlayer(ctx, look, pose);
+    ctx.restore();
+    tex.add(pose, 0, i * FRAME_W, 0, FRAME_W, FRAME_H);
   });
   tex.refresh();
   return key;
@@ -155,8 +188,20 @@ export class Player {
   y: number;
   readonly attrs: Attributes;
   readonly bb: Billboard;
-  /** Estado da máquina de estados (usado a partir da etapa 4). */
+  /** Velocidade atual (jardas/s). */
+  vx = 0;
+  vy = 0;
+  /** Estado da máquina de estados (cada sistema usa os seus: 'route', 'block', 'rush', 'cover', 'carry', 'down'...). */
   state = 'idle';
+  /** Pose fixa (passe, recepção...); null = automática (parado/correndo). */
+  pose: Pose | null = null;
+  /** Rotação do sprite em graus (mergulho, queda). */
+  angle = 0;
+  /** Altura do corpo acima do chão (pulo, mergulho), em jardas. */
+  hop = 0;
+  /** Tempo até poder agir de novo (ex.: atraso de reação, caído). */
+  wait = 0;
+  private animT = 0;
 
   constructor(
     layer: BillboardLayer,
@@ -171,6 +216,12 @@ export class Player {
     this.attrs = { ...BASE[slot.role] };
     const key = makePlayerTexture(scene, side, slot.num, skinIndex);
     this.bb = layer.add(key, this.x, this.y, { scale: PLAYER_SCALE, shadow: 2.2 });
+    this.bb.img.setFrame('idle');
+  }
+
+  /** Velocidade máxima (jardas/s) a partir do atributo. */
+  get maxSpeed() {
+    return 3.2 + this.attrs.speed * 0.058;
   }
 
   get role() {
@@ -180,9 +231,23 @@ export class Player {
     return this.slot.key;
   }
 
-  /** Copia a posição para o billboard (chamar antes de desenhar). */
-  sync() {
+  /** Copia posição, pose e rotação para o billboard (chamar uma vez por frame). */
+  sync(dt = 0) {
     this.bb.x = this.x;
     this.bb.y = this.y;
+    this.bb.h = this.hop;
+    const moving = Math.hypot(this.vx, this.vy) > 0.6;
+    let frame: Pose = this.pose ?? 'idle';
+    if (!this.pose && moving) {
+      this.animT += dt * (2 + Math.hypot(this.vx, this.vy) * 0.9);
+      frame = Math.floor(this.animT) % 2 ? 'run1' : 'run2';
+    } else if (this.pose === 'carry' && moving) {
+      this.animT += dt * (2 + Math.hypot(this.vx, this.vy) * 0.9);
+      // carregando a bola: alterna as pernas mas mantém a bola no peito
+      frame = 'carry';
+      this.bb.h = this.hop + (Math.floor(this.animT) % 2) * 0.12;
+    }
+    if (this.bb.img.frame.name !== frame) this.bb.img.setFrame(frame);
+    this.bb.img.setAngle(this.angle);
   }
 }
