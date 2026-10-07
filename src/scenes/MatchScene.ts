@@ -1477,7 +1477,7 @@ export class MatchScene extends Phaser.Scene {
       // Lado em que passa: |gx − MID| < 3,1 = entre as traves
       const gx = MID + (off / win) * 2.9 + s.wind.dir * s.wind.mph * 0.02;
       kk.to = [gx, 114, 4];
-      kk.apex = 4 + this.kickDist() * 0.1;
+      kk.apex = 7 + this.kickDist() * 0.14;
       kk.T = 1.3 + this.kickDist() * 0.012;
       kk.post = Math.abs(off / win) > 0.95 && Math.abs(off / win) < 1.12;
     }
