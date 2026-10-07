@@ -12,7 +12,7 @@ export interface QbStats {
 export class GameState {
   score = { home: 0, away: 0 };
   /** Retrospecto da temporada (vitórias-derrotas). */
-  record = { home: [4, 2], away: [2, 3] };
+  record = { home: [...TEAMS.home.record], away: [...TEAMS.away.record] };
   quarter = 1;
   /** Relógio do quarto, em segundos. */
   clock = QUARTER_SECONDS;

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { TEAMS } from '../config';
 import type { DriveResult } from '../systems/oppdrive';
 import { GlassButton, label, title, UI } from './widgets';
 
@@ -240,7 +241,7 @@ export class DefenseScreen {
     };
     const wGo = R - L - 28 - 90;
     const go = new GlassButton(sc, R - 14 - wGo / 2, y + bh - 14 - 26, { w: wGo, h: 52, radius: 16, fill: o.teamColor, fillAlpha: 1, borderAlpha: 0.35, primary: true });
-    go.add(title(sc, 0, 0, 'ENTRAR EM CAMPO', 10, '#0D0D12').setOrigin(0.5));
+    go.add(title(sc, 0, 0, 'ENTRAR EM CAMPO', 10, TEAMS.home.fg).setOrigin(0.5));
     go.onTap = () => {
       const cb = this.o?.onEnter;
       this.close();

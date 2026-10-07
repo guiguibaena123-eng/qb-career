@@ -48,12 +48,42 @@ export interface TeamConfig {
   abbr: string;
   color: number;
   colorHex: string;
+  /** Cor do texto sobre a cor do time (contraste). */
+  fg: string;
+  /** Vitórias-derrotas na temporada. */
+  record: [number, number];
+  /** Notas de apresentação. */
+  rating: { atk: number; def: number; esp: number };
 }
 
-export const TEAMS: Record<'home' | 'away', TeamConfig> = {
-  home: { name: 'LOBOS', abbr: 'LOB', color: 0xf26b1d, colorHex: '#F26B1D' },
-  away: { name: 'TOUROS', abbr: 'TOU', color: 0x22406b, colorHex: '#22406B' },
+/** Os dois times da liga fictícia. */
+export const ROSTER: Record<'LOBOS' | 'TOUROS', TeamConfig> = {
+  LOBOS: { name: 'LOBOS', abbr: 'LOB', color: 0xf26b1d, colorHex: '#F26B1D', fg: '#0D0D12', record: [4, 2], rating: { atk: 74, def: 70, esp: 66 } },
+  TOUROS: { name: 'TOUROS', abbr: 'TOU', color: 0x22406b, colorHex: '#22406B', fg: '#FFFFFF', record: [2, 3], rating: { atk: 71, def: 77, esp: 69 } },
 };
+
+/**
+ * 'home' é SEMPRE o time do jogador (ataca para o fundo da tela, fica à esquerda no placar);
+ * 'away' é o adversário. setUserTeam troca quem é quem antes de a partida começar.
+ */
+export const TEAMS: Record<'home' | 'away', TeamConfig> = {
+  home: { ...ROSTER.LOBOS, record: [...ROSTER.LOBOS.record] as [number, number] },
+  away: { ...ROSTER.TOUROS, record: [...ROSTER.TOUROS.record] as [number, number] },
+};
+
+export type TeamName = 'LOBOS' | 'TOUROS';
+export type WeatherChoice = 'clear' | 'rain' | 'snow' | 'random';
+
+/** Escolhas do menu (Partida rápida). */
+export const matchConfig: { team: TeamName; weather: WeatherChoice } = { team: 'LOBOS', weather: 'random' };
+
+export function setUserTeam(name: TeamName) {
+  const other: TeamName = name === 'LOBOS' ? 'TOUROS' : 'LOBOS';
+  matchConfig.team = name;
+  // Mexe nos mesmos objetos (quem já guardou TEAMS.home continua válido)
+  Object.assign(TEAMS.home, ROSTER[name], { record: [...ROSTER[name].record] });
+  Object.assign(TEAMS.away, ROSTER[other], { record: [...ROSTER[other].record] });
+}
 
 export const FONT_TITLE = '"Press Start 2P", monospace';
 export const FONT_LABEL = '"Silkscreen", monospace';

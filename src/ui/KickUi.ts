@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { TEAMS } from '../config';
 import { bottomGradient, GlassButton, label, title, UI } from './widgets';
 
 /*
@@ -42,8 +43,8 @@ export class KickUi {
     this.zone.setData('y', by);
     this.needle = scene.add.rectangle(W / 2, by + 11, 5, 36, 0xffffff).setDepth(D + 1).setStrokeStyle(1.5, UI.dark);
 
-    this.btn = new GlassButton(scene, W / 2, H - 30 - 30, { w: W - 40, h: 60, radius: 16, fill: 0xf26b1d, fillAlpha: 1, borderAlpha: 0.35, primary: true }).setDepth(D);
-    this.btnText = title(scene, 0, 0, 'CHUTAR', 14, '#0D0D12').setOrigin(0.5);
+    this.btn = new GlassButton(scene, W / 2, H - 30 - 30, { w: W - 40, h: 60, radius: 16, fill: TEAMS.home.color, fillAlpha: 1, borderAlpha: 0.35, primary: true }).setDepth(D);
+    this.btnText = title(scene, 0, 0, 'CHUTAR', 14, TEAMS.home.fg).setOrigin(0.5);
     this.btn.add(this.btnText);
     this.btn.onTap = () => this.stop();
 

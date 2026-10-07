@@ -37,14 +37,14 @@ export class Hud {
     g.fillRect(L + side + mid, top, side, h);
 
     const t = (k: string, o: Phaser.GameObjects.Text) => (this.texts[k] = o.setDepth(depth + 1));
-    t('homeAbbr', title(scene, L + 10, top + 9, TEAMS.home.abbr, 12, '#0D0D12'));
-    t('homeRec', label(scene, L + 10, top + 25, '', 10, '#0D0D12'));
-    t('homeScore', title(scene, L + side - 10, top + h / 2, '', 18, '#0D0D12').setOrigin(1, 0.5));
+    t('homeAbbr', title(scene, L + 10, top + 9, TEAMS.home.abbr, 12, TEAMS.home.fg));
+    t('homeRec', label(scene, L + 10, top + 25, '', 10, TEAMS.home.fg));
+    t('homeScore', title(scene, L + side - 10, top + h / 2, '', 18, TEAMS.home.fg).setOrigin(1, 0.5));
     t('quarter', label(scene, L + side + mid / 2, top + 13, '', 11, '#0D0D12').setOrigin(0.5));
     t('clock', title(scene, L + side + mid / 2, top + 31, '', 12, '#0D0D12').setOrigin(0.5));
-    t('awayScore', title(scene, L + side + mid + 10, top + h / 2, '', 18, '#FFFFFF').setOrigin(0, 0.5));
-    t('awayAbbr', title(scene, R - 10, top + 9, TEAMS.away.abbr, 12, '#FFFFFF').setOrigin(1, 0));
-    t('awayRec', label(scene, R - 10, top + 25, '', 10, '#FFFFFF').setOrigin(1, 0));
+    t('awayScore', title(scene, L + side + mid + 10, top + h / 2, '', 18, TEAMS.away.fg).setOrigin(0, 0.5));
+    t('awayAbbr', title(scene, R - 10, top + 9, TEAMS.away.abbr, 12, TEAMS.away.fg).setOrigin(1, 0));
+    t('awayRec', label(scene, R - 10, top + 25, '', 10, TEAMS.away.fg).setOrigin(1, 0));
 
     // Barra de descida / posição / play clock
     this.downBar = scene.add.container(0, 0).setDepth(depth);

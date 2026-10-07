@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_TITLE } from '../config';
+import { FONT_TITLE, TEAMS } from '../config';
 import { bottomGradient, GlassButton, label, title, UI } from './widgets';
 
 /*
@@ -178,7 +178,7 @@ export class ResultCard {
       root.add(rp);
     }
     const nx = new GlassButton(sc, R - w2 / 2, byy, { w: w2, h: bh, radius: 16, fill: o.teamColor, fillAlpha: 1, borderAlpha: 0.35, primary: true });
-    nx.add(title(sc, 0, 0, o.nextLabel ?? 'CONTINUAR', 13, '#0D0D12').setOrigin(0.5));
+    nx.add(title(sc, 0, 0, o.nextLabel ?? 'CONTINUAR', 13, TEAMS.home.fg).setOrigin(0.5));
     nx.onTap = o.next;
     root.add(nx);
   }

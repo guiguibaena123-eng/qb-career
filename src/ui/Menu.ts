@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_TITLE } from '../config';
+import { FONT_TITLE, TEAMS } from '../config';
 import { bottomGradient, GlassButton, label, title, UI } from './widgets';
 
 /*
@@ -64,9 +64,9 @@ export class Menu {
         w: bw,
         h: 60,
         radius: 16,
-        ...(b.primary ? { fill: 0xf26b1d, fillAlpha: 1, borderAlpha: 0.35, primary: true } : {}),
+        ...(b.primary ? { fill: TEAMS.home.color, fillAlpha: 1, borderAlpha: 0.35, primary: true } : {}),
       });
-      btn.add(title(sc, 0, 0, b.label.replace(' ', '\n'), 9, b.primary ? '#0D0D12' : '#FFFFFF').setOrigin(0.5).setAlign('center').setLineSpacing(6));
+      btn.add(title(sc, 0, 0, b.label.replace(' ', '\n'), 9, b.primary ? TEAMS.home.fg : '#FFFFFF').setOrigin(0.5).setAlign('center').setLineSpacing(6));
       btn.onTap = b.onTap;
       if (b.enabled === false) {
         btn.setEnabled(false);

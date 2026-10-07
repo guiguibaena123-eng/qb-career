@@ -175,8 +175,13 @@ export class MatchScene extends Phaser.Scene {
   private auto: string | null = null;
   private airYards = 0;
 
-  constructor() {
-    super('MatchScene');
+  constructor(key = 'MatchScene') {
+    super(key);
+  }
+
+  /** Cada partida começa sem texturas de partidas anteriores (as cores dos times podem ter mudado). */
+  init() {
+    for (const k of this.textures.getTextureKeys()) if (!k.startsWith('__')) this.textures.remove(k);
   }
 
   create() {
@@ -331,7 +336,7 @@ export class MatchScene extends Phaser.Scene {
     this.pauseUi = [dim, t, info];
     const mk = (y: number, text: string, onTap: () => void, primary = false) => {
       const b = new GlassButton(this, W / 2, y, { w: W - 60, h: 56, radius: 16, ...(primary ? { fill: TEAMS.home.color, fillAlpha: 1, borderAlpha: 0.35, primary: true } : {}) }).setDepth(201);
-      const tx = title(this, 0, 0, text, 11, primary ? '#0D0D12' : '#FFFFFF').setOrigin(0.5);
+      const tx = title(this, 0, 0, text, 11, primary ? TEAMS.home.fg : '#FFFFFF').setOrigin(0.5);
       b.add(tx);
       b.onTap = onTap;
       this.pauseUi.push(b);
@@ -350,7 +355,7 @@ export class MatchScene extends Phaser.Scene {
         rtx.setText('TOQUE DE NOVO').setColor('#FF7B80');
         setTimeout(() => {
           this.restartArmed = false;
-          rtx.setText('REINICIAR PARTIDA').setColor('#FFFFFF');
+          if (rtx.active) rtx.setText('REINICIAR PARTIDA').setColor('#FFFFFF');
         }, 2500);
         return;
       }
@@ -359,12 +364,36 @@ export class MatchScene extends Phaser.Scene {
       this.setPaused(false);
       this.newGame();
     });
+    let menuArmed = false;
+    const mtx = mk(590, 'MENU PRINCIPAL', () => {
+      if (!menuArmed) {
+        menuArmed = true;
+        mtx.setText('TOQUE DE NOVO').setColor('#FF7B80');
+        setTimeout(() => {
+          menuArmed = false;
+          if (mtx.active) mtx.setText('MENU PRINCIPAL').setColor('#FFFFFF');
+        }, 2500);
+        return;
+      }
+      this.toMenu();
+    });
     this.pauseInfo = info;
     this.pauseUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
     // Pausa sozinho se o jogador sair do app/aba no meio do lance
-    this.game.events.on(Phaser.Core.Events.HIDDEN, () => {
+    const onHidden = () => {
       if (this.phase === 'live' || this.phase === 'kick') this.setPaused(true);
-    });
+    };
+    this.game.events.on(Phaser.Core.Events.HIDDEN, onHidden);
+    this.events.once('shutdown', () => this.game.events.off(Phaser.Core.Events.HIDDEN, onHidden));
+  }
+
+  /** Volta ao menu principal e descarta esta partida. */
+  private toMenu() {
+    const key = this.scene.key;
+    this.time.paused = false;
+    this.tweens.resumeAll();
+    this.scene.start('MainMenu');
+    this.game.scene.remove(key);
   }
   private pauseInfo!: Phaser.GameObjects.Text;
 
@@ -1316,7 +1345,7 @@ export class MatchScene extends Phaser.Scene {
       this.gainXp(60);
       text = passComplete ? `PASSE DE ${gained} JDS · TD` : `CORRIDA DE ${gained} JDS · TD`;
       yardsText = `+${gained}`;
-      chip = ['TD', TEAMS.home.color, '#0D0D12'];
+      chip = ['TD', TEAMS.home.color, TEAMS.home.fg];
       this.postTimer = 2.2;
       const card = this.tdCard(gained, passComplete, c);
       this.afterPost = () => this.showCard(card);
@@ -1425,7 +1454,7 @@ export class MatchScene extends Phaser.Scene {
       bigSize: 30,
       chip: `+6 ${TEAMS.home.name}`,
       chipBg: TEAMS.home.color,
-      chipFg: '#0D0D12',
+      chipFg: TEAMS.home.fg,
       header: 'RESUMO DA JOGADA',
       head: `${pass ? 'PASSE' : 'CORRIDA'} DE ${gained} JDS`,
       sub,
@@ -1462,7 +1491,7 @@ export class MatchScene extends Phaser.Scene {
       bigSize: 24,
       chip: `#${d.slot.num} ${TEAMS.away.name} · ${rn}`,
       chipBg: TEAMS.away.color,
-      chipFg: '#FFFFFF',
+      chipFg: TEAMS.away.fg,
       header: 'O QUE ACONTECEU',
       head,
       sub: why,
@@ -2155,13 +2184,15 @@ export class MatchScene extends Phaser.Scene {
       bigSize: 28,
       chip: `${TEAMS.home.abbr} ${h} x ${a} ${TEAMS.away.abbr}`,
       chipBg: win ? TEAMS.home.color : TEAMS.away.color,
-      chipFg: win ? '#0D0D12' : '#FFFFFF',
+      chipFg: win ? TEAMS.home.fg : TEAMS.away.fg,
       header: 'FIM DE JOGO',
       head: `${st.comp}/${st.att} · ${st.yards} JDS`,
       sub: `${st.td} TD · ${st.int} INT · RETROSPECTO ${s.recordText('home')}`,
       stats: this.statsRow(),
       bar: this.xpBar(),
       teamColor: TEAMS.home.color,
+      replay: () => this.toMenu(),
+      replayLabel: 'MENU',
       next: () => this.newGame(),
       nextLabel: 'NOVO JOGO',
     });

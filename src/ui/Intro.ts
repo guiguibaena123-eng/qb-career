@@ -7,12 +7,11 @@ import { GlassButton, label, title, UI } from './widgets';
  * Abertura da partida:
  *   1) Apresentação dos times (cartões entram dos lados, VS, seu QB, estádio)
  *   2) Cara ou coroa: você escolhe, a moeda gira e cai; quem ganha escolhe receber ou chutar
- * Termina chamando onDone(receive): true = os LOBOS recebem, false = os LOBOS chutam o kickoff.
+ * Termina chamando onDone(receive): true = seu time recebe, false = seu time chuta o kickoff.
  */
 
-const RATINGS = { home: { atk: 74, def: 70, esp: 66 }, away: { atk: 71, def: 77, esp: 69 } };
 
-function helmet(sc: Phaser.Scene, color: number, flip: boolean) {
+export function helmet(sc: Phaser.Scene, color: number, flip: boolean) {
   const c = sc.add.container(0, 0);
   const g = sc.add.graphics();
   g.fillStyle(UI.dark, 1);
@@ -109,8 +108,8 @@ export class Intro {
       c.add(title(sc, x0 + 64, 112, t.abbr, 16, '#FFFFFF').setOrigin(0.5).setStroke('#0D0D12', 5));
       const tx = x0 + 136;
       c.add(title(sc, tx, 22, t.name, 14, '#FFFFFF').setOrigin(0, 0.5));
-      c.add(label(sc, tx, 44, `${fromLeft ? 'MANDANTE' : 'VISITANTE'} · ${side === 'home' ? '4-2' : '2-3'}`, 10, UI.muted).setOrigin(0, 0.5));
-      const R = RATINGS[side];
+      c.add(label(sc, tx, 44, `${fromLeft ? 'MANDANTE' : 'VISITANTE'} · ${t.record.join('-')}`, 10, UI.muted).setOrigin(0, 0.5));
+      const R = t.rating;
       [['ATAQUE', R.atk], ['DEFESA', R.def], ['ESPECIAIS', R.esp]].forEach(([n, v], i) => {
         const yy = 70 + i * 26;
         c.add(label(sc, tx, yy, n as string, 9, '#C9CEE0').setOrigin(0, 0.5));
@@ -163,7 +162,7 @@ export class Intro {
     sc.tweens.add({ targets: arena, alpha: 1, duration: 400, delay: 1300 });
 
     const btn = new GlassButton(sc, W / 2, H - 60, { w: W - 60, h: 60, radius: 16, fill: TEAMS.home.color, fillAlpha: 1, borderAlpha: 0.35, primary: true });
-    btn.add(title(sc, 0, 0, 'IR PARA O SORTEIO', 11, '#0D0D12').setOrigin(0.5));
+    btn.add(title(sc, 0, 0, 'IR PARA O SORTEIO', 11, TEAMS.home.fg).setOrigin(0.5));
     btn.setAlpha(0);
     btn.onTap = () => sc.time.delayedCall(30, next);
     this.add(btn);
@@ -216,7 +215,7 @@ export class Intro {
 
     const mkBtn = (x: number, text: string, onTap: () => void, primary = false, bw = (W - 52) / 2) => {
       const b = new GlassButton(sc, x, H - 70, { w: bw, h: 62, radius: 16, ...(primary ? { fill: TEAMS.home.color, fillAlpha: 1, borderAlpha: 0.35, primary: true } : {}) });
-      b.add(title(sc, 0, 0, text, 12, primary ? '#0D0D12' : '#FFFFFF').setOrigin(0.5));
+      b.add(title(sc, 0, 0, text, 12, primary ? TEAMS.home.fg : '#FFFFFF').setOrigin(0.5));
       b.onTap = () => sc.time.delayedCall(30, onTap);
       this.add(b);
       return b;

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_LABEL, FONT_TITLE } from '../config';
+import { FONT_LABEL, FONT_TITLE, matchConfig } from '../config';
 import type { Rng } from './rng';
 
 /*
@@ -187,6 +187,9 @@ export function pickWeather(rng: Rng): WeatherKind {
   if (q === 'chuva') return 'rain';
   if (q === 'neve') return 'snow';
   if (q === 'limpo') return 'clear';
+  if (matchConfig.weather === 'clear') return 'clear';
+  if (matchConfig.weather === 'rain') return 'rain';
+  if (matchConfig.weather === 'snow') return 'snow';
   const x = rng.next();
   return x < 0.6 ? 'clear' : x < 0.8 ? 'rain' : 'snow';
 }
