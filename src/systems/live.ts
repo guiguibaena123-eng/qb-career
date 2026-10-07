@@ -145,9 +145,19 @@ export class LivePlay {
     else steer(qb, 0, 0, dt);
 
     // Recebedores: rotas; o alvo do passe ajusta para o ponto de queda
+    // Quem está mais perto da queda (inclusive recebedor parado) vai buscar a bola
+    let chaser: Player | null = null;
+    if (this.landing) {
+      const L = this.landing;
+      chaser = L.target && dist(L.target, L) < 9 ? L.target : null;
+      if (!chaser) {
+        const n = nearest(this.receivers.map((r) => r.p), L.x, L.y);
+        if (n.p && n.d < 9) chaser = n.p;
+      }
+    }
     for (const r of this.receivers) {
-      if (this.landing && r.p === this.landing.target && dist(r.p, this.landing) < 6) {
-        arrive(r.p, this.landing.x, this.landing.y, r.p.maxSpeed, dt, 0.8, 24);
+      if (this.landing && r.p === chaser) {
+        arrive(r.p, this.landing.x, this.landing.y, r.p.maxSpeed, dt, 0.6, 24);
       } else r.runner?.step(r.p, dt);
     }
 
