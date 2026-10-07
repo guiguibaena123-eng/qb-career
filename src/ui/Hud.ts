@@ -189,13 +189,13 @@ export class Hud {
   }
 
   /** Barra de resultado do lance. */
-  setResult(text: string, yards: string, color: number) {
+  setResult(text: string, yards: string, color: number, chip?: [string, number, string]) {
     if (!this.pocketBar) this.buildBars(this.downBar.depth);
     const L = 12;
     const R = this.scene.scale.width - 12;
     const by = 72;
     const bh = 34;
-    this.resultDown.setText(this.state.downText);
+    this.resultDown.setText(chip ? chip[0] : this.state.downText).setColor(chip ? chip[2] : '#0D0D12');
     this.resultText.setText(text);
     this.resultYds.setText(yards);
     const dw = this.resultDown.width + 20;
@@ -204,7 +204,7 @@ export class Hud {
     g.clear();
     g.fillStyle(UI.dark, 1);
     g.fillRect(L - 3, by - 3, dw + 6, bh + 6);
-    g.fillStyle(0xffd23f, 1);
+    g.fillStyle(chip ? chip[1] : 0xffd23f, 1);
     g.fillRect(L, by, dw, bh);
     const mx = L + dw + 8;
     const mw = R - mx - (yw ? yw + 8 : 0);

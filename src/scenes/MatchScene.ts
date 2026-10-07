@@ -28,6 +28,8 @@ import { GameState } from '../state/GameState';
 import { Fx } from '../ui/Fx';
 import { Hud } from '../ui/Hud';
 import { LiveUi } from '../ui/LiveUi';
+import { ResultCard, type CardOpts } from '../ui/ResultCard';
+import { Replay } from '../systems/replay';
 import { bottomGradient, GlassButton, label, Tag, title, UI } from '../ui/widgets';
 
 const KEYS: RecvKey[] = ['A', 'B', 'C', 'D', 'E'];
@@ -78,7 +80,16 @@ export class MatchScene extends Phaser.Scene {
   private fps?: Phaser.GameObjects.Text;
 
   // ---- lance ao vivo
-  private phase: 'pre' | 'live' | 'post' = 'pre';
+  private phase: 'pre' | 'live' | 'post' | 'card' | 'replay' = 'pre';
+  private card!: ResultCard;
+  private replay!: Replay;
+  private replayPill!: Phaser.GameObjects.Container;
+  /** O que acontece quando o tempo do resultado acaba (padrão: volta ao pré-snap). */
+  private afterPost: (() => void) | null = null;
+  /** Lance atual é a conversão de 2 pontos. */
+  private twoPt = false;
+  private playXp = 0;
+  private gameOver = false;
   private preUi: Phaser.GameObjects.GameObject[] = [];
   private fxTop!: Phaser.GameObjects.Graphics;
   private ui!: Fx;
@@ -136,6 +147,16 @@ export class MatchScene extends Phaser.Scene {
     if (q.has('tatica')) this.setTactical(true);
     this.auto = q.get('auto');
     if (q.has('seed')) this.rng = new Rng(Number(q.get('seed')));
+    // ?los=90 começa perto da end zone; ?fim=20 deixa 20 s no 4º quarto
+    if (q.has('los')) {
+      this.state.los = Number(q.get('los'));
+      this.applyLos();
+    }
+    if (q.has('fim')) {
+      this.state.quarter = 4;
+      this.state.clock = Number(q.get('fim'));
+      this.hud.refresh();
+    }
     if (q.has('fps')) {
       this.fps = label(this, 10, 166, '', 12, '#9BE15D').setDepth(200);
     }
@@ -466,13 +487,23 @@ export class MatchScene extends Phaser.Scene {
       const t = makeThrow(this.qb.x, this.qb.y, px, py, 0.55);
       this.release(t, readThrow(t, this.receivers, this.defense));
     }
+    if (this.auto === 'int' && this.live?.phase === 'pocket' && this.live.t > 1.2 && this.ball.state === 'held') {
+      const d = this.defense.find((p) => p.role === 'NB')!;
+      const t = makeThrow(this.qb.x, this.qb.y, d.x, d.y, 0.5);
+      this.release(t, readThrow(t, this.receivers, this.defense));
+    }
     if (this.phase === 'pre') {
       // Play clock
       s.playClock -= dt;
       if (s.playClock <= 0) this.delayOfGame();
       this.hud.setPlayClock(Math.max(0, s.playClock));
-    } else {
+    } else if (this.phase === 'replay') {
+      const cam = this.replay.step(dt * 0.55, this.ball);
+      if (cam === null) this.endReplay();
+      else this.world.targetY = cam;
+    } else if (this.phase !== 'card') {
       this.updateLive(dt);
+      if (this.phase === 'live' || this.phase === 'post') this.replay.record(dt, this.ball, this.world.targetY);
     }
     for (const p of [...this.offense, ...this.defense]) p.sync(dt);
 
@@ -648,10 +679,22 @@ export class MatchScene extends Phaser.Scene {
     this.dangerTag = new Tag(this, 'PERIGO!', 0xe5484d, '#FFFFFF', 6).setDepth(41).setVisible(false);
     this.meTag = new Tag(this, 'VOCÊ CONTROLA', 0xffd23f, '#0D0D12', 8).setDepth(41).setVisible(false);
     this.aimTag = new Tag(this, '', 0x3fd0ff, '#0D0D12', 8).setDepth(42).setVisible(false);
+    this.card = new ResultCard(this);
+    this.replay = new Replay([...this.offense, ...this.defense]);
+    {
+      const t = label(this, 6, 0, 'REPLAY', 11, '#FFFFFF').setOrigin(0.5);
+      const bg = this.add.graphics();
+      bg.fillStyle(UI.dark, 0.8);
+      bg.fillRoundedRect(-t.width / 2 - 14, -13, t.width + 30, 26, 10);
+      const dot = this.add.circle(-t.width / 2 - 2, 0, 3.5, 0xe5484d);
+      this.tweens.add({ targets: dot, alpha: 0.3, yoyo: true, repeat: -1, duration: 420 });
+      this.replayPill = this.add.container(this.scale.width / 2, 128, [bg, t, dot]).setDepth(141).setVisible(false);
+    }
 
     // Passe estilingue: toque no campo, arraste para trás e solte
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (this.phase === 'post') return this.finishPost();
+      if (this.phase === 'replay') return this.endReplay();
       if (this.phase !== 'live' || this.live?.phase !== 'pocket') return;
       if (p.y < 110 || p.y > this.scale.height - 110) return;
       this.aim = { active: true, sx: p.x, sy: p.y, cx: p.x, cy: p.y, mx: 0, my: 0, used: true };
@@ -676,6 +719,8 @@ export class MatchScene extends Phaser.Scene {
   private startLive() {
     const s = this.state;
     this.phase = 'live';
+    this.replay.clear();
+    this.playXp = 0;
     this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
     this.windowTag.setVisible(false);
     this.hud.setBar('pocket');
@@ -988,6 +1033,7 @@ export class MatchScene extends Phaser.Scene {
 
   private gainXp(n: number, at?: Player) {
     this.state.xp += n;
+    this.playXp += n;
     const p = at ? this.world.proj.project(at.x, at.y, 4.2) : { x: this.scale.width / 2, y: 330 };
     this.ui.xp(p.x, p.y, `+${n} XP`);
   }
@@ -999,7 +1045,8 @@ export class MatchScene extends Phaser.Scene {
     const live = this.live!;
     live.phase = 'dead';
     this.phase = 'post';
-    this.postTimer = kind === 'td' || kind === 'int' ? 2.6 : 1.6;
+    this.postTimer = 1.6;
+    this.afterPost = null;
     this.liveUi.show('none');
     this.pressureTag.setVisible(false);
     this.holeTag.setVisible(false);
@@ -1008,25 +1055,47 @@ export class MatchScene extends Phaser.Scene {
     this.aimTag.setVisible(false);
     this.statusTags.forEach((t) => t.setVisible(false));
     this.ctl = null;
-    s.clock = Math.max(0, s.clock - Math.round(live.t + 6));
+    this.tickClock(Math.round(live.t + (kind === 'inc' || kind === 'out' ? 1 : 6)));
 
     const c = live.carrier;
     const spot = kind === 'sack' ? this.qb.y : kind === 'inc' || kind === 'int' ? s.los : (c?.y ?? s.los);
     let gained = Math.round(spot - s.los);
     if (kind === 'td') gained = 100 - s.los;
     const passComplete = !!c && c !== this.qb && this.mode === 'pass' && !!this.thr && !this.ballAway && kind !== 'int';
-    if (passComplete) s.stats.yards += gained;
+    if (passComplete && !this.twoPt) s.stats.yards += gained;
 
     let text = this.playText;
     let yardsText = `${gained >= 0 ? '+' : ''}${gained}`;
-    let color = gained >= 0 ? 0x3ccb5a : 0xe5484d;
+    const color = gained >= 0 ? 0x3ccb5a : 0xe5484d;
+    let chip: [string, number, string] | undefined;
+
+    // Conversão de 2: deu ou não deu, e o lance acaba aí
+    if (this.twoPt) {
+      this.twoPt = false;
+      const good = kind === 'td';
+      if (good) {
+        s.score.home += 2;
+        this.ui.pop('CONVERTEU! +2', UI.yellow, 20, 200, 1300);
+        this.ui.burst(50);
+        vibrate(VIBE.td);
+        this.world.stand.cheer(0.8);
+        this.gainXp(30);
+      } else {
+        this.ui.pop('NÃO CONVERTEU', '#FFFFFF', 16, 200, 1100);
+      }
+      this.hud.setResult('CONVERSÃO DE 2', good ? '+2' : 'X', good ? 0x3ccb5a : 0xe5484d, ['2 PTS', 0xffd23f, '#0D0D12']);
+      this.hud.setBar('result');
+      this.hud.refresh();
+      this.postTimer = 2.2;
+      this.afterPost = () => this.opponentDrive(25, true);
+      return;
+    }
 
     if (kind === 'td') {
       s.score.home += 6;
       if (passComplete) s.stats.td++;
       s.confidence = Math.min(5, s.confidence + 1);
-      this.ui.pop('TOUCHDOWN!', UI.yellow, 26, 200, 1600);
-      this.time.delayedCall(500, () => this.ui.caption(`+6 ${TEAMS.home.name}`, 250, 1500, '#0D0D12', 0xffd23f));
+      this.ui.pop('TOUCHDOWN!', UI.yellow, 26, 200, 1300);
       this.ui.burst(80);
       this.feedback.shake(0.012, 400);
       vibrate(VIBE.td);
@@ -1037,13 +1106,21 @@ export class MatchScene extends Phaser.Scene {
       }
       this.gainXp(60);
       text = passComplete ? `PASSE DE ${gained} JDS · TD` : `CORRIDA DE ${gained} JDS · TD`;
-      // Ponto extra e kickoff entram nas etapas 6 e 7: por enquanto, nova campanha na 25
-      this.nextDrive();
+      yardsText = `+${gained}`;
+      chip = ['TD', TEAMS.home.color, '#0D0D12'];
+      this.postTimer = 2.2;
+      const card = this.tdCard(gained, passComplete, c);
+      this.afterPost = () => this.showCard(card);
     } else if (kind === 'int') {
-      text = 'INTERCEPTADO';
-      yardsText = 'INT';
-      color = 0xe5484d;
-      this.nextDrive();
+      const d = by!;
+      const at = Phaser.Math.Clamp(Math.round(d.y), 1, 99);
+      text = `${TEAMS.away.name} NA ${at <= 50 ? TEAMS.home.abbr : TEAMS.away.abbr} ${at <= 50 ? at : 100 - at}`;
+      yardsText = '';
+      chip = ['TURNOVER', 0xe5484d, '#FFFFFF'];
+      this.postTimer = 2.2;
+      s.los = at;
+      const card = this.intCard(d);
+      this.afterPost = () => this.showCard(card);
     } else if (kind === 'inc') {
       text = this.ballAway ? 'JOGOU FORA' : 'PASSE INCOMPLETO';
       yardsText = '';
@@ -1052,12 +1129,22 @@ export class MatchScene extends Phaser.Scene {
       if (kind === 'out') this.ui.caption('FORA DE CAMPO', 250, 800);
       if (kind === 'dive') this.ui.caption('MERGULHOU!', 250, 800);
       if (kind === 'sack') text = `SACK${by ? ' · #' + by.slot.num : ''}`;
-      this.advance(gained);
+      if (spot < 0) {
+        // Derrubado na própria end zone: safety (+2 para eles) e eles recebem a bola
+        s.score.away += 2;
+        this.ui.pop('SAFETY!', '#E5484D', 24, 200, 1200);
+        vibrate(VIBE.turnover);
+        text = `SAFETY · +2 ${TEAMS.away.name}`;
+        yardsText = '';
+        chip = ['SAFETY', 0xe5484d, '#FFFFFF'];
+        this.postTimer = 2;
+        this.afterPost = () => this.opponentDrive(35, true);
+      } else this.advance(gained);
     }
     if (passComplete && kind !== 'td' && gained >= 20) {
       this.ui.caption(`PASSE DE ${gained} JDS · NO AR ${this.airYards} + ${gained - this.airYards} APÓS`, 290, 1300);
     }
-    this.hud.setResult(text, yardsText, color);
+    this.hud.setResult(text, yardsText, color, chip);
     this.hud.setBar('result');
     this.hud.refresh();
   }
@@ -1074,19 +1161,284 @@ export class MatchScene extends Phaser.Scene {
       s.distance -= gained;
       s.down++;
       if (s.down > 4) {
-        // 4ª descida falhou: troca de posse (a simulação da defesa entra na etapa 7)
+        // 4ª descida falhou: a bola vira para eles ali mesmo
         this.time.delayedCall(350, () => this.ui.caption('PERDEU NAS DESCIDAS', 300, 1200, '#FFFFFF', 0x5a1418));
-        this.nextDrive();
+        this.postTimer = 2;
+        const at = s.los;
+        this.afterPost = () => this.opponentDrive(at, false);
       }
     }
   }
 
-  /** Nova campanha na nossa 25 (até as etapas de chute e defesa simulada). */
-  private nextDrive() {
+  /** Relógio: desconta, vira o quarto e marca o fim de jogo. */
+  private tickClock(sec: number) {
     const s = this.state;
-    s.los = 25;
+    s.clock -= sec;
+    if (s.clock > 0) return;
+    if (s.quarter < 4) {
+      const q = s.quarter;
+      s.quarter++;
+      s.clock = 15 * 60;
+      this.time.delayedCall(900, () => this.ui.caption(`FIM DO ${q}º QUARTO`, 330, 1300, '#0D0D12', 0xffd23f));
+    } else {
+      s.clock = 0;
+      this.gameOver = true;
+    }
+  }
+
+  // ------------------------------------------------------------ cards
+
+  private statsRow(badInt = false) {
+    const st = this.state.stats;
+    return [
+      { label: 'COMP', value: `${st.comp}/${st.att}` },
+      { label: 'JARDAS', value: String(st.yards) },
+      { label: 'TD', value: String(st.td) },
+      { label: 'INT', value: String(st.int), bad: badInt },
+    ];
+  }
+
+  private xpBar() {
+    const xp = this.state.xp;
+    return { kind: 'xp' as const, label: 'CARREIRA · TEMP 1 · SEMANA 3', gain: this.playXp, base: ((xp - this.playXp) % 1000) / 1000 };
+  }
+
+  private tdCard(gained: number, pass: boolean, c: Player | null): CardOpts {
+    let sub: string;
+    if (pass && c?.key) {
+      const after = gained - this.airYards;
+      sub = `${this.airYards} NO AR + ${after} APÓS A RECEPÇÃO · ${c.key} ${ROUTES[this.routes[c.key]].name}`;
+    } else sub = c === this.qb ? 'O QB SAIU DO POCKET E FOI ATÉ O FIM' : this.playText;
+    return {
+      big: 'TOUCHDOWN!',
+      bigColor: UI.yellow,
+      bigShadow: '#0D0D12',
+      bigSize: 30,
+      chip: `+6 ${TEAMS.home.name}`,
+      chipBg: TEAMS.home.color,
+      chipFg: '#0D0D12',
+      header: 'RESUMO DA JOGADA',
+      head: `${pass ? 'PASSE' : 'CORRIDA'} DE ${gained} JDS`,
+      sub,
+      subColor: '#3FD0FF',
+      stats: this.statsRow(),
+      bar: this.xpBar(),
+      teamColor: TEAMS.home.color,
+      replay: () => this.startReplay(),
+      next: () => this.extraPointChoice(),
+    };
+  }
+
+  private intCard(d: Player): CardOpts {
+    const ROLE: Record<string, [string, string]> = {
+      NB: ['NICKEL', 'O NICKEL LEU A ROTA E CORTOU NA FRENTE DO RECEBEDOR'],
+      CB: ['CORNER', 'O CORNER JOGOU POR DENTRO E CHEGOU ANTES NA BOLA'],
+      S: ['SAFETY', 'O SAFETY VEIO DE CIMA E LEU O PASSE'],
+      LB: ['LINEBACKER', 'O LINEBACKER CAIU NA ZONA E LEU SEUS OLHOS'],
+      DL: ['DEFENSIVE LINE', 'O PASSE SAIU BAIXO E O DEFENSOR DA LINHA PEGOU'],
+    };
+    const [rn, why] = ROLE[d.role] ?? ['DEFESA', 'A DEFESA CHEGOU PRIMEIRO NA BOLA'];
+    const tgt = this.read?.receiver ?? (this.thr ? nearest(this.receivers.map((r) => r.p), this.thr.tx, this.thr.ty).p : null);
+    const head = tgt?.key ? `PASSE PARA ${tgt.key} NA ${ROUTES[this.routes[tgt.key]].name}` : 'PASSE SEM ALVO';
+    let open: Player | null = null;
+    for (const r of this.receivers) if (r.p !== tgt && statusOf(r.p, this.defense) === 'LIVRE') open = r.p;
+    const tip = open?.key
+      ? `DICA: CONTRA ${this.scheme.name}, O ${ROUTES[this.routes[open.key]].name} (${open.key}) ESTAVA LIVRE`
+      : `DICA: ${tipText(this.scheme, this.routes)}`;
+    const s = this.state;
+    return {
+      big: 'INTERCEPTADO!',
+      bigColor: '#FFFFFF',
+      bigShadow: '#B3262B',
+      bigSize: 24,
+      chip: `#${d.slot.num} ${TEAMS.away.name} · ${rn}`,
+      chipBg: TEAMS.away.color,
+      chipFg: '#FFFFFF',
+      header: 'O QUE ACONTECEU',
+      head,
+      sub: why,
+      tip,
+      stats: this.statsRow(true),
+      bar: { kind: 'conf', value: s.confidence, delta: -1 },
+      teamColor: TEAMS.home.color,
+      replay: () => this.startReplay(),
+      next: () => this.opponentDrive(s.los, false),
+    };
+  }
+
+  private showCard(o: CardOpts) {
+    this.phase = 'card';
+    this.ui.slowmo(false);
+    this.card.show(o);
+  }
+
+  private startReplay() {
+    if (this.phase !== 'card') return;
+    this.phase = 'replay';
+    this.card.setVisible(false);
+    this.replayPill.setVisible(true);
+    this.replay.start();
+  }
+
+  private endReplay() {
+    if (this.phase !== 'replay') return;
+    this.phase = 'card';
+    this.replayPill.setVisible(false);
+    this.card.setVisible(true);
+  }
+
+  /** Depois do TD: chutar o ponto extra ou tentar a conversão de 2. */
+  private extraPointChoice() {
+    const s = this.state;
+    this.card.show({
+      big: 'PONTO EXTRA',
+      bigColor: UI.yellow,
+      bigShadow: '#0D0D12',
+      bigSize: 22,
+      chip: `${TEAMS.home.abbr} ${s.score.home} x ${s.score.away} ${TEAMS.away.abbr}`,
+      chipBg: 0xffd23f,
+      chipFg: '#0D0D12',
+      header: 'ESCOLHA',
+      head: 'CHUTAR (+1) OU TENTAR 2?',
+      sub: 'O CHUTE É QUASE CERTO. A CONVERSÃO DE 2 É UMA JOGADA DA LINHA DE 2 JARDAS.',
+      stats: this.statsRow(),
+      bar: this.xpBar(),
+      teamColor: TEAMS.home.color,
+      replay: () => this.tryTwo(),
+      replayLabel: 'TENTAR 2',
+      next: () => this.kickPat(),
+      nextLabel: 'CHUTAR +1',
+    });
+  }
+
+  /** Ponto extra (o minigame do chute entra na etapa 7). */
+  private kickPat() {
+    const s = this.state;
+    this.card.hide();
+    const good = this.rng.chance(0.94);
+    if (good) {
+      s.score.home += 1;
+      this.ui.pop('É BOA! +1', '#3CCB5A', 22, 220, 1000);
+      this.world.stand.cheer(0.5);
+    } else this.ui.pop('PRA FORA!', '#E5484D', 22, 220, 1000);
+    this.hud.setResult('PONTO EXTRA', good ? '+1' : 'X', good ? 0x3ccb5a : 0xe5484d, ['PAT', 0xffd23f, '#0D0D12']);
+    this.hud.setBar('result');
+    this.hud.refresh();
+    this.phase = 'post';
+    this.postTimer = 1.8;
+    this.afterPost = () => this.opponentDrive(25, true);
+  }
+
+  private tryTwo() {
+    const s = this.state;
+    this.card.hide();
+    this.twoPt = true;
+    s.los = 98;
+    s.down = 1;
+    s.distance = 2;
+    this.ui.caption('CONVERSÃO DE 2 · DA LINHA DE 2', 300, 1300, '#0D0D12', 0xffd23f);
+    this.backToPreSnap();
+  }
+
+  /**
+   * Campanha deles (por enquanto simulada direto; a tela de defesa entra na etapa 7).
+   * `at` = onde eles pegam a bola, nas NOSSAS jardas (eles atacam rumo à jarda 0).
+   * `kick` = depois de um placar nosso: kickoff, eles começam na 25 deles.
+   */
+  private opponentDrive(at: number, kick: boolean) {
+    const s = this.state;
+    const r = this.rng;
+    this.card.hide();
+    const start = kick ? 75 : at; // nossa jarda 75 = 25 deles
+    const pTd = Phaser.Math.Clamp(0.42 - start * 0.0035, 0.1, 0.42);
+    const pFg = 0.2;
+    const pTo = 0.1;
+    const x = r.next();
+    let head: string;
+    let ours: number;
+    if (x < pTd) {
+      s.score.away += 7;
+      head = `TD DOS ${TEAMS.away.name} · +7`;
+      ours = 25;
+    } else if (x < pTd + pFg) {
+      s.score.away += 3;
+      head = `FIELD GOAL DOS ${TEAMS.away.name} · +3`;
+      ours = 25;
+    } else if (x < pTd + pFg + pTo) {
+      ours = Phaser.Math.Clamp(Math.round(start - r.range(5, 35)), 10, 70);
+      head = 'A DEFESA RECUPEROU A BOLA!';
+    } else {
+      ours = r.int(12, 32);
+      head = `${TEAMS.away.name} DERAM PUNT`;
+    }
+    this.tickClock(r.int(100, 260));
+    s.los = ours;
     s.down = 1;
     s.distance = 10;
+    this.ui.pop('DEFESA', '#3FD0FF', 18, 190, 1500);
+    this.time.delayedCall(350, () => this.ui.caption(head, 240, 1500, '#FFFFFF', 0x22406b));
+    this.time.delayedCall(800, () => this.ui.caption(`SUA BOLA ${s.spotText}`, 280, 1200));
+    this.hud.setResult(head, '', 0, ['DEFESA', 0x3fd0ff, '#0D0D12']);
+    this.hud.setBar('result');
+    this.hud.refresh();
+    this.phase = 'post';
+    this.postTimer = 2.6;
+    this.afterPost = null;
+  }
+
+  /** Fim de jogo: placar final, estatísticas e novo jogo. */
+  private showFinal() {
+    const s = this.state;
+    const h = s.score.home;
+    const a = s.score.away;
+    const win = h > a;
+    if (win) s.record.home[0]++;
+    else if (h < a) s.record.home[1]++;
+    if (win) {
+      this.ui.burst(90);
+      this.world.stand.cheer(1);
+    }
+    this.playXp = 0;
+    this.gainXp(win ? 150 : 50);
+    const st = s.stats;
+    this.hud.setBar('result');
+    this.hud.refresh();
+    this.showCard({
+      big: win ? 'VITÓRIA!' : h < a ? 'DERROTA' : 'EMPATE',
+      bigColor: win ? UI.yellow : '#FFFFFF',
+      bigShadow: win ? '#0D0D12' : '#B3262B',
+      bigSize: 28,
+      chip: `${TEAMS.home.abbr} ${h} x ${a} ${TEAMS.away.abbr}`,
+      chipBg: win ? TEAMS.home.color : TEAMS.away.color,
+      chipFg: win ? '#0D0D12' : '#FFFFFF',
+      header: 'FIM DE JOGO',
+      head: `${st.comp}/${st.att} · ${st.yards} JDS`,
+      sub: `${st.td} TD · ${st.int} INT · RETROSPECTO ${s.recordText('home')}`,
+      stats: this.statsRow(),
+      bar: this.xpBar(),
+      teamColor: TEAMS.home.color,
+      next: () => this.newGame(),
+      nextLabel: 'NOVO JOGO',
+    });
+  }
+
+  private newGame() {
+    const s = this.state;
+    const rec = s.record;
+    const xp = s.xp;
+    Object.assign(s, new GameState());
+    s.record = rec;
+    s.xp = xp;
+    s.score = { home: 0, away: 0 };
+    s.quarter = 1;
+    s.clock = 15 * 60;
+    s.down = 1;
+    s.distance = 10;
+    s.los = 25;
+    this.gameOver = false;
+    this.card.hide();
+    this.phase = 'post';
+    this.backToPreSnap();
   }
 
   /** Toque na tela durante o resultado: pula a espera. */
@@ -1095,6 +1447,12 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private backToPreSnap() {
+    if (this.gameOver) {
+      this.hud.refresh();
+      return this.showFinal();
+    }
+    this.card.hide();
+    this.replayPill.setVisible(false);
     this.phase = 'pre';
     this.live = null;
     this.ballAway = false;
@@ -1116,8 +1474,13 @@ export class MatchScene extends Phaser.Scene {
 
     if (this.phase === 'post') {
       this.postTimer -= this.game.loop.delta / 1000;
-      if (this.postTimer <= 0) return this.backToPreSnap();
+      if (this.postTimer <= 0) {
+        const next = this.afterPost;
+        this.afterPost = null;
+        return next ? next() : this.backToPreSnap();
+      }
     }
+    if (this.phase === 'card' || this.phase === 'replay') return;
     // Poeira dos tackles
     const dt = this.game.loop.delta / 1000;
     for (const d of this.dust) {
