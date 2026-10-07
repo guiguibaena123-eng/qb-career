@@ -88,6 +88,10 @@ export class MatchScene extends Phaser.Scene {
   private afterPost: (() => void) | null = null;
   /** Lance atual é a conversão de 2 pontos. */
   private twoPt = false;
+  private get thrOut() {
+    const t = this.thr;
+    return !!t && (t.tx < 0 || t.tx > FIELD.width || t.ty > 110 || t.ty < -10);
+  }
   private playXp = 0;
   private gameOver = false;
   private preUi: Phaser.GameObjects.GameObject[] = [];
@@ -182,7 +186,7 @@ export class MatchScene extends Phaser.Scene {
     const s = this.state;
     for (const p of [...this.offense, ...this.defense]) {
       p.x = p.slot.x;
-      p.y = s.los + p.slot.d;
+      p.y = Math.min(108.5, s.los + p.slot.d);
       p.vx = p.vy = p.angle = p.hop = 0;
       p.pose = null;
       p.state = 'idle';
@@ -875,7 +879,9 @@ export class MatchScene extends Phaser.Scene {
   private resolvePass() {
     const t = this.thr!;
     const read = this.read;
-    if (this.ballAway) return this.incomplete('JOGOU FORA', 'SEM RISCO');
+    if (this.ballAway) return this.incomplete('BOLA FORA', 'JOGOU FORA · SEM RISCO');
+    // Caiu fora das 4 linhas: incompleto
+    if (t.tx < 0 || t.tx > FIELD.width || t.ty > 110 || t.ty < -10) return this.incomplete('BOLA FORA', 'O PASSE SAIU DO CAMPO');
     const recv = nearest(
       this.receivers.map((r) => r.p),
       t.tx,
@@ -978,7 +984,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private incomplete(big: string, small: string) {
-    if (big !== 'JOGOU FORA') this.combo = 0;
+    if (!this.ballAway) this.combo = 0;
     this.ui.pop(big, '#FFFFFF', 20, 200, 700);
     this.ui.caption(small, 244, 900);
     this.ball.state = 'loose';
@@ -1122,7 +1128,7 @@ export class MatchScene extends Phaser.Scene {
       const card = this.intCard(d);
       this.afterPost = () => this.showCard(card);
     } else if (kind === 'inc') {
-      text = this.ballAway ? 'JOGOU FORA' : 'PASSE INCOMPLETO';
+      text = this.ballAway ? 'JOGOU FORA' : this.thrOut ? 'BOLA FORA' : 'PASSE INCOMPLETO';
       yardsText = '';
       this.advance(0);
     } else {

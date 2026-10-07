@@ -134,6 +134,7 @@ export class LivePlay {
     if (this.phase === 'carry') this.updateCarry(dt);
     else this.updatePass(dt);
     this.separate();
+    this.keepInBounds();
   }
 
   // ------------------------------------------------------------ passe
@@ -342,6 +343,24 @@ export class LivePlay {
           b.x += (dx / d) * push * k;
           b.y += (dy / d) * push * k;
         }
+      }
+    }
+  }
+
+  /** Ninguém sai das 4 linhas (laterais e linhas de fundo das end zones); só quem tem a bola pode pisar fora. */
+  private keepInBounds() {
+    for (const p of [...this.offense, ...this.defense]) {
+      if (p === this.carrier) {
+        p.y = Math.min(p.y, 109.6);
+        continue;
+      }
+      if (p.x < 0.4 || p.x > FIELD.width - 0.4) {
+        p.x = Math.max(0.4, Math.min(FIELD.width - 0.4, p.x));
+        p.vx = 0;
+      }
+      if (p.y < -9.6 || p.y > 109.6) {
+        p.y = Math.max(-9.6, Math.min(109.6, p.y));
+        p.vy = 0;
       }
     }
   }

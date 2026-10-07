@@ -8,7 +8,7 @@ const MID = FIELD.width / 2;
 /** Waypoints da rota no mundo, a partir de onde o recebedor está alinhado. */
 export function routeWorld(x: number, y: number, routeName: string): [number, number][] {
   const inward = x < MID ? 1 : -1;
-  return ROUTES[routeName].pts.map(([i, f]) => [Math.min(FIELD.width - 1, Math.max(1, x + i * inward)), y + f]);
+  return ROUTES[routeName].pts.map(([i, f]) => [Math.min(FIELD.width - 1, Math.max(1, x + i * inward)), Math.min(108.5, y + f)]);
 }
 
 /**
