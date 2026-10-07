@@ -48,6 +48,9 @@ export class LivePlay {
   private blocks: Map<Player, Player>;
   private history = new Map<Player, { t: number; x: number; y: number }[]>();
   private engaged = new Map<Player, Player>();
+  /** Corrida desenhada: buraco alvo e até quando cada DL fica preso no bloqueio. */
+  runGap: number | null = null;
+  private shedAt = new Map<Player, number>();
   private ol: Player[];
   private dl: Player[];
 
@@ -96,6 +99,26 @@ export class LivePlay {
     this.carrier = p;
     this.landing = null;
     this.engaged.clear();
+  }
+
+  /** Corrida desenhada: o RB recebe e a linha bloqueia empurrando os DL para longe do buraco. */
+  startRun(p: Player, gapX: number) {
+    this.startCarry(p);
+    this.runGap = gapX;
+    for (const o of this.ol) {
+      const d = this.blocks.get(o);
+      if (!d || d.state === 'free') continue;
+      // Disputa de força: bloqueador forte segura mais
+      const hold = 1.2 + (o.attrs.strength - d.attrs.strength) / 45 + this.rng.range(0, 1.1);
+      this.shedAt.set(d, this.t + Math.max(0.5, hold));
+    }
+    // Segundo nível (LB/S) lê a jogada com um atraso de reação
+    for (const d of this.defense) if (d.role !== 'DL') d.wait = Math.max(d.wait, this.rng.range(0.2, 0.45));
+  }
+
+  /** Defensor preso num bloqueio agora (a faixa verde quase o ignora). */
+  isBlocked(d: Player) {
+    return d.wait > 0 || (this.shedAt.get(d) ?? -1) > this.t;
   }
 
   update(dt: number) {
@@ -234,9 +257,25 @@ export class LivePlay {
 
   private updateCarry(dt: number) {
     const c = this.carrier!;
+    // Corrida desenhada: OL segura o DL e empurra para longe do buraco
+    const held = new Set<Player>();
+    if (this.runGap !== null) {
+      for (const o of this.ol) {
+        const d = this.blocks.get(o);
+        if (!d || (this.shedAt.get(d) ?? -1) <= this.t) continue;
+        held.add(o);
+        const away = d.x < this.runGap ? -1 : 1;
+        arrive(o, d.x - away * 0.55, d.y - 0.75, 4.5, dt, 0.4);
+        const push = Math.max(0.15, 0.6 + (d.attrs.strength - o.attrs.strength) / 70);
+        const ux = c.x - d.x;
+        const uy = c.y - d.y;
+        const L = Math.hypot(ux, uy) || 1;
+        steer(d, (ux / L) * push + away * 0.9, (uy / L) * push, dt, 8);
+      }
+    }
     // Ataque: bloqueio de campo aberto no defensor mais perigoso
     for (const o of this.offense) {
-      if (o === c) continue;
+      if (o === c || held.has(o)) continue;
       const busy = [...this.engaged.values()].includes(o);
       if (busy) {
         const d = [...this.engaged.entries()].find(([, b]) => b === o)![0];
@@ -254,6 +293,7 @@ export class LivePlay {
     }
     // Defesa: persegue o carregador (pursue) e tenta o tackle
     for (const d of this.defense) {
+      if ((this.shedAt.get(d) ?? -1) > this.t) continue; // preso no bloqueio
       if (d.wait > 0) {
         steer(d, 0, 0, dt, 10);
         continue;

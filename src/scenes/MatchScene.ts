@@ -14,11 +14,12 @@ import {
 import { Ball } from '../entities/Ball';
 import { Player } from '../entities/Player';
 import { blockAssignments, pickScheme, readText, tipText, type Scheme } from '../systems/ai';
-import { groundArrow, groundPath, groundRing, groundOval, groundSegment } from '../systems/groundfx';
+import { groundArrow, groundArrowHead, groundPath, groundRing, groundOval, groundSegment } from '../systems/groundfx';
 import { Feedback, VIBE, vibrate } from '../systems/feedback';
 import { LivePlay, type Receiver } from '../systems/live';
 import { aimFromDrag, arcAt, makeThrow, readThrow, riskColor, statusOf, STATUS_COLOR, type Read, type Throw } from '../systems/passing';
 import { Rng } from '../systems/rng';
+import { bestLane, type Lane } from '../systems/runlane';
 import { RouteRunner, routeWorld } from '../systems/routes';
 import { CarrierControl } from '../systems/running';
 import { nearest } from '../systems/steering';
@@ -92,6 +93,12 @@ export class MatchScene extends Phaser.Scene {
   private read: Read | null = null;
   private statusTags = new Map<Player, Tag>();
   private pressureTag!: Tag;
+  private holeTag!: Tag;
+  private dangerTag!: Tag;
+  private meTag!: Tag;
+  private lane: Lane | null = null;
+  private laneT = 0;
+  private lanePts: [number, number][] | null = null;
   private aimTag!: Tag;
   private combo = 0;
   private postTimer = 0;
@@ -451,6 +458,7 @@ export class MatchScene extends Phaser.Scene {
     this.ui.slowmo(this.feedback.slow);
     const s = this.state;
 
+    if (this.auto === 'run' && this.mode !== 'run') this.setMode('run');
     if (this.auto && this.phase === 'pre' && this.elapsed > 0.6) this.snap();
     if (this.auto === 'pass' && this.live?.phase === 'pocket' && this.live.t > 1.3 && this.ball.state === 'held') {
       const b = this.receivers.find((r) => r.key === 'B')!;
@@ -636,6 +644,9 @@ export class MatchScene extends Phaser.Scene {
       this.statusTags.set(this.recv(k), t);
     }
     this.pressureTag = new Tag(this, 'PRESSÃO!', 0xe5484d, '#FFFFFF', 8).setDepth(41).setVisible(false);
+    this.holeTag = new Tag(this, 'BURACO!', 0x3ccb5a, '#0D0D12', 8).setDepth(41).setVisible(false);
+    this.dangerTag = new Tag(this, 'PERIGO!', 0xe5484d, '#FFFFFF', 8).setDepth(41).setVisible(false);
+    this.meTag = new Tag(this, 'VOCÊ CONTROLA', 0xffd23f, '#0D0D12', 8).setDepth(41).setVisible(false);
     this.aimTag = new Tag(this, '', 0x3fd0ff, '#0D0D12', 8).setDepth(42).setVisible(false);
 
     // Passe estilingue: toque no campo, arraste para trás e solte
@@ -707,14 +718,18 @@ export class MatchScene extends Phaser.Scene {
     if (!this.live || this.phase !== 'live') return;
     const rb = this.recv('E');
     this.qb.pose = null;
-    this.playText = RUN_PLAYS[this.runIdx].name;
-    this.startCarry(rb, `CORRA! VOCÊ CONTROLA O RB #${rb.slot.num}`);
+    this.playText = `CORRIDA · ${RUN_PLAYS[this.runIdx].name}`;
+    this.startCarry(rb, 'ARRASTE PARA CONDUZIR O RB', RUN_PLAYS[this.runIdx].gapX);
   }
 
-  private startCarry(p: Player, hint: string) {
+  private startCarry(p: Player, hint: string, gapX?: number) {
     this.ball.give(p);
     p.pose = 'carry';
-    this.live!.startCarry(p);
+    if (gapX !== undefined) this.live!.startRun(p, gapX);
+    else this.live!.startCarry(p);
+    this.lane = null;
+    this.lanePts = null;
+    this.laneT = 0;
     this.ctl = new CarrierControl(p);
     this.liveUi.show('carry');
     this.liveUi.setCarryHint(hint);
@@ -983,6 +998,9 @@ export class MatchScene extends Phaser.Scene {
     this.postTimer = kind === 'td' || kind === 'int' ? 2.6 : 1.6;
     this.liveUi.show('none');
     this.pressureTag.setVisible(false);
+    this.holeTag.setVisible(false);
+    this.dangerTag.setVisible(false);
+    this.meTag.setVisible(false);
     this.aimTag.setVisible(false);
     this.statusTags.forEach((t) => t.setVisible(false));
     this.ctl = null;
@@ -1144,12 +1162,62 @@ export class MatchScene extends Phaser.Scene {
       if (live.phase !== 'pocket') this.pressureTag.setVisible(false);
     }
 
+    // Corrida: faixa verde (melhor caminho), BURACO!, PERIGO! e "VOCÊ CONTROLA"
+    const c = live.carrier;
+    if (live.phase === 'carry' && c) this.drawLane(c, dt);
+    else {
+      this.holeTag.setVisible(false);
+      this.dangerTag.setVisible(false);
+      this.meTag.setVisible(false);
+    }
+
     // Prévia do passe: arco liso + sombra + mira no ponto de queda
     if (this.aim.active && live.phase === 'pocket' && this.thr) this.drawAim(this.thr, this.read);
     else this.aimTag.setVisible(false);
 
     // Ponto de queda enquanto a bola voa (anel tracejado)
     if (this.ball.state === 'air' && this.thr) groundRing(g, proj, this.thr.tx, this.thr.ty, 1.6, 0.3, 0x3fd0ff, 0.8, 24, true);
+  }
+
+  private drawLane(c: Player, dt: number) {
+    const g = this.fx;
+    const proj = this.world.proj;
+    const live = this.live!;
+    this.laneT -= dt;
+    if (this.laneT <= 0 || !this.lane) {
+      this.lane = bestLane(c, this.defense, (d) => live.isBlocked(d), this.state.los);
+      this.laneT = 0.15;
+    }
+    const lane = this.lane;
+    // Suaviza a faixa (sem tremer quando a leitura muda)
+    const k = 1 - Math.exp(-dt * 10);
+    if (!this.lanePts) this.lanePts = lane.pts.map((p) => [...p] as [number, number]);
+    this.lanePts[0] = [c.x, c.y];
+    for (let i = 1; i < lane.pts.length; i++) {
+      this.lanePts[i][0] += (lane.pts[i][0] - this.lanePts[i][0]) * k;
+      this.lanePts[i][1] += (lane.pts[i][1] - this.lanePts[i][1]) * k;
+    }
+    const open = lane.open > 2.2;
+    const col = open ? 0x3ccb5a : 0xffd23f;
+    if (!this.ctl?.diving) {
+      groundPath(g, proj, this.lanePts, 2.4, 0xffffff, 0.22);
+      groundPath(g, proj, this.lanePts, 2.0, col, 0.42);
+      const n = this.lanePts.length;
+      const [ex, ey] = this.lanePts[n - 1];
+      const [px, py] = this.lanePts[n - 2];
+      groundArrowHead(g, proj, ex, ey, ex - px, ey - py, 3.6, col, 0.8);
+    }
+    if (lane.hole && open) {
+      const p = proj.project(lane.hole.x, lane.hole.y + 1.2, 0);
+      this.holeTag.setVisible(true).setPosition(p.x, p.y);
+    } else this.holeTag.setVisible(false);
+    if (lane.danger) {
+      const p = proj.project(lane.danger.x, lane.danger.y, 3.7);
+      this.dangerTag.setVisible(true).setPosition(p.x, p.y);
+    } else this.dangerTag.setVisible(false);
+    const who = c === this.qb ? 'QB' : c.role === 'RB' ? 'RB' : this.receivers.find((r) => r.p === c)?.key ?? '';
+    const p = proj.project(c.x, c.y, 0);
+    this.meTag.setVisible(true).setLabel(`VOCÊ CONTROLA · ${who} #${c.slot.num}`).setPosition(p.x, p.y + 30);
   }
 
   /** Trajetória: curva com 50 pontos (brilho na cor do recebedor + linha branca), sombra tracejada e mira. */
