@@ -105,6 +105,7 @@ export class MatchScene extends Phaser.Scene {
     chance?: number;
     window?: number;
     post?: boolean;
+    short?: boolean;
   } | null = null;
   private card!: ResultCard;
   private replay!: Replay;
@@ -1467,9 +1468,14 @@ export class MatchScene extends Phaser.Scene {
       this.kickUi.open({ windKmh: wind.mph, windDir: wind.dir, dist: 45, chance: 1, window: 0.3, color: TEAMS.home.color, info: 'PARE NO MEIO', label: 'PUNT' });
     } else {
       const dist = this.kickDist();
-      const ch = this.fgChance(dist);
+      let ch = this.fgChance(dist);
+      let win = Math.sin((ch * Math.PI) / 2);
+      if (kind === 'fg') {
+        // Quanto mais longo, menor a faixa verde (o chute fica mais exigente)
+        win *= Phaser.Math.Clamp(1 - Math.max(0, dist - 25) * 0.0065, 0.5, 1);
+        ch = (2 / Math.PI) * Math.asin(win); // a chance mostrada acompanha a faixa real
+      }
       this.kick.chance = ch;
-      const win = Math.sin((ch * Math.PI) / 2);
       this.kick.window = win;
       if (kind === 'pat') this.hud.setResult(`CHUTE DA ${spot}`, '', 0, ['PONTO EXTRA', 0xffd23f, '#0D0D12']);
       else this.hud.setResult(`${spot} · FIELD GOAL DE ${dist} JDS`, '', 0, [s.downText, 0xffd23f, '#0D0D12']);
@@ -1501,7 +1507,10 @@ export class MatchScene extends Phaser.Scene {
       kk.good = Math.abs(off) < win;
       // Lado em que passa: |gx − MID| < 3,1 = entre as traves
       const gx = MID + (off / win) * 2.9 + s.wind.dir * s.wind.mph * 0.02;
-      kk.to = [gx, 114, 4];
+      // Chutes longos que erram perdem força e podem cair curtos
+      const dFg = this.kickDist();
+      kk.short = !kk.good && kk.kind === 'fg' && dFg > 42 && this.rng.chance(Math.min(0.75, (dFg - 42) * 0.05 + 0.3));
+      kk.to = kk.short ? [gx, 100 - this.rng.range(1, 6), 0.3] : [gx, 114, 4];
       kk.apex = 7 + this.kickDist() * 0.14;
       kk.T = 1.3 + this.kickDist() * 0.012;
       kk.post = Math.abs(off / win) > 0.95 && Math.abs(off / win) < 1.12;
@@ -1588,7 +1597,7 @@ export class MatchScene extends Phaser.Scene {
       this.hud.setResult(kk.kind === 'pat' ? 'PONTO EXTRA' : `FIELD GOAL DE ${this.kickDist()} JDS`, `+${pts}`, 0x3ccb5a, kk.kind === 'pat' ? ['PONTO EXTRA', 0xffd23f, '#0D0D12'] : ['FG', 0xffd23f, '#0D0D12']);
       this.afterPost = () => this.opponentDrive(25, true);
     } else {
-      this.ui.pop(kk.post ? 'NA TRAVE!' : 'PRA FORA!', '#E5484D', 24, 200, 1100);
+      this.ui.pop(kk.short ? 'CURTO!' : kk.post ? 'NA TRAVE!' : 'PRA FORA!', '#E5484D', 24, 200, 1100);
       vibrate(VIBE.turnover);
       this.hud.setResult(kk.kind === 'pat' ? 'PONTO EXTRA PERDIDO' : 'FIELD GOAL ERRADO', 'X', 0xe5484d, kk.kind === 'pat' ? ['PONTO EXTRA', 0xffd23f, '#0D0D12'] : ['FG', 0xffd23f, '#0D0D12']);
       const at = Math.max(20, s.los - 7);

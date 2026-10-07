@@ -18,6 +18,8 @@ export class KickUi {
   private barX: number;
   private barW: number;
   private zone: Phaser.GameObjects.Graphics;
+  private bar: Phaser.GameObjects.Graphics;
+  private barY = 0;
   /** Fase da agulha (rad); posição = sin(fase) em −1..1. */
   private phase = 0;
   running = false;
@@ -32,28 +34,8 @@ export class KickUi {
     this.barW = W - 40;
     const by = H - 112 - 22;
     const bar = scene.add.graphics().setDepth(D);
-    // Degradê em faixas (vermelho → laranja → verde → laranja → vermelho)
-    const stops: [number, number][] = [
-      [0, 0xe5484d],
-      [0.28, 0xffb02e],
-      [0.42, 0x3ccb5a],
-      [0.58, 0x3ccb5a],
-      [0.72, 0xffb02e],
-      [1, 0xe5484d],
-    ];
-    bar.fillStyle(0x000000, 0.35);
-    bar.fillRoundedRect(this.barX, by + 6, this.barW, 22, 11);
-    for (let i = 0; i < stops.length - 1; i++) {
-      const [t0, c0] = stops[i];
-      const [t1, c1] = stops[i + 1];
-      bar.fillGradientStyle(c0, c1, c0, c1, 1);
-      bar.fillRect(this.barX + 6 + t0 * (this.barW - 12), by, (t1 - t0) * (this.barW - 12) + 1, 22);
-    }
-    bar.fillStyle(0xe5484d, 1);
-    bar.fillCircle(this.barX + 11, by + 11, 11);
-    bar.fillCircle(this.barX + this.barW - 11, by + 11, 11);
-    bar.lineStyle(2, UI.dark, 1);
-    bar.strokeRoundedRect(this.barX, by, this.barW, 22, 11);
+    this.bar = bar;
+    this.barY = by;
     this.zone = scene.add.graphics().setDepth(D);
     this.zone.setData('y', by);
     this.needle = scene.add.rectangle(W / 2, by + 11, 5, 36, 0xffffff).setDepth(D + 1).setStrokeStyle(1.5, UI.dark);
@@ -78,6 +60,7 @@ export class KickUi {
     this.btnText.setText(opts.label ?? 'CHUTAR');
     this.phase = 0;
     this.running = true;
+    this.paintBar(opts.window);
     // Faixa "boa" desenhada por cima (o tamanho muda com a dificuldade)
     const y = this.zone.getData('y') as number;
     const g = this.zone;
@@ -121,6 +104,35 @@ export class KickUi {
       c.add([t, ch]);
       return ch.x + ch.width + 10;
     });
+  }
+
+  /** Barra: o verde ocupa só a faixa boa (|posição| < janela); depois laranja e vermelho. */
+  private paintBar(win: number) {
+    const g = this.bar;
+    const by = this.barY;
+    const x0 = this.barX + 6;
+    const w = this.barW - 12;
+    g.clear();
+    g.fillStyle(0x000000, 0.35);
+    g.fillRoundedRect(this.barX, by + 6, this.barW, 22, 11);
+    const mix = (a: number, b: number, k: number) => {
+      const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+      const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+      return (Math.round(ar + (br - ar) * k) << 16) | (Math.round(ag + (bg - ag) * k) << 8) | Math.round(ab + (bb - ab) * k);
+    };
+    const N = 64;
+    for (let i = 0; i < N; i++) {
+      const u = ((i + 0.5) / N) * 2 - 1; // −1..1
+      const d = Math.abs(u) / Math.max(0.05, win); // 1 = borda da faixa boa
+      const col = d <= 0.85 ? 0x3ccb5a : d <= 1.05 ? mix(0x3ccb5a, 0xffb02e, (d - 0.85) / 0.2) : d <= 1.6 ? mix(0xffb02e, 0xe5484d, (d - 1.05) / 0.55) : 0xe5484d;
+      g.fillStyle(col, 1);
+      g.fillRect(x0 + (i / N) * w, by, w / N + 1, 22);
+    }
+    g.fillStyle(0xe5484d, 1);
+    g.fillCircle(this.barX + 11, by + 11, 11);
+    g.fillCircle(this.barX + this.barW - 11, by + 11, 11);
+    g.lineStyle(2, UI.dark, 1);
+    g.strokeRoundedRect(this.barX, by, this.barW, 22, 11);
   }
 
   show(on: boolean) {
