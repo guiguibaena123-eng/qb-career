@@ -171,6 +171,7 @@ export class MatchScene extends Phaser.Scene {
     this.preUi = this.children.list.slice(before).filter((o) => o !== this.windowTag);
     this.buildTactical();
     this.buildLive();
+    this.buildPause();
     this.applyLos();
 
     // Parâmetros de depuração: ?fps mostra o FPS, ?tatica abre já na visão tática
@@ -268,6 +269,93 @@ export class MatchScene extends Phaser.Scene {
     hb.fillStyle(UI.dark, 0.8);
     hb.fillRect(-ht.width / 2 - 10, -11, ht.width + 20, 22);
     this.hint.add([hb, ht]);
+  }
+
+  // ------------------------------------------------------------ pause
+
+  private paused = false;
+  private pauseBtn!: GlassButton;
+  private pauseUi: Phaser.GameObjects.GameObject[] = [];
+  private restartArmed = false;
+
+  /** Botão de pause (canto direito, abaixo da dificuldade) + menu de pausa. */
+  private buildPause() {
+    const W = this.scale.width;
+    const H = this.scale.height;
+    const btn = (this.pauseBtn = new GlassButton(this, W - 12 - 20, 190, { w: 40, h: 40, radius: 20 }));
+    btn.setDepth(98);
+    const ic = this.add.graphics();
+    ic.fillStyle(0xffffff, 1);
+    ic.fillRect(-7, -8, 5, 16);
+    ic.fillRect(2, -8, 5, 16);
+    btn.add(ic);
+    btn.onTap = () => this.setPaused(true);
+
+    // Menu
+    const dim = this.add.rectangle(0, 0, W, H, 0x0a0c1a, 0.82).setOrigin(0).setDepth(200).setInteractive();
+    const t = this.add
+      .text(W / 2, 250, 'PAUSADO', { fontFamily: FONT_TITLE, fontSize: '26px', color: UI.yellow, stroke: '#0D0D12', strokeThickness: 7, shadow: { offsetX: 4, offsetY: 6, color: '#0D0D12', fill: true, stroke: true } })
+      .setOrigin(0.5)
+      .setAngle(-4)
+      .setDepth(201);
+    const s = this.state;
+    const info = label(this, W / 2, 304, `${TEAMS.home.abbr} ${s.score.home} x ${s.score.away} ${TEAMS.away.abbr} · ${s.quarterText} · ${s.clockText}`, 11, '#C9CEE0').setOrigin(0.5).setDepth(201);
+    this.pauseUi = [dim, t, info];
+    const mk = (y: number, text: string, onTap: () => void, primary = false) => {
+      const b = new GlassButton(this, W / 2, y, { w: W - 60, h: 56, radius: 16, ...(primary ? { fill: TEAMS.home.color, fillAlpha: 1, borderAlpha: 0.35, primary: true } : {}) }).setDepth(201);
+      const tx = title(this, 0, 0, text, 11, primary ? '#0D0D12' : '#FFFFFF').setOrigin(0.5);
+      b.add(tx);
+      b.onTap = onTap;
+      this.pauseUi.push(b);
+      return tx;
+    };
+    mk(380, 'CONTINUAR', () => this.setPaused(false), true);
+    const dtx = mk(450, '', () => {
+      difficulty.next();
+      paintD();
+    });
+    const paintD = () => dtx.setText(`DIFICULDADE: ${difficulty.d.label}`);
+    paintD();
+    const rtx = mk(520, 'REINICIAR PARTIDA', () => {
+      if (!this.restartArmed) {
+        this.restartArmed = true;
+        rtx.setText('TOQUE DE NOVO').setColor('#FF7B80');
+        setTimeout(() => {
+          this.restartArmed = false;
+          rtx.setText('REINICIAR PARTIDA').setColor('#FFFFFF');
+        }, 2500);
+        return;
+      }
+      this.restartArmed = false;
+      rtx.setText('REINICIAR PARTIDA').setColor('#FFFFFF');
+      this.setPaused(false);
+      this.newGame();
+    });
+    this.pauseInfo = info;
+    this.pauseUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
+    // Pausa sozinho se o jogador sair do app/aba no meio do lance
+    this.game.events.on(Phaser.Core.Events.HIDDEN, () => {
+      if (this.phase === 'live' || this.phase === 'kick') this.setPaused(true);
+    });
+  }
+  private pauseInfo!: Phaser.GameObjects.Text;
+
+  private setPaused(on: boolean) {
+    if (this.paused === on) return;
+    this.paused = on;
+    this.pauseUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(on));
+    if (on) {
+      const s = this.state;
+      this.pauseInfo.setText(`${TEAMS.home.abbr} ${s.score.home} x ${s.score.away} ${TEAMS.away.abbr} · ${s.quarterText} · ${s.clockText}`);
+      this.liveUi.joystick.reset();
+      if (this.ctl) this.ctl.sprint = false;
+      this.aim.active = false;
+      this.time.paused = true;
+      this.tweens.pauseAll();
+    } else {
+      this.time.paused = false;
+      this.tweens.resumeAll();
+    }
   }
 
   /** Botão de dificuldade (canto direito, abaixo do placar): toque para trocar FÁCIL / NORMAL / DIFÍCIL. */
@@ -538,6 +626,9 @@ export class MatchScene extends Phaser.Scene {
   // -------------------------------------------------------------- desenho
 
   update(_t: number, dtMs: number) {
+    // Pause: o botão fica visível só quando faz sentido
+    this.pauseBtn.setVisible(!this.paused && (this.phase === 'pre' || this.phase === 'live' || this.phase === 'post' || this.phase === 'kick'));
+    if (this.paused) return;
     const real = Math.min(dtMs, 50) / 1000;
     const dt = this.feedback.tick(real);
     this.elapsed += dt;
@@ -767,6 +858,7 @@ export class MatchScene extends Phaser.Scene {
 
     // Passe estilingue: toque no campo, arraste para trás e solte
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (this.paused) return;
       if (this.phase === 'post') return this.finishPost();
       if (this.phase === 'replay') return this.endReplay();
       if (this.phase !== 'live' || this.live?.phase !== 'pocket') return;
@@ -1732,6 +1824,7 @@ export class MatchScene extends Phaser.Scene {
     s.los = 25;
     this.gameOver = false;
     this.card.hide();
+    this.defenseScreen.close();
     this.phase = 'post';
     this.backToPreSnap();
   }
