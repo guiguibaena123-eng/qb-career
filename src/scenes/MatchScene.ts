@@ -186,7 +186,7 @@ export class MatchScene extends Phaser.Scene {
   private buildFieldTags() {
     for (const k of KEYS) {
       const p = this.recv(k);
-      const tag = new Tag(this, k === 'E' ? 'E · RB' : k, RECV_COLORS[k], '#0D0D12', 10).setDepth(40);
+      const tag = new Tag(this, k === 'E' ? 'E · RB' : k, RECV_COLORS[k], '#0D0D12', 7).setDepth(40);
       tag.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.cycleRoute(k));
       this.tags.set(p, tag);
     }
@@ -640,12 +640,12 @@ export class MatchScene extends Phaser.Scene {
       },
     });
     for (const k of KEYS) {
-      const t = new Tag(this, '', STATUS_COLOR.LIVRE, '#0D0D12', 8).setDepth(40).setVisible(false);
+      const t = new Tag(this, '', STATUS_COLOR.LIVRE, '#0D0D12', 6).setDepth(40).setVisible(false);
       this.statusTags.set(this.recv(k), t);
     }
-    this.pressureTag = new Tag(this, 'PRESSÃO!', 0xe5484d, '#FFFFFF', 8).setDepth(41).setVisible(false);
+    this.pressureTag = new Tag(this, 'PRESSÃO!', 0xe5484d, '#FFFFFF', 6).setDepth(41).setVisible(false);
     this.holeTag = new Tag(this, 'BURACO!', 0x3ccb5a, '#0D0D12', 8).setDepth(41).setVisible(false);
-    this.dangerTag = new Tag(this, 'PERIGO!', 0xe5484d, '#FFFFFF', 8).setDepth(41).setVisible(false);
+    this.dangerTag = new Tag(this, 'PERIGO!', 0xe5484d, '#FFFFFF', 6).setDepth(41).setVisible(false);
     this.meTag = new Tag(this, 'VOCÊ CONTROLA', 0xffd23f, '#0D0D12', 8).setDepth(41).setVisible(false);
     this.aimTag = new Tag(this, '', 0x3fd0ff, '#0D0D12', 8).setDepth(42).setVisible(false);
 
@@ -843,7 +843,11 @@ export class MatchScene extends Phaser.Scene {
     if (dOk && (!rOk || def.d < recv.d - 0.2)) {
       // Defensor chegou primeiro: interceptação ou desvio
       const d = def.p!;
-      const pInt = Math.min(0.8, (read?.intChance ?? 0.2) * 2.4 + (d.attrs.hands - 50) / 300);
+      // Bola limpa no defensor (sem recebedor disputando) = interceptação provável
+      const clean = !rOk || recv.d > def.d + 1.2;
+      let pInt = clean ? 0.78 - def.d * 0.12 : 0.3 + Math.max(0, recv.d - def.d) * 0.1;
+      pInt += (d.attrs.hands - 60) / 200 + (read?.intChance ?? 0) * 0.5;
+      pInt = Math.max(0.12, Math.min(0.88, pInt));
       if (this.rng.next() < pInt) return this.interception(d);
       d.pose = 'catch';
       d.angle = d.x < t.tx ? 30 : -30; // mergulho para desviar

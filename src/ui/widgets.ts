@@ -149,13 +149,13 @@ export class Tag extends Phaser.GameObjects.Container {
   }
 
   private layout() {
-    const w = this.txt.width + 10;
-    const h = this.txt.height + 8;
-    this.txt.setPosition(0, -4);
+    const w = this.txt.width + 6;
+    const h = this.txt.height + 4;
+    this.txt.setPosition(0, -2);
     const g = this.bg;
     g.clear();
     g.fillStyle(UI.dark, 1);
-    g.fillRect(-w / 2 - 2, -h - 2, w + 4, h + 4);
+    g.fillRect(-w / 2 - 1.5, -h - 1.5, w + 3, h + 3);
     g.fillStyle(this.bgColor, 1);
     g.fillRect(-w / 2, -h, w, h);
     this.setSize(w + 4, h + 4);
