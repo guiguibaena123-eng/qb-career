@@ -42,13 +42,13 @@ const BASE: Record<Role, Attributes> = {
 };
 
 /** Poses (frames) desenhadas para cada jogador. */
-export const POSES = ['idle', 'run1', 'run2', 'throw', 'catch', 'carry'] as const;
+export const POSES = ['idle', 'run1', 'run2', 'throw', 'catch', 'carry', 'carrySide', 'carryTurn', 'diveUp', 'dive', 'diveFlat'] as const;
 export type Pose = (typeof POSES)[number];
 const MARGIN = PX;
 const FRAME_W = BOX_W * PX + 2 * MARGIN;
 const FRAME_H = BOX_H * PX + 2 * MARGIN;
 
-interface Look {
+export interface Look {
   front: boolean;
   helmet: string;
   jersey: string;
@@ -59,12 +59,14 @@ interface Look {
   glove: string;
   num: string;
   numColor: string;
+  /** Combine: camiseta, bermuda e chuteira, sem capacete nem ombreiras. `hair` = cor do cabelo. */
+  casual?: boolean;
+  hair?: string;
 }
 
-/** Desenha o jogador no canvas (coordenadas "bottom" do design convertidas para "top"). */
-function drawPlayer(ctx: CanvasRenderingContext2D, L: Look, pose: Pose) {
-  // r(x, bottom, w, h): retângulo com contorno de 1px (como o box-shadow do design)
-  const r = (x: number, bottom: number, w: number, h: number, color: string, outline = true) => {
+/** r(x, bottom, w, h): retângulo com contorno de 1px (como o box-shadow do design). */
+function rect(ctx: CanvasRenderingContext2D) {
+  return (x: number, bottom: number, w: number, h: number, color: string, outline = true) => {
     const y = BOX_H - bottom - h;
     if (outline) {
       ctx.fillStyle = OUTLINE;
@@ -73,19 +75,181 @@ function drawPlayer(ctx: CanvasRenderingContext2D, L: Look, pose: Pose) {
     ctx.fillStyle = color;
     ctx.fillRect(x * PX, y * PX, w * PX, h * PX);
   };
+}
+
+/** De perfil (virado para a direita), com a bola presa no braço: meio do giro do spin. */
+function drawSide(ctx: CanvasRenderingContext2D, L: Look) {
+  const r = rect(ctx);
+  // Pernas em passada (de trás e da frente) e chuteiras
+  r(8, 0, 6, 3, '#111111', false);
+  r(15, 1, 7, 3, '#111111', false);
+  r(9, 3, 4, 6, L.sock);
+  r(16, 4, 4, 5, L.sock);
+  r(8, 9, 12, 9, L.pants);
+  r(13, 9, 2, 9, L.trim, false); // faixa lateral da calça
+  r(8, 17, 12, 2, '#1A1A1A', false);
+  // Tronco e ombreira vistos de lado (mais estreitos que de costas)
+  r(8, 19, 11, 11, L.jersey);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(8 * PX, (BOX_H - 30) * PX, 3 * PX, 11 * PX); // sombra nas costas
+  r(7, 27, 14, 6, L.jersey);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(7 * PX, (BOX_H - 33) * PX, 14 * PX, 2 * PX);
+  // Capacete de perfil: casco, grade na frente, rosto aparecendo
+  r(8, 31, 13, 12, L.helmet);
+  ctx.clearRect(8 * PX - PX, (BOX_H - 43) * PX - PX, 2 * PX, 2 * PX);
+  ctx.clearRect(21 * PX - PX, (BOX_H - 43) * PX - PX, 2 * PX, 2 * PX);
+  r(17, 32, 4, 5, L.skin, false);
+  ctx.fillStyle = '#D7DBE0';
+  ctx.fillRect(21 * PX, (BOX_H - 38) * PX, 2 * PX, 6 * PX);
+  ctx.fillRect(18 * PX, (BOX_H - 35) * PX, 4 * PX, 1 * PX);
+  r(9, 41, 11, 1, '#FFFFFF', false); // faixa do capacete por cima
+  r(11, 36, 3, 3, 'rgba(0,0,0,0.35)', false); // furo da orelha
+  r(10, 38, 3, 2, 'rgba(255,255,255,0.5)', false);
+  // Braço do lado de cá segurando a bola no peito
+  r(11, 22, 4, 6, L.jersey);
+  r(14, 20, 6, 3, L.skin);
+  r(17, 19, 8, 5, '#8A4B1F');
+  r(20, 21, 3, 1, '#FFFFFF', false);
+  r(15, 20, 3, 3, L.glove, false);
+}
+
+/** Mergulho para a frente visto de trás: pés perto da câmera, corpo deitado, braços esticados com a bola. */
+function drawDive(ctx: CanvasRenderingContext2D, L: Look) {
+  const r = rect(ctx);
+  // Solas das chuteiras (pernas no ar, abertas)
+  r(5, 4, 6, 3, '#111111');
+  r(17, 6, 6, 3, '#111111');
+  r(6, 7, 4, 4, L.sock);
+  r(18, 9, 4, 3, L.sock);
+  // Quadril e costas encurtados pela perspectiva
+  r(7, 11, 14, 6, L.pants);
+  r(7, 11, 2, 6, L.trim, false);
+  r(19, 11, 2, 6, L.trim, false);
+  r(5, 17, 18, 7, L.jersey);
+  ctx.fillStyle = L.numColor;
+  ctx.font = `${5 * PX}px ${FONT_TITLE}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(L.num, 14 * PX, (BOX_H - 17 - 3.5) * PX);
+  r(3, 23, 22, 4, L.jersey);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(3 * PX, (BOX_H - 27) * PX, 22 * PX, 1 * PX);
+  // Capacete (de costas, um pouco abaixado) e braços esticados à frente com a bola
+  r(8, 25, 12, 9, L.helmet);
+  r(13, 25, 2, 9, '#FFFFFF', false);
+  r(9, 30, 3, 2, 'rgba(255,255,255,0.55)', false);
+  r(4, 28, 4, 6, L.jersey);
+  r(20, 28, 4, 6, L.jersey);
+  r(5, 34, 4, 4, L.skin);
+  r(19, 34, 4, 4, L.skin);
+  r(9, 36, 10, 6, '#8A4B1F');
+  r(13, 38, 3, 1, '#FFFFFF', false);
+  r(7, 36, 3, 3, L.glove, false);
+  r(18, 36, 3, 3, L.glove, false);
+}
+
+/** Impulso do mergulho (de trás): agachado, inclinado para a frente, os dois braços subindo com a bola. */
+function drawDiveUp(ctx: CanvasRenderingContext2D, L: Look) {
+  const r = rect(ctx);
+  // Pernas dobradas: uma empurrando o chão, a outra saindo
+  r(6, 0, 6, 3, '#111111', false);
+  r(16, 2, 6, 3, '#111111', false);
+  r(7, 3, 4, 5, L.sock);
+  r(17, 5, 4, 3, L.sock);
+  r(6, 8, 16, 8, L.pants);
+  r(6, 8, 2, 8, L.trim, false);
+  r(20, 8, 2, 8, L.trim, false);
+  // Tronco curvado (mais baixo e largo), número
+  r(5, 16, 18, 9, L.jersey);
+  ctx.fillStyle = L.numColor;
+  ctx.font = `${6 * PX}px ${FONT_TITLE}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(L.num, 14 * PX, (BOX_H - 16 - 4.5) * PX);
+  r(2, 23, 24, 5, L.jersey);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(2 * PX, (BOX_H - 28) * PX, 24 * PX, 2 * PX);
+  // Capacete baixo (cabeça para a frente)
+  r(8, 25, 12, 10, L.helmet);
+  r(13, 25, 2, 10, '#FFFFFF', false);
+  r(9, 31, 3, 3, 'rgba(255,255,255,0.55)', false);
+  // Braços subindo juntos, bola acima da cabeça
+  r(3, 27, 4, 7, L.jersey);
+  r(21, 27, 4, 7, L.jersey);
+  r(5, 34, 4, 5, L.skin);
+  r(19, 34, 4, 5, L.skin);
+  r(9, 37, 10, 6, '#8A4B1F');
+  r(13, 39, 3, 1, '#FFFFFF', false);
+  r(7, 37, 3, 3, L.glove, false);
+  r(18, 37, 3, 3, L.glove, false);
+}
+
+/** Mergulho terminado (de trás): deitado no gramado, bem baixo, braços esticados com a bola à frente. */
+function drawDiveFlat(ctx: CanvasRenderingContext2D, L: Look) {
+  const r = rect(ctx);
+  // Solas das chuteiras quase no chão
+  r(6, 0, 6, 3, '#111111');
+  r(16, 0, 6, 3, '#111111');
+  r(7, 3, 4, 2, L.sock);
+  r(17, 3, 4, 2, L.sock);
+  // Corpo achatado no chão, visto pela perspectiva
+  r(7, 5, 14, 3, L.pants);
+  r(5, 8, 18, 4, L.jersey);
+  r(3, 11, 22, 3, L.jersey);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(3 * PX, (BOX_H - 14) * PX, 22 * PX, 1 * PX);
+  // Capacete encostado no gramado e braços esticados
+  r(9, 12, 10, 6, L.helmet);
+  r(13, 12, 2, 6, '#FFFFFF', false);
+  r(4, 14, 4, 4, L.jersey);
+  r(20, 14, 4, 4, L.jersey);
+  r(6, 18, 3, 3, L.skin);
+  r(19, 18, 3, 3, L.skin);
+  r(10, 19, 8, 5, '#8A4B1F');
+  r(13, 21, 3, 1, '#FFFFFF', false);
+  // Grama levantada nas pontas
+  r(2, 0, 2, 2, '#3a8a32', false);
+  r(24, 0, 2, 2, '#3a8a32', false);
+}
+
+/** Desenha o jogador no canvas (coordenadas "bottom" do design convertidas para "top"). */
+function drawPlayer(ctx: CanvasRenderingContext2D, L: Look, pose: Pose) {
+  if (pose === 'carrySide') return drawSide(ctx, L);
+  if (pose === 'dive') return drawDive(ctx, L);
+  if (pose === 'diveUp') return drawDiveUp(ctx, L);
+  if (pose === 'diveFlat') return drawDiveFlat(ctx, L);
+  // Meio giro: o mesmo jogador visto do outro lado (de frente se é do ataque)
+  if (pose === 'carryTurn') {
+    L = { ...L, front: !L.front };
+    pose = 'carry';
+  }
+  const r = rect(ctx);
 
   // Chuteiras e meiões (correndo: uma perna levantada de cada vez)
   const liftL = pose === 'run1' ? 3 : 0;
   const liftR = pose === 'run2' ? 3 : 0;
   r(7, liftL, 6, 3, '#111111', false);
   r(15, liftR, 6, 3, '#111111', false);
-  r(8, 3 + liftL, 4, 6 - liftL, L.sock);
-  r(16, 3 + liftR, 4, 6 - liftR, L.sock);
-  r(7, 9, 14, 9, L.pants);
-  r(13, 9, 2, 5, 'rgba(0,0,0,0.35)', false);
-  r(7, 9, 2, 9, L.trim, false);
-  r(19, 9, 2, 9, L.trim, false);
-  r(7, 17, 14, 2, '#1A1A1A', false);
+  if (L.casual) {
+    // Pernas de fora, meia curta branca e bermuda
+    r(8, 3 + liftL, 4, 9 - liftL, L.skin);
+    r(16, 3 + liftR, 4, 9 - liftR, L.skin);
+    r(8, 3 + liftL, 4, 3, '#F4F1E8');
+    r(16, 3 + liftR, 4, 3, '#F4F1E8');
+    r(7, 11, 14, 7, L.pants);
+    r(13, 11, 2, 4, 'rgba(0,0,0,0.3)', false);
+    r(7, 11, 2, 7, L.trim, false);
+    r(19, 11, 2, 7, L.trim, false);
+  } else {
+    r(8, 3 + liftL, 4, 6 - liftL, L.sock);
+    r(16, 3 + liftR, 4, 6 - liftR, L.sock);
+    r(7, 9, 14, 9, L.pants);
+    r(13, 9, 2, 5, 'rgba(0,0,0,0.35)', false);
+    r(7, 9, 2, 9, L.trim, false);
+    r(19, 9, 2, 9, L.trim, false);
+    r(7, 17, 14, 2, '#1A1A1A', false);
+  }
   // Braços: para baixo (manga, pele, luva) ou para cima (passe / recepção)
   const upL = pose === 'catch';
   const upR = pose === 'catch' || pose === 'throw';
@@ -105,6 +269,30 @@ function drawPlayer(ctx: CanvasRenderingContext2D, L: Look, pose: Pose) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(L.num, 14 * PX, (BOX_H - 19 - 5) * PX);
+  if (L.casual) {
+    // Camiseta mais estreita, pescoço e cabeça com cabelo (sem capacete)
+    r(5, 27, 18, 3, L.jersey);
+    r(11, 30, 6, 3, L.skin);
+    r(9, 33, 10, 10, L.skin);
+    r(9, 37, 10, 7, L.hair ?? '#15110F');
+    r(8, 36, 12, 2, L.hair ?? '#15110F', false);
+    if (pose === 'catch' || pose === 'throw') {
+      for (const [ax, up] of [[0, upL], [24, upR]] as [number, boolean][]) {
+        if (!up) continue;
+        r(ax, 30, 4, 5, L.jersey);
+        r(ax, 35, 4, 6, L.skin);
+        r(ax, 41, 4, 3, L.glove);
+      }
+    }
+    if (pose === 'throw') {
+      r(21, 44, 8, 5, '#8A4B1F');
+      r(24, 46, 3, 1, '#FFFFFF', false);
+    } else if (pose === 'carry') {
+      r(18, 19, 8, 5, '#8A4B1F');
+      r(21, 21, 3, 1, '#FFFFFF', false);
+    }
+    return;
+  }
   // Ombreiras
   r(2, 27, 24, 6, L.jersey);
   ctx.fillStyle = 'rgba(255,255,255,0.25)';
@@ -159,9 +347,7 @@ export function makePlayerTexture(scene: Phaser.Scene, side: Side, num: number, 
   if (scene.textures.exists(key)) return key;
   const off = side === 'off';
   const team = off ? TEAMS.home : TEAMS.away;
-  const tex = scene.textures.createCanvas(key, FRAME_W * POSES.length, FRAME_H)!;
-  const ctx = tex.getContext();
-  const look: Look = {
+  return makeLookTexture(scene, key, {
     front: !off,
     helmet: team.uniform.helmet,
     jersey: team.uniform.jersey,
@@ -172,7 +358,14 @@ export function makePlayerTexture(scene: Phaser.Scene, side: Side, num: number, 
     glove: off ? '#F4F1E8' : '#1A1A1A',
     num: String(num),
     numColor: team.uniform.num,
-  };
+  });
+}
+
+/** Textura de jogador com visual livre (carreira): o mesmo desenho e as mesmas poses da partida. */
+export function makeLookTexture(scene: Phaser.Scene, key: string, look: Look) {
+  if (scene.textures.exists(key)) return key;
+  const tex = scene.textures.createCanvas(key, FRAME_W * POSES.length, FRAME_H)!;
+  const ctx = tex.getContext();
   POSES.forEach((pose, i) => {
     ctx.save();
     ctx.translate(i * FRAME_W + MARGIN, MARGIN); // margem para o contorno
@@ -185,7 +378,7 @@ export function makePlayerTexture(scene: Phaser.Scene, side: Side, num: number, 
 }
 
 /** Escala do sprite do jogador relativa às pessoas das laterais (design: 0,76 vs 0,72). */
-const PLAYER_SCALE = 0.76 / PX / SPRITE_SCALE;
+export const PLAYER_SCALE = 0.76 / PX / SPRITE_SCALE;
 
 export class Player {
   x: number;
@@ -199,8 +392,11 @@ export class Player {
   state = 'idle';
   /** Pose fixa (passe, recepção...); null = automática (parado/correndo). */
   pose: Pose | null = null;
-  /** Rotação do sprite em graus (mergulho, queda). */
+  /** Rotação do sprite em graus (queda, tackle). */
   angle = 0;
+  /** Escala extra do sprite: largura (negativa = espelhado; giro do spin) e altura (achatado no mergulho). */
+  sx = 1;
+  sy = 1;
   /** Altura do corpo acima do chão (pulo, mergulho), em jardas. */
   hop = 0;
   /** Tempo até poder agir de novo (ex.: atraso de reação, caído). */
@@ -245,6 +441,8 @@ export class Player {
     this.bb.x = this.x;
     this.bb.y = this.y;
     this.bb.h = this.hop;
+    this.bb.sx = this.sx;
+    this.bb.sy = this.sy;
     const moving = Math.hypot(this.vx, this.vy) > 0.6;
     let frame: Pose = this.pose ?? 'idle';
     if (!this.pose && moving) {
@@ -257,6 +455,15 @@ export class Player {
       this.bb.h = this.hop + (Math.floor(this.animT) % 2) * 0.12;
     }
     if (this.bb.img.frame.name !== frame) this.bb.img.setFrame(frame);
-    this.bb.img.setAngle(this.angle);
+    // Peso do corpo: correndo, balança de um lado para o outro a cada passada, quica um pouco
+    // e inclina para dentro nas curvas (corte para o lado)
+    let tilt = 0;
+    const sp = Math.hypot(this.vx, this.vy);
+    if (moving && (!this.pose || this.pose === 'carry') && this.angle === 0) {
+      const k = Math.min(1, sp / 6);
+      tilt = Math.sin(this.animT * Math.PI) * 3 * k + Math.max(-9, Math.min(9, this.vx * 1.4));
+      this.bb.h = Math.max(this.bb.h, this.hop + Math.abs(Math.sin(this.animT * Math.PI)) * 0.1 * k);
+    }
+    this.bb.img.setAngle(this.angle + tilt);
   }
 }

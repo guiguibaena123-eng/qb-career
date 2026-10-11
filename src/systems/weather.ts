@@ -32,6 +32,8 @@ interface Drop {
 export class Weather {
   readonly kind: WeatherKind;
   private g: Phaser.GameObjects.Graphics;
+  /** Respingos: ficam no chão, abaixo dos jogadores e da interface (as gotas é que vão por cima). */
+  private gs: Phaser.GameObjects.Graphics;
   private tint: Phaser.GameObjects.Rectangle;
   private flash: Phaser.GameObjects.Rectangle;
   private drops: Drop[] = [];
@@ -47,12 +49,13 @@ export class Weather {
     const W = GAME_W;
     const H = GAME_H;
     this.tint = scene.add
-      .rectangle(0, 0, W, H, kind === 'rain' ? 0x0a1426 : 0xf2f6ff, kind === 'rain' ? 0.32 : kind === 'snow' ? 0.48 : 0)
+      .rectangle(0, 0, W, H, kind === 'rain' ? 0x0a1426 : 0xf2f6ff, kind === 'rain' ? 0.4 : kind === 'snow' ? 0.48 : 0)
       .setOrigin(0)
       .setDepth(60);
     this.g = scene.add.graphics().setDepth(61);
+    this.gs = scene.add.graphics().setDepth(0.9);
     this.flash = scene.add.rectangle(0, 0, W, H, 0xffffff, 0).setOrigin(0).setDepth(62);
-    const n = kind === 'rain' ? 150 : kind === 'snow' ? 300 : 0;
+    const n = kind === 'rain' ? 130 : kind === 'snow' ? 280 : 0;
     for (let i = 0; i < n; i++) this.drops.push(this.newDrop(true));
 
     if (kind !== 'clear') {
@@ -118,9 +121,9 @@ export class Weather {
       x: r.range(-60, W + 160),
       y: anyY ? r.range(-40, H) : r.range(-60, -10),
       v: snow ? r.range(130, 230) : r.range(1100, 1500),
-      len: r.range(9, 15),
-      a: snow ? r.range(0.7, 1) : r.range(0.35, 0.55),
-      size: snow ? r.pick([2, 3, 4, 5]) : 2,
+      len: r.range(14, 26),
+      a: snow ? r.range(0.7, 1) : r.range(0.4, 0.7),
+      size: snow ? r.pick([2, 3, 4, 5, 6]) : 2,
       phase: r.range(0, Math.PI * 2),
     };
   }
@@ -129,6 +132,7 @@ export class Weather {
     if (this.kind === 'clear') return;
     const g = this.g;
     g.clear();
+    this.gs.clear();
     const H = GAME_H;
     const W = GAME_W;
     if (this.kind === 'rain') {
@@ -139,10 +143,14 @@ export class Weather {
         d.x += sx * d.v * dt;
         d.y += cy * d.v * dt;
         if (d.y > H + 20) {
-          if (proj && this.rng.chance(0.45)) this.splashes.push({ x: this.rng.range(0.5, 52.8), y: proj.yAtScreen(this.rng.range(330, H - 40)), t: 0 });
+          if (proj && this.rng.chance(0.45)) {
+            // Só nasce respingo em cima do gramado visível (nunca na arquibancada, fora do campo nem atrás da interface)
+            const wy = proj.yAtScreen(this.rng.range(210, 640));
+            if (wy > -9 && wy < 109) this.splashes.push({ x: this.rng.range(0.5, 52.8), y: wy, t: 0 });
+          }
           Object.assign(d, this.newDrop(false));
         }
-        g.lineStyle(1.5, 0xcddeff, d.a);
+        g.lineStyle(2, 0xdbe8ff, d.a);
         g.lineBetween(d.x, d.y, d.x - sx * d.len, d.y - cy * d.len);
       }
       // Respingos (ovais que crescem e somem)
@@ -151,9 +159,9 @@ export class Weather {
         const k = 0.2 + s.t * 1.2;
         if (!proj) continue;
         const p = proj.project(s.x, s.y, 0, this.pt);
-        if (p.y < 150 || p.y > H) continue;
-        g.lineStyle(1, 0xd2e4ff, 0.9 * (1 - s.t));
-        g.strokeEllipse(p.x, p.y, 12 * k * p.s, 4 * k * p.s);
+        if (p.y < 200 || p.y > 650) continue;
+        this.gs.lineStyle(1, 0xd2e4ff, 0.8 * (1 - s.t));
+        this.gs.strokeEllipse(p.x, p.y, 12 * k * p.s, 4 * k * p.s);
       }
       this.splashes = this.splashes.filter((s) => s.t < 1);
       // Relâmpago

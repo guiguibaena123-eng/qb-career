@@ -13,7 +13,10 @@ import { steer } from './steering';
 
 const JUKE_TIME = 0.28;
 const SPIN_TIME = 0.42;
-const DIVE_TIME = 0.38;
+const DIVE_TIME = 0.62;
+/** Fases do mergulho (fração do tempo): impulso até DIVE_UP, voo até DIVE_LAND, depois desliza no chão. */
+const DIVE_UP = 0.16;
+const DIVE_LAND = 0.68;
 
 export class CarrierControl {
   stamina = 1;
@@ -21,6 +24,7 @@ export class CarrierControl {
   private jukeT = 0;
   private jukeDir = 1;
   private spinT = 0;
+  private spinDir = 1;
   private diveT = 0;
   private cooldown = 0;
   /** Mergulho terminou: o lance acaba onde ele caiu. */
@@ -31,6 +35,8 @@ export class CarrierControl {
   rand: () => number = Math.random;
   /** Escorregou agora (a cena mostra o aviso). */
   onSlip?: () => void;
+  /** Caiu no chão no fim do mergulho (a cena solta poeira). */
+  onLand?: () => void;
   private slipT = 0;
 
   constructor(private p: Player) {}
@@ -72,6 +78,8 @@ export class CarrierControl {
       return false;
     }
     this.spinT = SPIN_TIME;
+    // Gira para o lado em que está indo (ou para o meio do campo)
+    this.spinDir = this.p.vx > 0.3 ? 1 : this.p.vx < -0.3 ? -1 : this.p.x < FIELD.width / 2 ? 1 : -1;
     this.cooldown = 0.9;
     return true;
   }
@@ -94,10 +102,27 @@ export class CarrierControl {
 
     if (this.diveT > 0) {
       this.diveT -= dt;
-      const k = 1 - this.diveT / DIVE_TIME;
-      p.angle = -75 * Math.min(1, k * 2);
-      p.hop = Math.sin(Math.min(1, k) * Math.PI) * 0.9;
-      steer(p, p.vx * 0.3, Math.max(p.vy, 6), dt, 30);
+      const k = Math.min(1, 1 - this.diveT / DIVE_TIME);
+      p.angle = 0;
+      p.sx = p.sy = 1;
+      if (k < DIVE_UP) {
+        // 1) Impulso: agacha e sobe os braços com a bola, ainda no chão
+        p.pose = 'diveUp';
+        p.hop = 0;
+        steer(p, p.vx * 0.6, Math.max(p.vy * 0.85, 3), dt, 30);
+      } else if (k < DIVE_LAND) {
+        // 2) Voo: corpo esticado no ar, em arco, ganhando distância para a frente
+        p.pose = 'dive';
+        const u = (k - DIVE_UP) / (DIVE_LAND - DIVE_UP);
+        p.hop = Math.sin(u * Math.PI) * 0.75;
+        steer(p, p.vx * 0.4, Math.max(p.vy, 7.5), dt, 40);
+      } else {
+        // 3) Chão: cai de barriga e desliza até parar
+        if (p.pose !== 'diveFlat') this.onLand?.();
+        p.pose = 'diveFlat';
+        p.hop = 0;
+        steer(p, 0, 0, dt, 16);
+      }
       if (this.diveT <= 0) {
         this.diveDone = true;
         p.hop = 0;
@@ -137,9 +162,31 @@ export class CarrierControl {
     }
     if (this.spinT > 0) {
       this.spinT -= dt;
-      p.angle = (1 - this.spinT / SPIN_TIME) * 360;
-      if (this.spinT <= 0) p.angle = 0;
+      // Giro no próprio eixo: costas → perfil → de frente → outro perfil → costas (quadros desenhados)
+      const k = 1 - Math.max(0, this.spinT) / SPIN_TIME;
+      const dir = this.spinDir;
+      if (k < 0.12 || k >= 0.88) {
+        p.pose = 'carry';
+        p.sx = 1;
+      } else if (k < 0.38) {
+        p.pose = 'carrySide';
+        p.sx = dir;
+      } else if (k < 0.62) {
+        p.pose = 'carryTurn';
+        p.sx = 1;
+      } else {
+        p.pose = 'carrySide';
+        p.sx = -dir;
+      }
+      p.hop = Math.sin(k * Math.PI) * 0.15;
+      // Passo para o lado durante o giro, para onde ele está indo
+      vx += dir * 5.5 * Math.sin(k * Math.PI);
+      if (this.spinT <= 0) {
+        p.pose = 'carry';
+        p.sx = 1;
+        p.hop = 0;
+      }
     }
-    steer(p, vx, vy, dt, this.jukeT > 0 ? 60 : 20);
+    steer(p, vx, vy, dt, this.jukeT > 0 || this.spinT > 0 ? 60 : 20);
   }
 }

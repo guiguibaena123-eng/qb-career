@@ -9,7 +9,11 @@ import { label, title, UI } from './widgets';
  *  - barra com descida/distância, posição e play clock;
  *  - card do QB (#12 · ROOKIE · OVR 68) com barra de CONFIANÇA.
  */
+/** Tamanho do HUD do topo (1 = original). Tudo fica dentro de um container que escala em volta do centro. */
+const HUD_SCALE = 0.8;
+
 export class Hud {
+  private root: Phaser.GameObjects.Container;
   private texts: Record<string, Phaser.GameObjects.Text> = {};
   private conf: Phaser.GameObjects.Graphics;
   readonly downBar: Phaser.GameObjects.Container;
@@ -20,7 +24,8 @@ export class Hud {
     const W = GAME_W;
     const L = 12;
     const R = W - 12;
-    const g = scene.add.graphics().setDepth(depth);
+    this.root = scene.add.container(GAME_W / 2 - (GAME_W / 2) * HUD_SCALE, 2).setScale(HUD_SCALE).setDepth(depth);
+    const g = scene.add.graphics();
 
     // Placar
     const top = 14;
@@ -36,10 +41,10 @@ export class Hud {
     g.fillStyle(TEAMS.away.color, 1);
     g.fillRect(L + side + mid, top, side, h);
 
-    const t = (k: string, o: Phaser.GameObjects.Text) => (this.texts[k] = o.setDepth(depth + 1));
+    const t = (k: string, o: Phaser.GameObjects.Text) => (this.texts[k] = o);
     // Logos dos times
-    scene.add.image(L + 5, top + 4, logoKey(TEAMS.home.id)).setOrigin(0).setDisplaySize(36, 36).setDepth(depth + 1);
-    scene.add.image(R - 5 - 36, top + 4, logoKey(TEAMS.away.id)).setOrigin(0).setDisplaySize(36, 36).setDepth(depth + 1);
+    const logoH = scene.add.image(L + 5, top + 4, logoKey(TEAMS.home.id)).setOrigin(0).setDisplaySize(36, 36);
+    const logoA = scene.add.image(R - 5 - 36, top + 4, logoKey(TEAMS.away.id)).setOrigin(0).setDisplaySize(36, 36);
     t('homeAbbr', title(scene, L + 46, top + h / 2, TEAMS.home.abbr, 11, TEAMS.home.fg).setOrigin(0, 0.5));
     t('homeScore', title(scene, L + side - 10, top + h / 2, '', 18, TEAMS.home.fg).setOrigin(1, 0.5));
     t('quarter', label(scene, L + side + mid / 2, top + 13, '', 11, '#0D0D12').setOrigin(0.5));
@@ -48,7 +53,7 @@ export class Hud {
     t('awayAbbr', title(scene, R - 46, top + h / 2, TEAMS.away.abbr, 11, TEAMS.away.fg).setOrigin(1, 0.5));
 
     // Barra de descida / posição / play clock
-    this.downBar = scene.add.container(0, 0).setDepth(depth);
+    this.downBar = scene.add.container(0, 0);
     const bar = scene.add.graphics();
     this.playBox = scene.add.graphics();
     this.downBar.add([bar, this.playBox]);
@@ -84,7 +89,7 @@ export class Hud {
     };
 
     // Card do QB com barra de confiança (some na visão tática)
-    this.card = scene.add.container(0, 0).setDepth(depth);
+    this.card = scene.add.container(0, 0);
     const cg = scene.add.graphics();
     const cy = 116;
     const cw = 150;
@@ -100,6 +105,10 @@ export class Hud {
     this.card.add([cg, this.texts.qbNum, this.texts.qbInfo, this.texts.confLbl, this.conf]);
     this.confX = L + 10 + this.texts.confLbl.width + 6;
     this.confY = cy + 29;
+
+    // Tudo num container só (escalado): placar, barra de descida e card do QB
+    const top6 = ['homeAbbr', 'homeScore', 'quarter', 'clock', 'awayScore', 'awayAbbr'].map((k) => this.texts[k]);
+    this.root.add([g, logoH, logoA, ...top6, this.downBar, this.card]);
 
     this.refresh();
   }
@@ -127,7 +136,7 @@ export class Hud {
     const by = 72;
     const bh = 34;
     // POCKET: "2ª & 7" + segmentos + segundos
-    this.pocketBar = sc.add.container(0, 0).setDepth(depth).setVisible(false);
+    this.pocketBar = sc.add.container(0, 0).setVisible(false);
     const pg = sc.add.graphics();
     this.pocketDown = title(sc, L + 10, by + bh / 2, '', 12, '#0D0D12').setOrigin(0, 0.5);
     const plbl = label(sc, 0, by + bh / 2, 'POCKET', 10, '#C9CEE0').setOrigin(0, 0.5);
@@ -151,20 +160,26 @@ export class Hud {
       this.segX1 = R - 50;
     };
     // Resultado: "PASSE COMPLETO · SLANT" + "+14"
-    this.resultBar = sc.add.container(0, 0).setDepth(depth).setVisible(false);
+    this.resultBar = sc.add.container(0, 0).setVisible(false);
     this.resultG = sc.add.graphics();
     this.resultDown = title(sc, L + 10, by + bh / 2, '', 12, '#0D0D12').setOrigin(0, 0.5);
     this.resultText = label(sc, 0, by + bh / 2, '', 11, '#FFFFFF').setOrigin(0, 0.5);
     this.resultYds = title(sc, R - 10, by + bh / 2, '', 11, '#0D0D12').setOrigin(1, 0.5);
     this.resultBar.add([this.resultG, this.resultDown, this.resultText, this.resultYds]);
+    this.root.add([this.pocketBar, this.resultBar]);
   }
   private layoutPocket: () => void = () => {};
   private segX0 = 0;
   private segX1 = 0;
 
   /** Qual barra aparece embaixo do placar. */
+  /** Esconde o placar inteiro (treino livre). */
+  hide() {
+    this.root.setVisible(false);
+  }
+
   setBar(mode: 'pre' | 'pocket' | 'result' | 'none') {
-    if (!this.pocketBar) this.buildBars(this.downBar.depth);
+    if (!this.pocketBar) this.buildBars(0);
     this.downBar.setVisible(mode === 'pre');
     this.pocketBar.setVisible(mode === 'pocket');
     this.resultBar.setVisible(mode === 'result');
@@ -191,7 +206,7 @@ export class Hud {
 
   /** Barra de resultado do lance. */
   setResult(text: string, yards: string, color: number, chip?: [string, number, string]) {
-    if (!this.pocketBar) this.buildBars(this.downBar.depth);
+    if (!this.pocketBar) this.buildBars(0);
     const L = 12;
     const R = GAME_W - 12;
     const by = 72;

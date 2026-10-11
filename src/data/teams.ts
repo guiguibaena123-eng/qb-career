@@ -37,7 +37,7 @@ export const TEAM_LIST: TeamDef[] = [
   { id: 'buf', name: 'BUFFALO', abbr: 'BUF', primary: 0x00338d, secondary: 0xc60c30, ovr: 88, atk: 89, def: 86, esp: 80 },
   { id: 'mia', name: 'MIAMI', abbr: 'MIA', primary: 0x008e97, secondary: 0xfc4c02, ovr: 85, atk: 88, def: 80, esp: 78 },
   { id: 'ne', name: 'NEW ENGLAND', abbr: 'NE', primary: 0x002244, secondary: 0xc60c30, ovr: 74, atk: 70, def: 78, esp: 74 },
-  { id: 'nyj', name: 'NY JETS', abbr: 'NYJ', primary: 0x125740, secondary: 0xf4f1e8, ovr: 81, atk: 79, def: 86, esp: 78 },
+  { id: 'nyj', name: 'NY JITS', abbr: 'NYJ', primary: 0x125740, secondary: 0xf4f1e8, ovr: 81, atk: 79, def: 86, esp: 78 },
   // AFC Norte
   { id: 'bal', name: 'BALTIMORE', abbr: 'BAL', primary: 0x241773, secondary: 0x9e7c0c, ovr: 91, atk: 93, def: 88, esp: 83 },
   { id: 'cin', name: 'CINCINNATI', abbr: 'CIN', primary: 0xfb4f14, secondary: 0x101820, ovr: 85, atk: 88, def: 80, esp: 76 },
@@ -52,10 +52,10 @@ export const TEAM_LIST: TeamDef[] = [
   { id: 'den', name: 'DENVER', abbr: 'DEN', primary: 0xfb4f14, secondary: 0x002244, ovr: 79, atk: 76, def: 83, esp: 75 },
   { id: 'kc', name: 'KANSAS CITY', abbr: 'KC', primary: 0xe31837, secondary: 0xffb81c, ovr: 90, atk: 91, def: 87, esp: 85 },
   { id: 'lv', name: 'LAS VEGAS', abbr: 'LV', primary: 0x101820, secondary: 0xa5acaf, helmet: 0xa5acaf, ovr: 79, atk: 77, def: 80, esp: 76 },
-  { id: 'lac', name: 'LA CHARGERS', abbr: 'LAC', primary: 0x0080c6, secondary: 0xffc20e, ovr: 82, atk: 80, def: 85, esp: 79 },
+  { id: 'lac', name: 'LA GUARDS', abbr: 'LAC', primary: 0x0080c6, secondary: 0xffc20e, ovr: 82, atk: 80, def: 85, esp: 79 },
   // NFC Leste
   { id: 'dal', name: 'DALLAS', abbr: 'DAL', primary: 0x003594, secondary: 0x869397, helmet: 0x869397, ovr: 85, atk: 87, def: 83, esp: 80 },
-  { id: 'nyg', name: 'NY GIANTS', abbr: 'NYG', primary: 0x0b2265, secondary: 0xa71930, ovr: 74, atk: 70, def: 77, esp: 72 },
+  { id: 'nyg', name: 'NY BIGGERS', abbr: 'NYG', primary: 0x0b2265, secondary: 0xa71930, ovr: 74, atk: 70, def: 77, esp: 72 },
   { id: 'phi', name: 'PHILADELPHIA', abbr: 'PHI', primary: 0x004c54, secondary: 0xa5acaf, ovr: 88, atk: 90, def: 85, esp: 79 },
   { id: 'was', name: 'WASHINGTON', abbr: 'WAS', primary: 0x5a1414, secondary: 0xffb612, ovr: 74, atk: 75, def: 71, esp: 73 },
   // NFC Norte
@@ -70,7 +70,7 @@ export const TEAM_LIST: TeamDef[] = [
   { id: 'tb', name: 'TAMPA BAY', abbr: 'TB', primary: 0xd50a0a, secondary: 0xff7900, helmet: 0x34302b, ovr: 80, atk: 81, def: 79, esp: 77 },
   // NFC Oeste
   { id: 'ari', name: 'ARIZONA', abbr: 'ARI', primary: 0x97233f, secondary: 0xffb612, ovr: 76, atk: 77, def: 73, esp: 75 },
-  { id: 'lar', name: 'LA RAMS', abbr: 'LAR', primary: 0x003594, secondary: 0xffa300, helmet: 0xffa300, ovr: 83, atk: 84, def: 82, esp: 78 },
+  { id: 'lar', name: 'LA VAMS', abbr: 'LAR', primary: 0x003594, secondary: 0xffa300, helmet: 0xffa300, ovr: 83, atk: 84, def: 82, esp: 78 },
   { id: 'sf', name: 'SAN FRANCISCO', abbr: 'SF', primary: 0xaa0000, secondary: 0xb3995d, helmet: 0xb3995d, ovr: 90, atk: 92, def: 88, esp: 81 },
   { id: 'sea', name: 'SEATTLE', abbr: 'SEA', primary: 0x002244, secondary: 0x69be28, ovr: 81, atk: 79, def: 83, esp: 76 },
 ];

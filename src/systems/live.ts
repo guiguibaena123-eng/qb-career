@@ -31,6 +31,58 @@ export interface LiveEvents {
   onBrokenTackle(by: Player, how: 'juke' | 'spin' | 'stiff'): void;
 }
 
+/** Raio do corpo (jardas): ninguém chega mais perto que isso de ninguém. */
+const BODY = 0.85;
+/** Caído no chão ocupa menos espaço, mas continua sendo um obstáculo. */
+const BODY_DOWN = 0.6;
+
+/**
+ * Colisão entre jogadores: ninguém atravessa ninguém. A sobreposição é desfeita por inteiro
+ * (algumas iterações), dividida pela massa (força; quem carrega a bola pesa mais), e a
+ * velocidade de um contra o outro é anulada para não "entrarem" de novo no frame seguinte.
+ * Quem está caído não é empurrado.
+ */
+export function separatePlayers(all: Player[], heavy: Player | null = null, isDown: (p: Player) => boolean = () => false) {
+  const inv = all.map((p) => (isDown(p) ? 0 : 1 / ((0.8 + p.attrs.strength / 100) * (p === heavy ? 1.6 : 1))));
+  const down = all.map(isDown);
+  for (let it = 0; it < 3; it++) {
+    for (let i = 0; i < all.length; i++) {
+      for (let j = i + 1; j < all.length; j++) {
+        if (down[i] && down[j]) continue;
+        const a = all[i];
+        const b = all[j];
+        const r = down[i] || down[j] ? BODY_DOWN : BODY;
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let d = Math.hypot(dx, dy);
+        if (d >= r) continue;
+        if (d < 0.001) {
+          dx = i % 2 ? 1 : -1;
+          dy = 0;
+          d = 1;
+        }
+        const nx = dx / d;
+        const ny = dy / d;
+        const wa = inv[i];
+        const wb = inv[j];
+        const s = (r - Math.min(d, r)) / (wa + wb);
+        a.x -= nx * s * wa;
+        a.y -= ny * s * wa;
+        b.x += nx * s * wb;
+        b.y += ny * s * wb;
+        const rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+        if (rv < 0) {
+          const k = rv / (wa + wb);
+          a.vx += nx * k * wa;
+          a.vy += ny * k * wa;
+          b.vx -= nx * k * wb;
+          b.vy -= ny * k * wb;
+        }
+      }
+    }
+  }
+}
+
 export class LivePlay {
   t = 0;
   phase: Phase = 'pocket';
@@ -52,6 +104,8 @@ export class LivePlay {
   /** Corrida desenhada: buraco alvo e até quando cada DL fica preso no bloqueio. */
   runGap: number | null = null;
   private shedAt = new Map<Player, number>();
+  /** Quem foi derrubado (perdeu no físico): fica no chão até o tempo acabar. */
+  private downs = new Map<Player, { until: number; state: string }>();
   private ol: Player[];
   private dl: Player[];
 
@@ -70,7 +124,7 @@ export class LivePlay {
     this.blocks = new Map(blockAssignments(this.ol, this.dl).map((b) => [b.from, b.to]));
     // Um DL de ponta escapa do bloqueio depois de alguns segundos (pocket curto)
     this.escaper = rng.chance(0.5) ? this.dl[0] : this.dl[3];
-    this.escapeAt = rng.range(2.1, 3.3) + difficulty.d.pocket;
+    this.escapeAt = this.dl.length ? rng.range(2.1, 3.3) + difficulty.d.pocket : Infinity; // treino sem defesa: pocket eterno
     for (const p of [...offense, ...defense]) {
       p.state = 'live';
       p.wait = 0;
@@ -122,9 +176,31 @@ export class LivePlay {
     return d.wait > 0 || (this.shedAt.get(d) ?? -1) > this.t;
   }
 
+  /** Está caído no chão agora. */
+  isDown(p: Player) {
+    return this.downs.has(p);
+  }
+
+  /** Derruba o jogador: ele para onde está, deitado, e só levanta depois de `secs`. */
+  knockDown(p: Player, secs: number, fromX: number) {
+    const prev = this.downs.get(p);
+    this.downs.set(p, { until: this.t + secs, state: prev?.state ?? p.state });
+    p.state = 'down';
+    p.wait = Math.max(p.wait, secs);
+    p.vx = p.vy = 0;
+    p.pose = null;
+    p.angle = p.x < fromX ? -80 : 80;
+  }
+
   update(dt: number) {
     if (this.phase === 'dead') return;
     this.t += dt;
+    for (const [p, d] of this.downs) {
+      if (d.until > this.t) continue;
+      this.downs.delete(p);
+      p.state = d.state;
+      p.angle = 0;
+    }
     for (const p of [...this.offense, ...this.defense]) {
       if (p.wait > 0) p.wait -= dt;
       const h = this.history.get(p) ?? [];
@@ -165,8 +241,8 @@ export class LivePlay {
 
     // Linha ofensiva: fica entre o DL e o QB
     for (const o of this.ol) {
-      const d = this.blocks.get(o)!;
-      if (d.state === 'free') {
+      const d = this.blocks.get(o);
+      if (!d || d.state === 'free') {
         arrive(o, o.x, Math.min(o.y, this.los - 1.5), 3, dt);
         continue;
       }
@@ -305,6 +381,11 @@ export class LivePlay {
     }
     // Defesa: persegue o carregador (pursue) e tenta o tackle
     for (const d of this.defense) {
+      if (this.isDown(d)) {
+        // caído: fica no chão, não segue ninguém
+        d.vx = d.vy = 0;
+        continue;
+      }
       if ((this.shedAt.get(d) ?? -1) > this.t) continue; // preso no bloqueio
       if (d.wait > 0) {
         steer(d, 0, 0, dt, 10);
@@ -319,33 +400,16 @@ export class LivePlay {
           this.ev.onTackle(d, r);
           return;
         }
-        d.wait = 0.55; // errou o tackle e caiu
-        d.angle = d.x < c.x ? -75 : 75;
-        this.ev.onBrokenTackle(d, this.evasive ?? 'stiff');
+        // Perdeu no físico (ou no drible): cai e fica no chão um tempo
+        const how = this.evasive ?? 'stiff';
+        this.knockDown(d, this.rng.range(1.1, 1.6) + (how === 'stiff' ? 0.3 : 0), c.x);
+        this.ev.onBrokenTackle(d, how);
       }
     }
   }
 
-  /** Separação simples: ninguém atravessa ninguém. */
   private separate() {
-    const all = [...this.offense, ...this.defense];
-    for (let i = 0; i < all.length; i++) {
-      for (let j = i + 1; j < all.length; j++) {
-        const a = all[i];
-        const b = all[j];
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const d = Math.hypot(dx, dy);
-        if (d > 0.001 && d < 0.75) {
-          const push = (0.75 - d) / 2;
-          const k = a === this.carrier || b === this.carrier ? 0.4 : 1;
-          a.x -= (dx / d) * push * k;
-          a.y -= (dy / d) * push * k;
-          b.x += (dx / d) * push * k;
-          b.y += (dy / d) * push * k;
-        }
-      }
-    }
+    separatePlayers([...this.offense, ...this.defense], this.carrier, (p) => this.isDown(p));
   }
 
   /** Ninguém sai das 4 linhas (laterais e linhas de fundo das end zones); só quem tem a bola pode pisar fora. */

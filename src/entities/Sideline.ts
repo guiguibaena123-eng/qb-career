@@ -24,6 +24,9 @@ const fy = (T: number) => (PLANE.goalT - T) / PLANE.pxPerYard;
 const AREA = { inner: fx(38), outer: fx(-60), y0: fy(970), y1: fy(610), taper: 5 };
 const BENCH = { x0: fx(-12), x1: fx(0), y0: fy(930), y1: fy(690) };
 
+/** Combine: nas laterais só treinadores, especialistas, jovens prospectos e imprensa (sem o banco cheio). */
+export const sidelineOptions = { combine: false };
+
 export class Sideline {
   private g: Phaser.GameObjects.Graphics;
   readonly people: BillboardLayer;
@@ -44,17 +47,20 @@ export class Sideline {
       const X = (x: number) => (away ? mirror(x) : x);
       const dT = away ? 8 : 0; // o design desloca um pouco o lado direito
       // Reservas em pé (~1/3 sem capacete, segurando o capacete)
-      for (let i = 0; i < 8; i++) {
+      const combine = sidelineOptions.combine;
+      for (let i = 0; i < (combine ? 4 : 8); i++) {
         const key = i % 3 === 1 ? SPRITE_KEYS.hold(side, skin()) : SPRITE_KEYS.stand(side, skin());
         this.people.add(key, X(fx(i % 2 ? 25 : 33)), fy(690 + dT + i * 28), { flip: away });
       }
       // Reservas sentados no banco
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < (combine ? 3 : 6); i++) {
         const key = i % 3 === 1 ? SPRITE_KEYS.sitBare(side, skin()) : SPRITE_KEYS.sit(side, skin());
-        this.people.add(key, X(fx(-6)), fy(705 + dT + i * 36), { flip: away, shadow: 0 });
+        this.people.add(key, X(fx(-6)), fy(705 + dT + i * 36), { flip: away, shadow: 1.6 });
       }
       // Coordenadores (mais perto do campo)
-      for (const T of [760, 842]) {
+      // Especialistas (kicker, punter, long snapper) aquecendo perto do campo
+      if (combine) for (const T of [800, 890]) this.people.add(SPRITE_KEYS.stand(side, skin()), X(fx(30)), fy(T + dT), { flip: away });
+      for (const T of combine ? [760, 842, 925] : [760, 842]) {
         this.people.add(SPRITE_KEYS.coach(side, skin()), X(fx(38)), fy(T + dT), { flip: away });
       }
     }
@@ -103,8 +109,9 @@ export class Sideline {
       [X(outer - pad), y1 - taper + pad],
       [X(outer - pad), y0 + taper - pad],
     ];
-    groundPoly(this.g, this.proj, shape(0.5), 0xf3f3ee);
-    groundPoly(this.g, this.proj, shape(0), 0x9a8a5c);
+    // Na neve o chão da área dos times fica branco acinzentado (um pouco mais escuro que os montes de neve)
+    groundPoly(this.g, this.proj, shape(0.5), this.snow ? 0xe6ebf3 : 0xf3f3ee);
+    groundPoly(this.g, this.proj, shape(0), this.snow ? 0xb4becf : 0x9a8a5c);
   }
 
   /** Banco de metal comprido com faixa na cor do time. */

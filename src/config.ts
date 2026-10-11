@@ -1,4 +1,6 @@
 // Configuração central: resolução, câmera/projeção, cores do campo e times.
+import type { StandChoice } from './data/stadiums';
+import type { TimeChoice } from './systems/daytime';
 import { autoUniform, fgOn, teamById, uiColor, uniformsOf, type TeamDef, type Uniform } from './data/teams';
 
 export const GAME_W = 390;
@@ -12,7 +14,7 @@ export const CAMERA = {
   perspDist: 700, // distância de perspectiva (px)
   vanishRatio: 0.35, // ponto de fuga em 35% da altura
   focusRatio: 0.72, // o QB fica no terço inferior
-  zoom: 0.9,
+  zoom: 1.15,
   pxPerYard: 7.5, // px por jarda na largura, no ponto de foco (antes do zoom)
   depthPxBase: 24.4, // profundidade por jarda = base × sen(tilt)
   followLerp: 0.12, // suavidade da câmera seguindo o alvo
@@ -63,12 +65,14 @@ export interface TeamConfig {
 export type WeatherChoice = 'clear' | 'rain' | 'snow' | 'random';
 
 /** Escolhas do menu (Partida rápida). `awayUni` = null deixa o uniforme do adversário automático (o que mais contrasta). */
-export const matchConfig: { home: string; away: string; homeUni: number; awayUni: number | null; weather: WeatherChoice } = {
+export const matchConfig: { home: string; away: string; homeUni: number; awayUni: number | null; weather: WeatherChoice; stand: StandChoice; time: TimeChoice } = {
   home: 'kc',
   away: 'buf',
   homeUni: 0,
   awayUni: null,
   weather: 'random',
+  stand: 'auto',
+  time: 'random',
 };
 
 try {

@@ -3,6 +3,7 @@ import { CAMERA } from '../config';
 import { Sideline } from '../entities/Sideline';
 import { BillboardLayer } from './billboards';
 import { FieldRenderer } from './field';
+import { pickTimeOfDay, shadowLights, type SkyWeather, type TimeOfDay } from './daytime';
 import { Grandstand } from './grandstand';
 import { Projection } from './projection';
 import { StadiumShader } from './stadium';
@@ -16,18 +17,26 @@ export class World {
   readonly field: FieldRenderer;
   readonly stadium: StadiumShader;
   readonly stand: Grandstand;
+  /** Horário da partida (dia, tarde ou noite). */
+  readonly tod: TimeOfDay = pickTimeOfDay();
   readonly sideline: Sideline;
   readonly players: BillboardLayer;
   /** Para onde a câmera vai (jarda no foco); ela chega lá suavemente (lerp). */
   targetY: number;
 
-  constructor(scene: Phaser.Scene, camY: number) {
+  constructor(scene: Phaser.Scene, camY: number, weather: SkyWeather = 'clear') {
     this.proj.camY = this.targetY = camY;
-    this.stadium = new StadiumShader(scene, this.proj);
-    this.stand = new Grandstand(scene, this.proj);
+    this.stadium = new StadiumShader(scene, this.proj, this.tod, weather);
+    this.stand = new Grandstand(scene, this.proj, this.tod, weather);
     this.field = new FieldRenderer(scene, this.proj);
     this.sideline = new Sideline(scene, this.proj);
+    this.field.lights = shadowLights(this.tod);
+    // Gramado mais vivo à noite (refletores), mais quente na tarde
+    if (this.tod === 'night') this.field.grass = [0x52b848, 0x5fc653];
+    else if (this.tod === 'dusk') this.field.grass = [0x4a9a3d, 0x54a844];
     this.players = new BillboardLayer(scene, 0.7);
+    this.players.setLights(shadowLights(this.tod));
+    this.sideline.people.setLights(shadowLights(this.tod)); // reservas, técnicos, fotógrafos e câmeras também projetam sombras
   }
 
   update(dt: number) {

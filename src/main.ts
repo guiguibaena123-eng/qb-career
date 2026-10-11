@@ -5,7 +5,21 @@ import '@fontsource/silkscreen';
 import { GAME_H, GAME_W, RES } from './config';
 import { patchText } from './systems/hires';
 import { Boot } from './scenes/Boot';
+import { CareerTest } from './scenes/CareerTest';
+import { CareerHub } from './scenes/CareerHub';
+import { CombineHub } from './scenes/CombineHub';
+import { Combine40 } from './scenes/Combine40';
+import { Combine3Cones } from './scenes/Combine3Cones';
+import { CombinePasse } from './scenes/CombinePasse';
+import { CombineForca } from './scenes/CombineForca';
+import { CombineResultado } from './scenes/CombineResultado';
+import { CareerCreate } from './scenes/CareerCreate';
+import { PlayerTest } from './scenes/PlayerTest';
 import { MainMenu } from './scenes/MainMenu';
+import { DraftEspera } from './scenes/DraftEspera';
+import { DraftTelefone } from './scenes/DraftTelefone';
+import { DraftAnuncio } from './scenes/DraftAnuncio';
+import { DraftEscolhido } from './scenes/DraftEscolhido';
 
 async function boot() {
   // Espera as fontes carregarem para os textos do Phaser não nascerem com fonte padrão
@@ -21,8 +35,15 @@ async function boot() {
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, powerPreference: 'high-performance' },
     fps: { target: 60 },
-    scene: [Boot, MainMenu],
+    // Vários dedos ao mesmo tempo: segurar o joystick e apertar SPRINT/JUKE/SPIN/MERGULHO
+    input: { activePointers: 4 },
+    scene: [Boot, MainMenu, CareerTest, PlayerTest, CareerHub, CareerCreate, CombineHub, Combine40, Combine3Cones, CombinePasse, CombineForca, CombineResultado, DraftEspera, DraftTelefone, DraftAnuncio, DraftEscolhido],
   });
 }
 
 boot();
+
+// Modo offline (só na versão publicada): o service worker guarda o jogo para abrir sem internet
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}

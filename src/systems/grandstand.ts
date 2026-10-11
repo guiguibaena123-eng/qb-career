@@ -1,9 +1,12 @@
 import Phaser from 'phaser';
-import { FONT_TITLE, MATCH_SEED, TEAMS } from '../config';
+import { FONT_TITLE, MATCH_SEED, TEAMS, matchConfig } from '../config';
+import { stadiumOf, type StandModelId } from '../data/stadiums';
 import { wallQuad } from './ground';
 import { hex, shade } from './pixelart';
 import type { Projection, ScreenPoint } from './projection';
 import { Rng } from './rng';
+import { TOD, type SkyWeather, type TimeOfDay } from './daytime';
+import { makeSkylineTexture, SKY_H, SKY_W } from './skyline';
 
 /*
  * Arquibancada só no FUNDO do campo (atrás da end zone adversária), como no design.
@@ -19,11 +22,15 @@ const CX_L = -2; // centro do arco do canto esquerdo (x)
 const CX_R = 55.3; // centro do arco do canto direito (x)
 /** Distância extra entre o campo e a arquibancada (jardas). */
 export const STAND_GAP = 5;
+
+/** Combine: arquibancada vazia (só os degraus, sem torcida). */
+export const standOptions = { empty: false };
 const CY = 103.2 + STAND_GAP; // y dos centros dos arcos (onde a arquibancada encosta na lateral)
 const R0 = 16.9; // raio da 1ª fileira (logo atrás do muro)
-const ROWS = 70;
 const DEPTH = 1.0; // jardas entre fileiras
 const RISE = 1.15; // quanto cada fileira sobe
+const BAND_RISE = 1.7; // quanto cada fileira de fachada (faixa/teto) sobe
+const BAND_DEPTH = 0.15;
 const TPY = 8; // texels por jarda na textura das fileiras
 const ROW_TEX_H = 14;
 const WALL_H = 1.6;
@@ -31,6 +38,90 @@ const ARC_SEGS = 12; // pedaços de cada arco
 const STAIR_W = 1.8;
 const EXIT_W = 3.6;
 const EXIT_ROWS = 3;
+
+/*
+ * Modelos de arquibancada (máx. 5), sorteados a cada partida (?arq=1..5 ou ?arq=<id> força um):
+ *   baixa      → só o anel de baixo
+ *   telao      → arquibancada baixa com um telão gigante em cima
+ *   anel       → anel de baixo + corredor + anel superior com teto
+ *   separacao  → duas partes separadas por uma faixa no meio com um telão
+ *   classica   → a arquibancada alta de sempre
+ */
+interface StandModel {
+  id: StandModelId;
+  /** Fileiras de cadeiras de cada anel (de baixo para cima). */
+  tiers: number[];
+  /** Fileiras de fachada entre os anéis (corredor / faixa do meio). */
+  bandRows: number;
+  /** Recuo extra (jardas) do anel de cima. */
+  setback: number;
+  /** Fileiras de teto no topo do último anel. */
+  roofRows: number;
+  /** Telão: em cima da arquibancada ou na faixa do meio. */
+  screen: 'top' | 'mid' | null;
+  /** Fileira (dentro do anel) onde ficam as saídas no topo das escadas. */
+  exitRow: number;
+  /** Setor visitante (fileiras dentro do anel). */
+  awayRows: [number, number];
+}
+
+// O placar e o cartão do QB cobrem o alto da tela, então só ~15 jardas de altura da arquibancada aparecem:
+// os modelos são compactos para caberem inteiros na parte visível (a clássica é a alta, que enche a tela).
+const MODELS: StandModel[] = [
+  { id: 'baixa', tiers: [9], bandRows: 0, setback: 0, roofRows: 0, screen: null, exitRow: 4, awayRows: [2, 6] },
+  { id: 'telao', tiers: [8], bandRows: 0, setback: 0, roofRows: 0, screen: 'top', exitRow: 3, awayRows: [2, 5] },
+  { id: 'anel', tiers: [6, 7], bandRows: 2, setback: 1.2, roofRows: 1, screen: null, exitRow: 2, awayRows: [1, 4] },
+  { id: 'separacao', tiers: [6, 6], bandRows: 3, setback: 1.2, roofRows: 0, screen: 'mid', exitRow: 2, awayRows: [1, 4] },
+  { id: 'classica', tiers: [70], bandRows: 0, setback: 0, roofRows: 0, screen: null, exitRow: 14, awayRows: [18, 40] },
+];
+
+/** Modelo da partida: ?arq=1..5 ou ?arq=<id> força; senão o escolhido no menu; "auto" = estádio do time da casa. */
+export function pickStandModel(): StandModel {
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('arq') : null;
+  const byNum = q && /^\d+$/.test(q) ? MODELS[Number(q) - 1] : undefined;
+  const byId = q ? MODELS.find((m) => m.id === q) : undefined;
+  if (byNum ?? byId) return (byNum ?? byId)!;
+  const id = matchConfig.stand === 'auto' ? stadiumOf(TEAMS.home.id).model : matchConfig.stand;
+  return MODELS.find((m) => m.id === id) ?? MODELS[0];
+}
+
+/** Uma fileira do estádio: de cadeiras, de fachada (corredor) ou de teto. */
+interface RowSpec {
+  kind: 'seat' | 'band' | 'roof';
+  tier: number;
+  /** Posição dentro do anel (cadeiras) ou da faixa. */
+  inTier: number;
+  /** Quantas fileiras tem a faixa (só band/roof). */
+  count: number;
+  r: number;
+  h: number;
+}
+
+function buildRows(m: StandModel): RowSpec[] {
+  const rows: RowSpec[] = [];
+  let r = R0 + 0.5;
+  let h = WALL_H;
+  const band = (kind: 'band' | 'roof', tier: number, count: number) => {
+    for (let j = 0; j < count; j++) {
+      rows.push({ kind, tier, inTier: j, count, r, h });
+      r += BAND_DEPTH;
+      h += BAND_RISE;
+    }
+  };
+  m.tiers.forEach((n, t) => {
+    if (t > 0) {
+      band('band', t - 1, m.bandRows);
+      r += m.setback;
+    }
+    for (let j = 0; j < n; j++) {
+      rows.push({ kind: 'seat', tier: t, inTier: j, count: n, r, h });
+      r += DEPTH;
+      h += RISE;
+    }
+  });
+  if (m.roofRows) band('roof', m.tiers.length - 1, m.roofRows);
+  return rows;
+}
 
 const STRAIGHT = CX_R - CX_L;
 
@@ -60,28 +151,17 @@ function stairsU(r: number) {
   return [onArcL(150), onArcL(118), arc + 8.6, arc + 47, onArcR(62), onArcR(30)];
 }
 
-/** Saídas: túnel colado numa escada (lado +1/−1), ocupando 3 fileiras. */
-const EXITS = [
-  { stair: 0, row: 14, side: 1 },
-  { stair: 1, row: 30, side: -1 },
-  { stair: 2, row: 14, side: 1 },
-  { stair: 3, row: 30, side: -1 },
-  { stair: 4, row: 14, side: 1 },
-  { stair: 5, row: 30, side: -1 },
-  { stair: 0, row: 46, side: 1 },
-  { stair: 2, row: 46, side: -1 },
-  { stair: 3, row: 46, side: 1 },
-  { stair: 5, row: 46, side: -1 },
-];
-/** Setor visitante: entre a 4ª e a 5ª escada, nas fileiras do meio. */
-const AWAY_ROWS = [18, 40];
+/** As seis escadas têm uma saída cada, todas na mesma fileira de cada anel (o túnel corta a escada, que continua acima dele). */
+const STAIR_IDS = [0, 1, 2, 3, 4, 5];
 
 const SKIN = ['#f1c7a5', '#d9a07a', '#c68b59', '#8d5524', '#6b3f1f'];
 const HAIR = ['#2a1a10', '#5a3a1a', '#111111', '#b8862e', '#3b2412', '#8a8a8a'];
 const OTHER = ['#f2f2f2', '#1d1d24', '#6b6f7a', '#2a9d8f', '#b33a3a', '#e6c34a', '#5c2a86'];
 
 /** Desenha a textura de uma fileira: degrau, cadeiras, torcedores, escadas e saídas. */
-function makeRowTexture(scene: Phaser.Scene, key: string, row: number, r: number, rng: Rng) {
+function makeRowTexture(scene: Phaser.Scene, key: string, spec: RowSpec, m: StandModel, rng: Rng) {
+  const row = spec.inTier;
+  const r = spec.r;
   const { len } = rowGeom(r);
   const W = Math.ceil(len * TPY);
   const H = ROW_TEX_H;
@@ -91,14 +171,13 @@ function makeRowTexture(scene: Phaser.Scene, key: string, row: number, r: number
   const home = [hex(TEAMS.home.color), shade(TEAMS.home.color, 0.25), shade(TEAMS.home.color, -0.2)];
   const away = [hex(TEAMS.away.color), shade(TEAMS.away.color, 0.3), shade(TEAMS.away.color, -0.25)];
   const stairs = stairsU(r);
-  const awayRow = row >= AWAY_ROWS[0] && row <= AWAY_ROWS[1];
+  const awayRow = row >= m.awayRows[0] && row <= m.awayRows[1];
   const awayA = stairs[3] + STAIR_W / 2;
   const awayB = stairs[4] - STAIR_W / 2;
   const isAway = (u: number) => awayRow && u > awayA && u < awayB;
-  const exitRange = (e: (typeof EXITS)[number]) => {
-    const a = stairs[e.stair] + (e.side * STAIR_W) / 2;
-    return e.side > 0 ? [a, a + EXIT_W] : [a - EXIT_W, a];
-  };
+  const exitRange = (i: number) => [stairs[i] - EXIT_W / 2, stairs[i] + EXIT_W / 2];
+  /** As escadas sobem o anel inteiro; só são interrompidas pelo túnel da saída (e pela placa em cima dele). */
+  const inExit = row >= m.exitRow && row <= m.exitRow + EXIT_ROWS;
 
   // Degrau azul-acinzentado + encosto das cadeiras
   ctx.fillStyle = row % 2 ? '#3e4560' : '#394058';
@@ -114,13 +193,14 @@ function makeRowTexture(scene: Phaser.Scene, key: string, row: number, r: number
 
   const blocked = (u: number) =>
     stairs.some((s) => Math.abs(u - s) < STAIR_W / 2 + 0.35) ||
-    EXITS.some((e) => {
-      const [a, b] = exitRange(e);
-      return row >= e.row && row < e.row + EXIT_ROWS && u > a - 0.3 && u < b + 0.3;
+    STAIR_IDS.some((i) => {
+      const [a, b] = exitRange(i);
+      return row >= m.exitRow && row <= m.exitRow + EXIT_ROWS && u > a - 0.3 && u < b + 0.3;
     });
 
   // Torcedores (cada um sorteado)
   for (let px = 3; px < W - 4; px += rng.int(6, 8)) {
+    if (standOptions.empty) break;
     const u = px / TPY;
     if (blocked(u) || rng.chance(0.06)) continue;
     const team = isAway(u) ? away : home;
@@ -143,7 +223,8 @@ function makeRowTexture(scene: Phaser.Scene, key: string, row: number, r: number
   }
 
   // Escadas: cinza com degrau escuro e bordas claras (corrimão)
-  for (const s of stairs) {
+  stairs.forEach((s) => {
+    if (inExit) return;
     const a = tx(s - STAIR_W / 2);
     const b = tx(s + STAIR_W / 2);
     ctx.fillStyle = '#6e7389';
@@ -153,20 +234,20 @@ function makeRowTexture(scene: Phaser.Scene, key: string, row: number, r: number
     ctx.fillStyle = '#a9aec2';
     ctx.fillRect(a - 1, 0, 1, H);
     ctx.fillRect(b, 0, 1, H);
-  }
+  });
 
-  // Saídas: túnel escuro colado na escada + placa verde "SAÍDA" na fileira de cima
-  for (const e of EXITS) {
-    const [ua, ub] = exitRange(e);
+  // Saídas: túnel escuro no topo da escada + placa verde "SAÍDA" na fileira de cima
+  for (const i of STAIR_IDS) {
+    const [ua, ub] = exitRange(i);
     const a = tx(ua);
     const b = tx(ub);
-    if (row >= e.row && row < e.row + EXIT_ROWS) {
+    if (row >= m.exitRow && row < m.exitRow + EXIT_ROWS) {
       ctx.fillStyle = '#8c91a8';
       ctx.fillRect(a, 0, b - a, H);
       ctx.fillStyle = '#07080d';
-      ctx.fillRect(a + 2, 0, b - a - 4, row === e.row ? H - 2 : H);
+      ctx.fillRect(a + 2, 0, b - a - 4, row === m.exitRow ? H - 2 : H);
     }
-    if (row === e.row + EXIT_ROWS) {
+    if (row === m.exitRow + EXIT_ROWS) {
       ctx.fillStyle = '#8c91a8';
       ctx.fillRect(a, H - 3, b - a, 3);
       ctx.fillStyle = '#1f9d55';
@@ -178,6 +259,56 @@ function makeRowTexture(scene: Phaser.Scene, key: string, row: number, r: number
       ctx.fillText('SAÍDA', (a + b) / 2, (H - 4) / 2 + 1);
     }
   }
+  return finishTexture(tex, r);
+}
+
+/** Textura de uma fileira de fachada: corredor com janelas acesas (band) ou teto escuro (roof). */
+function makeBandTexture(scene: Phaser.Scene, key: string, spec: RowSpec, rng: Rng) {
+  const r = spec.r;
+  const { len } = rowGeom(r);
+  const W = Math.ceil(len * TPY);
+  const H = ROW_TEX_H;
+  const tex = scene.textures.createCanvas(key, W, H)!;
+  const ctx = tex.getContext();
+  const tx = (u: number) => Math.round(u * TPY);
+  const last = spec.inTier === spec.count - 1;
+  if (spec.kind === 'roof') {
+    ctx.fillStyle = spec.inTier % 2 ? '#2a2f45' : '#323852';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#6e7389';
+    ctx.fillRect(0, last ? 0 : H - 2, W, 2); // aresta clara do teto
+    ctx.fillStyle = '#0d0d12';
+    ctx.fillRect(0, H - 3, W, 3);
+  } else {
+    ctx.fillStyle = '#1b1f33';
+    ctx.fillRect(0, 0, W, H);
+    // pilares claros e janelas do corredor, algumas acesas
+    for (let u = 2; u < len; u += 9) {
+      ctx.fillStyle = '#3a4160';
+      ctx.fillRect(tx(u), 0, 3, H);
+    }
+    for (let u = 3; u < len - 1; u += 2.4) {
+      if (Math.floor(u) % 9 < 1) continue;
+      ctx.fillStyle = rng.chance(0.55) ? '#ffd98a' : '#2b3150';
+      ctx.fillRect(tx(u), 4, 7, 5);
+    }
+    if (spec.inTier === 0) {
+      ctx.fillStyle = TEAMS.home.colorHex; // faixa do time na base do corredor
+      ctx.fillRect(0, H - 4, W, 3);
+    }
+    if (last) {
+      ctx.fillStyle = '#8c91a8'; // corrimão no topo
+      ctx.fillRect(0, 0, W, 2);
+    }
+  }
+  return finishTexture(tex, r);
+}
+
+/** Atualiza a textura e a corta em pedaços: arcos em vários pedaços, a reta inteira. */
+function finishTexture(tex: Phaser.Textures.CanvasTexture, r: number) {
+  const W = tex.width;
+  const H = ROW_TEX_H;
+  const tx = (u: number) => Math.round(u * TPY);
   tex.refresh();
   tex.setFilter(Phaser.Textures.FilterMode.NEAREST);
 
@@ -209,33 +340,68 @@ interface Piece {
 }
 
 export class Grandstand {
+  readonly model: StandModel;
+  private specs: RowSpec[];
   private pieces: Piece[] = [];
   private phases: number[] = [];
   private g: Phaser.GameObjects.Graphics; // muro da frente + flashes
+  private sg: Phaser.GameObjects.Graphics; // telão
   private wallText: Phaser.GameObjects.Text;
+  private screenText: Phaser.GameObjects.Text | null = null;
+  /** Cidade do time da casa atrás das arquibancadas compactas. */
+  private skyline: Phaser.GameObjects.Image | null = null;
+  /** Refletores nos cantos e no fundo das arquibancadas compactas: postes/painéis num Graphics e brilhos aditivos. */
+  private lg: Phaser.GameObjects.Graphics;
+  private glows: Phaser.GameObjects.Image[] = [];
   private fx = new Rng(MATCH_SEED + 9);
   private flashes: { k: number; u: number; life: number }[] = [];
   private time = 0;
   /** Empolgação (0..1): as fileiras pulam e os flashes aumentam. */
   excite = 0;
 
-  constructor(scene: Phaser.Scene, private proj: Projection) {
+  constructor(scene: Phaser.Scene, private proj: Projection, private tod: TimeOfDay = 'night', weather: SkyWeather = 'clear') {
     const rng = new Rng(MATCH_SEED);
-    for (let k = 0; k < ROWS; k++) {
-      const r = R0 + 0.5 + k * DEPTH;
+    this.model = pickStandModel();
+    this.specs = buildRows(this.model);
+    this.specs.forEach((spec, k) => {
       const key = `stand_row_${k}`;
-      const pieces = makeRowTexture(scene, key, k, r, rng);
+      const pieces = spec.kind === 'seat' ? makeRowTexture(scene, key, spec, this.model, rng) : makeBandTexture(scene, key, spec, rng);
       for (const p of pieces) {
         const img = scene.add.image(0, 0, key, p.frame).setOrigin(0, 1);
-        this.pieces.push({ img, k, r, u0: p.u0, u1: p.u1 });
+        this.pieces.push({ img, k, r: spec.r, u0: p.u0, u1: p.u1 });
       }
       this.phases.push(rng.range(0, Math.PI * 2));
+    });
+    if (this.model.id !== 'classica') {
+      makeSkylineTexture(scene, 'skyline', stadiumOf(TEAMS.home.id).city, 11 + TEAMS.home.id.charCodeAt(0) * 7, tod, weather);
+      this.skyline = scene.add.image(0, 0, 'skyline').setOrigin(0, 1).setDepth(2.9);
+    }
+    this.lg = scene.add.graphics().setDepth(3.45);
+    if (this.model.id !== 'classica') {
+      if (scene.textures.exists('glow')) scene.textures.remove('glow');
+      const gt = scene.textures.createCanvas('glow', 64, 64)!;
+      const gc = gt.getContext();
+      const rg = gc.createRadialGradient(32, 32, 0, 32, 32, 32);
+      rg.addColorStop(0, 'rgba(255,246,216,1)');
+      rg.addColorStop(0.25, 'rgba(255,240,200,0.5)');
+      rg.addColorStop(1, 'rgba(255,240,200,0)');
+      gc.fillStyle = rg;
+      gc.fillRect(0, 0, 64, 64);
+      gt.refresh();
+      for (let i = 0; i < 4; i++) this.glows.push(scene.add.image(0, 0, 'glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(59.5).setVisible(false));
     }
     this.g = scene.add.graphics().setDepth(3.9);
+    this.sg = scene.add.graphics().setDepth(3.5);
     this.wallText = scene.add
       .text(0, 0, 'QB CAREER :: QB CAREER :: QB CAREER', { fontFamily: FONT_TITLE, fontSize: '32px', color: TEAMS.home.colorHex })
       .setOrigin(0.5, 0.5)
       .setDepth(3.95);
+    if (this.model.screen) {
+      this.screenText = scene.add
+        .text(0, 0, TEAMS.home.name, { fontFamily: FONT_TITLE, fontSize: '32px', color: '#ffffff' })
+        .setOrigin(0.5, 0.5)
+        .setDepth(3.55);
+    }
   }
 
   cheer(amount = 1) {
@@ -243,7 +409,115 @@ export class Grandstand {
   }
 
   private rowH(k: number) {
-    return WALL_H + k * RISE;
+    return this.specs[k].h;
+  }
+
+  /** Telão gigante: em cima da arquibancada (telao) ou ocupando a faixa do meio (separacao). */
+  private drawScreen() {
+    const m = this.model;
+    const sg = this.sg;
+    sg.clear();
+    const t = this.screenText;
+    if (!m.screen || !t) return;
+    const proj = this.proj;
+    const specs = this.specs;
+    let x0 = 13.5;
+    let x1 = 39.8;
+    let y: number;
+    let h0: number;
+    let h1: number;
+    if (m.screen === 'top') {
+      const top = specs[specs.length - 1];
+      y = CY + top.r;
+      h0 = top.h + 2;
+      h1 = h0 + 5.5;
+      // Estrutura de sustentação
+      wallQuad(sg, proj, x0 + 2, y, x0 + 3.4, y, top.h - 0.5, h0, 0x2a2f45);
+      wallQuad(sg, proj, x1 - 3.4, y, x1 - 2, y, top.h - 0.5, h0, 0x2a2f45);
+    } else {
+      const bands = specs.filter((p) => p.kind === 'band');
+      y = CY + bands[bands.length >> 1].r;
+      h0 = bands[0].h + 0.3;
+      h1 = bands[bands.length - 1].h + 1.5;
+      x0 = 12;
+      x1 = 41.3;
+    }
+    if (y < proj.nearY) return;
+    const pulse = 0.5 + 0.5 * Math.sin(this.time * 2.2);
+    wallQuad(sg, proj, x0 - 0.5, y, x1 + 0.5, y, h0 - 0.5, h1 + 0.5, 0x555b73); // moldura
+    wallQuad(sg, proj, x0, y, x1, y, h0, h1, 0x090b18); // tela
+    const tall = h1 - h0;
+    wallQuad(sg, proj, x0 + 0.3, y, x1 - 0.3, y, h0 + tall * 0.7, h1 - 0.3, 0x142257, 0.9); // brilho do topo
+    wallQuad(sg, proj, x0 + 0.3, y, x1 - 0.3, y, h0 + 0.3, h0 + tall * 0.2, TEAMS.home.color, 0.55 + 0.3 * pulse); // faixa do time
+    // Texto do telão: nome do time e "QB CAREER" alternando
+    t.setText(Math.floor(this.time / 4) % 2 ? 'QB CAREER' : TEAMS.home.name);
+    proj.project((x0 + x1) / 2, y, (h0 + h1) / 2 + tall * 0.08, pa);
+    proj.project(x0, y, h0, pb);
+    const wpx = Math.abs(pa.x - pb.x) * 2;
+    const hpx = Math.abs(proj.project((x0 + x1) / 2, y, h1, pb).y - proj.project((x0 + x1) / 2, y, h0, pb).y);
+    const sc = Math.min((wpx * 0.8) / Math.max(1, t.width), (hpx * 0.42) / 32);
+    t.setPosition(pa.x, pa.y).setScale(sc).setVisible(pa.y > -60 && pa.y < proj.h + 60);
+  }
+
+  /** Refletores: 4 torres de luz saindo do topo da arquibancada (cantos e fundo), acesas conforme o horário. */
+  private drawLights() {
+    const g = this.lg;
+    g.clear();
+    if (!this.glows.length) return;
+    const proj = this.proj;
+    const top = this.specs[this.specs.length - 1];
+    const lvl = TOD[this.tod].lamps;
+    const geom = rowGeom(top.r);
+    const us = [geom.arc * 0.5, geom.arc + STRAIGHT * 0.2, geom.arc + STRAIGHT * 0.8, geom.arc + STRAIGHT + geom.arc * 0.5];
+    const poleH = 7;
+    us.forEach((u, i) => {
+      const img = this.glows[i];
+      const [x, y] = pointAt(top.r, u);
+      if (y < proj.nearY) {
+        img.setVisible(false);
+        return;
+      }
+      const ht = top.h + poleH;
+      proj.project(x, y, top.h - 0.5, pa);
+      proj.project(x, y, ht, pb);
+      g.lineStyle(Math.max(1.4, pa.s * 1.7), 0x2a2f45, 1);
+      g.lineBetween(pa.x, pa.y, pb.x, pb.y);
+      // Painel de lâmpadas (4 colunas × 3 fileiras)
+      wallQuad(g, proj, x - 2.8, y, x + 2.8, y, ht - 0.3, ht + 3.7, 0x555b73);
+      wallQuad(g, proj, x - 2.5, y, x + 2.5, y, ht, ht + 3.4, 0x14172a);
+      const lit = lvl > 0.05;
+      g.fillStyle(lit ? 0xfff6d8 : 0x8a90a4, lit ? 0.55 + 0.45 * lvl : 1);
+      const r = Math.max(0.9, pa.s * 2.3);
+      for (let cx = 0; cx < 4; cx++) {
+        for (let cy = 0; cy < 3; cy++) {
+          proj.project(x - 1.8 + cx * 1.2, y, ht + 0.55 + cy * 1.1, pa);
+          g.fillCircle(pa.x, pa.y, r);
+        }
+      }
+      proj.project(x, y, ht + 1.7, pa);
+      const k = lvl * (0.9 + 0.1 * Math.sin(this.time * 3 + i));
+      img.setVisible(k > 0.02 && pa.y > -80)
+        .setPosition(pa.x, pa.y)
+        .setScale((pa.s * 10 * 26) / 64)
+        .setAlpha(k);
+    });
+  }
+
+  /** Cidade ao fundo: faixa larga bem atrás da última fileira, com a base escondida atrás das cadeiras. */
+  private drawSkyline() {
+    const img = this.skyline;
+    if (!img) return;
+    const proj = this.proj;
+    const top = this.specs[this.specs.length - 1];
+    const y = CY + top.r + 10;
+    const yd = 100; // a cidade tem 100 jardas de largura
+    const x0 = (CX_L + CX_R) / 2 - yd / 2;
+    const x1 = x0 + yd;
+    const hb = Math.max(0, top.h * 0.45);
+    proj.project(x0, y, hb, pa);
+    proj.project(x1, y, hb, pb);
+    img.setVisible(y > proj.nearY).setPosition(pa.x, pa.y).setScale((pb.x - pa.x) / SKY_W, (pa.s * 10) / (SKY_W / yd));
+    void SKY_H;
   }
 
   update(dt: number) {
@@ -260,7 +534,8 @@ export class Grandstand {
         p.img.setVisible(false);
         continue;
       }
-      const jump = this.excite > 0.01 ? Math.max(0, Math.sin(this.time * 11 + this.phases[p.k])) * 0.35 * this.excite : 0;
+      const seat = this.specs[p.k].kind === 'seat';
+      const jump = seat && this.excite > 0.01 ? Math.max(0, Math.sin(this.time * 11 + this.phases[p.k])) * 0.35 * this.excite : 0;
       const h = this.rowH(p.k) + jump;
       proj.project(x0, y0, h, pa);
       proj.project(x1, y1, h, pb);
@@ -275,6 +550,10 @@ export class Grandstand {
         .setScale(sx, sy)
         .setDepth(3 + (300 - ymid) * 0.001 - p.k * 0.00001);
     }
+
+    this.drawScreen();
+    this.drawSkyline();
+    this.drawLights();
 
     // Muro escuro na frente, seguindo a curva dos cantos
     const g = this.g;
@@ -291,15 +570,15 @@ export class Grandstand {
     proj.project((CX_L + CX_R) / 2, CY + wr, WALL_H * 0.5, pa);
     this.wallText.setPosition(pa.x, pa.y).setScale((WALL_H * 0.55 * pa.s * 10) / 32);
 
-    // Flashes de câmera aleatórios na torcida
+    // Flashes de câmera aleatórios na torcida (só nas cadeiras)
     if (this.fx.next() < (2 + this.excite * 16) * dt) {
-      const k = this.fx.int(0, ROWS - 1);
-      this.flashes.push({ k, u: this.fx.range(0, rowGeom(R0 + 0.5 + k * DEPTH).len), life: 0.14 });
+      const k = this.fx.int(0, this.specs.length - 1);
+      if (this.specs[k].kind === 'seat') this.flashes.push({ k, u: this.fx.range(0, rowGeom(this.specs[k].r).len), life: 0.14 });
     }
     for (const f of this.flashes) {
       f.life -= dt;
       if (f.life <= 0) continue;
-      const [x, y] = pointAt(R0 + 0.5 + f.k * DEPTH, f.u);
+      const [x, y] = pointAt(this.specs[f.k].r, f.u);
       if (y < near) continue;
       proj.project(x, y, this.rowH(f.k) + 1, pa);
       if (pa.x < 0 || pa.x > proj.w || pa.y < 0) continue;

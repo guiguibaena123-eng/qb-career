@@ -6,13 +6,12 @@ import { bottomGradient, GlassButton, label, title, UI } from './widgets';
 /*
  * Interface do lance ao vivo (como no design):
  *  POCKET → CORRER | painel FORÇA + ALVO | JOGAR FORA, e a dica "PUXE PRA TRÁS E SOLTE"
- *  CORRIDA (com a bola) → joystick, SPRINT, MERGULHO, JUKE, SPIN e barra de FÔLEGO
+ *  CORRIDA (com a bola) → joystick, MERGULHO, JUKE e SPIN
  */
 
 export interface LiveUiHandlers {
   onRun(): void;
   onThrowAway(): void;
-  onSprint(on: boolean): void;
   onDive(): void;
   onJuke(): void;
   onSpin(): void;
@@ -26,7 +25,6 @@ export class LiveUi {
   private powerPct: Phaser.GameObjects.Text;
   private target: Phaser.GameObjects.Text;
   private dragHint: Phaser.GameObjects.Container;
-  private stamina: Phaser.GameObjects.Graphics;
   private carryHint: Phaser.GameObjects.Container;
   private carryHintText: Phaser.GameObjects.Text;
 
@@ -90,23 +88,19 @@ export class LiveUi {
       b.add(title(scene, 0, 0, text, 7).setOrigin(0.5));
       return b;
     };
-    const sprint = round(W - 18 - 31, H - 26 - 31, 'SPRINT');
-    sprint.onDown = () => h.onSprint(true);
-    sprint.onUp = () => h.onSprint(false);
-    const dive = round(W - 18 - 84 - 31, H - 26 - 31, 'MERGULHO');
+    // Sem SPRINT: MERGULHO embaixo à direita, JUKE ao lado e SPIN em cima
+    const dive = round(W - 18 - 31, H - 26 - 31, 'MERGULHO');
     dive.onDown = h.onDive;
-    const juke = round(W - 18 - 70 - 31, H - 26 - 70 - 31, 'JUKE');
+    const juke = round(W - 18 - 84 - 31, H - 26 - 31, 'JUKE');
     juke.onDown = h.onJuke;
-    const spin = round(W - 18 - 6 - 31, H - 26 - 86 - 31, 'SPIN');
+    const spin = round(W - 18 - 42 - 31, H - 26 - 74 - 31, 'SPIN');
     spin.onDown = h.onSpin;
-    const stl = label(scene, 160 + 23, H - 30 - 74, 'FÔLEGO', 8, UI.muted).setOrigin(0.5, 0).setDepth(D);
-    this.stamina = scene.add.graphics().setDepth(D);
     this.carryHint = scene.add.container(W / 2, 630).setDepth(D);
     this.carryHintText = label(scene, 0, 0, '', 10, '#E8EAF2').setOrigin(0.5);
     const chb = scene.add.graphics();
     this.carryHint.add([chb, this.carryHintText]);
     this.carryHint.setData('bg', chb);
-    this.carry.push(g2, this.joystick, sprint, dive, juke, spin, stl, this.stamina, this.carryHint);
+    this.carry.push(g2, this.joystick, dive, juke, spin, this.carryHint);
 
     this.show('none');
   }
@@ -138,18 +132,6 @@ export class LiveUi {
     this.dragHint.setVisible(on).setPosition(x, y);
   }
 
-  setStamina(v: number) {
-    const g = this.stamina;
-    const H = GAME_H;
-    const x = 160 + 18;
-    const y = H - 30 - 60;
-    g.clear();
-    g.fillStyle(0x3a4060, 1);
-    g.fillRoundedRect(x, y, 10, 60, 5);
-    const h = Math.max(0, Math.min(1, v)) * 60;
-    g.fillStyle(v > 0.3 ? 0x3ccb5a : 0xffb02e, 1);
-    if (h > 1) g.fillRoundedRect(x, y + 60 - h, 10, h, Math.min(5, h / 2));
-  }
 
   setCarryHint(text: string) {
     this.carryHintText.setText(text);

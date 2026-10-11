@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { arcAt, type Throw } from '../systems/passing';
+import type { ShadowLight } from '../systems/daytime';
 import type { Projection, ScreenPoint } from '../systems/projection';
 import type { Player } from './Player';
 
@@ -10,8 +11,11 @@ import type { Player } from './Player';
 
 const p: ScreenPoint = { x: 0, y: 0, s: 0 };
 const g0: ScreenPoint = { x: 0, y: 0, s: 0 };
+const g1: ScreenPoint = { x: 0, y: 0, s: 0 };
 
 export class Ball {
+  /** Luzes das sombras no chão (noite/tarde); null = só a sombra simples. */
+  lights: ShadowLight[] | null = null;
   state: 'held' | 'air' | 'loose' = 'held';
   holder: Player | null = null;
   throw: Throw | null = null;
@@ -85,6 +89,20 @@ export class Ball {
     const u = g0.s * 10;
     this.ground.fillStyle(0x000000, 0.35);
     this.ground.fillEllipse(g0.x, g0.y, u * 0.9, u * 0.35);
+    // À noite/tarde: uma sombra no chão para cada luz, mais afastada quanto mais alta a bola
+    if (this.lights && this.h > 0.3) {
+      for (const l of this.lights) {
+        let dx = this.x - l.x;
+        let dy = this.y - l.y;
+        const d = Math.hypot(dx, dy) || 1;
+        dx /= d;
+        dy /= d;
+        const off = this.h * 0.45 * (l.len / 3.1) * Math.min(1, d / 35);
+        pr.project(this.x + dx * off, this.y + dy * off, 0, g1);
+        this.ground.fillStyle(0x000000, Math.min(0.3, l.a * 1.3));
+        this.ground.fillEllipse(g1.x, g1.y, u * 0.7, u * 0.26);
+      }
+    }
     // Rastro curto
     this.trail.push({ x: p.x, y: p.y });
     if (this.trail.length > 7) this.trail.shift();

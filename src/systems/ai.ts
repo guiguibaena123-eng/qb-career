@@ -122,6 +122,7 @@ export function tipText(s: Scheme, routes: Record<RecvKey, string>) {
 
 /** Bloqueio: cada OL pega o DL mais próximo (para desenhar as setas brancas). */
 export function blockAssignments(ol: Player[], dl: Player[]) {
+  if (!dl.length) return []; // treino sem defesa
   return ol.map((o) => {
     let best = dl[0];
     for (const d of dl) if (Math.abs(d.x - o.x) < Math.abs(best.x - o.x)) best = d;

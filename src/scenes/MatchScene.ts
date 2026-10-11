@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS } from '../config';
+import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS, matchConfig } from '../config';
 import {
   FORMATION_NAME,
   HOT_ROUTE_CYCLE,
@@ -16,7 +16,7 @@ import { Player } from '../entities/Player';
 import { blockAssignments, pickScheme, readText, tipText, type Scheme } from '../systems/ai';
 import { groundArrow, groundArrowHead, groundPath, groundRing, groundOval, groundSegment } from '../systems/groundfx';
 import { Feedback, VIBE, vibrate } from '../systems/feedback';
-import { LivePlay, type Receiver } from '../systems/live';
+import { LivePlay, separatePlayers, type Receiver } from '../systems/live';
 import { aimFromDrag, arcAt, makeThrow, readThrow, riskColor, statusOf, STATUS_COLOR, type Read, type Throw } from '../systems/passing';
 import { Rng } from '../systems/rng';
 import { bestLane, type Lane } from '../systems/runlane';
@@ -32,7 +32,14 @@ import { ResultCard, type CardOpts } from '../ui/ResultCard';
 import { difficulty } from '../systems/difficulty';
 import { Replay } from '../systems/replay';
 import { setupHiRes } from '../systems/hires';
+import { Daylight, shadowLights } from '../systems/daytime';
 import { pickWeather, Weather } from '../systems/weather';
+import { standOptions } from '../systems/grandstand';
+
+/** Linha de scrimmage do treino livre (todo lance recomeça daqui). */
+const PRACTICE_LOS = 30;
+/** Raio do alvo do treino de QB (o mesmo do Combine). */
+const TARGET_R = 2.6;
 import { simulateDrive, spotName } from '../systems/oppdrive';
 import { KickUi } from '../ui/KickUi';
 import { DefenseScreen } from '../ui/DefenseScreen';
@@ -94,8 +101,11 @@ export class MatchScene extends Phaser.Scene {
   // ---- lance ao vivo
   private phase: 'pre' | 'live' | 'post' | 'card' | 'replay' | 'kick' | 'defense' | 'intro' | 'kickoff' = 'pre';
   private intro!: Intro;
+  private koFree = new URLSearchParams(location.search).has('kofree');
   private ko: {
     stage: 'setup' | 'run' | 'fly' | 'catch' | 'return' | 'end';
+    /** O retornador chegou na end zone: touchdown (sem tackle). */
+    td?: boolean;
     t: number;
     kickers: Player[];
     recvs: Player[];
@@ -169,6 +179,8 @@ export class MatchScene extends Phaser.Scene {
   private aimTag!: Tag;
   private combo = 0;
   private postTimer = 0;
+  /** Touchdown: quem marcou entra de vez na end zone e comemora (pulinhos com a bola para cima). */
+  private tdRun: { p: Player; dir: 1 | -1; goal: number; t: number; cel: number } | null = null;
   private pendingCatch = 0;
   private dust: { x: number; y: number; life: number; vx: number; vy: number }[] = [];
   private playText = '';
@@ -177,21 +189,53 @@ export class MatchScene extends Phaser.Scene {
   private auto: string | null = null;
   private airYards = 0;
 
-  constructor(key = 'MatchScene') {
+  /**
+   * Treino livre (null = partida normal): estádio vazio, sem placar/relógio/descidas, cada lance
+   * volta para a mesma linha. 'qb' = passe nos alvos sem defesa; 'rb' = corrida contra a defesa.
+   */
+  private practiceStats = { plays: 0, hits: 0, sum: 0, combo: 0, yards: 0, best: 0 };
+
+  constructor(
+    key = 'MatchScene',
+    readonly practice: 'qb' | 'rb' | null = null,
+  ) {
     super(key);
   }
 
   /** Cada partida começa sem texturas de partidas anteriores (as cores dos times podem ter mudado). */
   init() {
-    for (const k of this.textures.getTextureKeys()) if (!k.startsWith('__') && !k.startsWith('logo')) this.textures.remove(k);
+    // Assets da carreira (camadas, rostos, terno do Draft, estádios) vêm do Boot e não são recriados: ficam
+    const keep = ['__', 'logo', 'layer_', 'face_', 'drsuit_', 'stad_', 'draftimg_'];
+    for (const k of this.textures.getTextureKeys()) if (!keep.some((p) => k.startsWith(p))) this.textures.remove(k);
   }
 
   create() {
     setupHiRes(this);
     const s = this.state;
-    this.world = new World(this, s.los);
+    if (this.practice) {
+      // Treino: arquibancada sem torcedores (o resto do gráfico igual ao da partida)
+      s.los = PRACTICE_LOS;
+      standOptions.empty = true;
+      this.events.once('shutdown', () => (standOptions.empty = false));
+    }
+    // Treino: sempre de dia e com tempo limpo
+    const time = matchConfig.time;
+    if (this.practice) matchConfig.time = 'day';
+    const weatherKind = this.practice ? 'clear' : pickWeather(this.rng);
+    this.world = new World(this, s.los, weatherKind);
+    matchConfig.time = time;
+    if (this.practice) standOptions.empty = false;
     this.fx = this.add.graphics().setDepth(0.8);
     this.spawnPlayers();
+    if (this.practice) {
+      // Treino: sem defesa em campo
+      for (const d of this.defense) {
+        d.bb.img.destroy();
+        const items = this.world.players.items;
+        items.splice(items.indexOf(d.bb), 1);
+      }
+      this.defense = [];
+    }
     this.scheme = pickScheme(this.rng);
 
     this.hud = new Hud(this, s);
@@ -199,7 +243,6 @@ export class MatchScene extends Phaser.Scene {
     const before = this.children.list.length;
     this.buildFieldTags();
     this.buildBottom();
-    this.buildDifficulty();
     this.preUi = this.children.list.slice(before).filter((o) => o !== this.windowTag);
     this.buildTactical();
     this.buildLive();
@@ -226,7 +269,8 @@ export class MatchScene extends Phaser.Scene {
     }
 
     // Clima e vento da partida
-    this.weather = new Weather(this, pickWeather(this.rng), this.rng);
+    new Daylight(this, this.world.tod, GAME_W, GAME_H);
+    this.weather = new Weather(this, weatherKind, this.rng);
     this.world.sideline.snow = this.weather.kind === 'snow';
     this.state.wind = { dir: this.rng.chance(0.5) ? -1 : 1, mph: this.rng.int(0, 18) };
     this.kickUi = new KickUi(this);
@@ -238,8 +282,14 @@ export class MatchScene extends Phaser.Scene {
     if (kq === 'fg' || kq === 'punt' || kq === 'pat') this.time.delayedCall(300, () => this.startKick(kq));
     if (q.has('defesa')) this.time.delayedCall(300, () => this.opponentDrive(25, true));
     if (q.has('descida')) this.state.down = Number(q.get('descida'));
-    const debug = ['auto', 'los', 'fim', 'chute', 'defesa', 'descida', 'tatica', 'semintro', 'jog'].some((k) => q.has(k));
-    if (!debug) this.startIntro();
+    if (q.has('ko')) this.time.delayedCall(300, () => this.startKickoff(q.get('ko') === '1'));
+    const debug = ['ko', 'auto', 'los', 'fim', 'chute', 'defesa', 'descida', 'tatica', 'semintro', 'jog'].some((k) => q.has(k));
+    if (this.practice) {
+      this.setMode(this.practice === 'rb' ? 'run' : 'pass');
+      this.hud.hide(); // treino: sem placar
+      this.hud.setResult(`TREINO LIVRE · ${this.practice.toUpperCase()}`, '', 0xffd23f, ['TREINO', 0xffd23f, '#0D0D12']);
+      this.time.delayedCall(250, () => this.toast(this.practice === 'qb' ? 'TREINO DE QB · ACERTE OS ALVOS' : 'TREINO DE RB · CORRA!', UI.yellow, 14));
+    } else if (!debug) this.startIntro();
     else if (this.state.down === 4) this.time.delayedCall(200, () => this.fourthDown());
     if (q.get('intro') === 'moeda') this.time.delayedCall(100, () => this.startIntro());
   }
@@ -266,6 +316,7 @@ export class MatchScene extends Phaser.Scene {
       p.x = p.slot.x;
       p.y = Math.min(108.5, s.los + p.slot.d);
       p.vx = p.vy = p.angle = p.hop = 0;
+      p.sx = p.sy = 1;
       p.pose = null;
       p.state = 'idle';
       p.sync();
@@ -314,11 +365,11 @@ export class MatchScene extends Phaser.Scene {
   private pauseUi: Phaser.GameObjects.GameObject[] = [];
   private restartArmed = false;
 
-  /** Botão de pause (canto direito, abaixo da dificuldade) + menu de pausa. */
+  /** Botão de pause (canto direito, abaixo do placar) + menu de pausa. */
   private buildPause() {
     const W = GAME_W;
     const H = GAME_H;
-    const btn = (this.pauseBtn = new GlassButton(this, W - 12 - 20, 190, { w: 40, h: 40, radius: 20 }));
+    const btn = (this.pauseBtn = new GlassButton(this, W - 12 - 20, 142, { w: 40, h: 40, radius: 20 }));
     btn.setDepth(98);
     const ic = this.add.graphics();
     ic.fillStyle(0xffffff, 1);
@@ -345,14 +396,9 @@ export class MatchScene extends Phaser.Scene {
       this.pauseUi.push(b);
       return tx;
     };
-    mk(380, 'CONTINUAR', () => this.setPaused(false), true);
-    const dtx = mk(450, '', () => {
-      difficulty.next();
-      paintD();
-    });
-    const paintD = () => dtx.setText(`DIFICULDADE: ${difficulty.d.label}`);
-    paintD();
-    const rtx = mk(520, 'REINICIAR PARTIDA', () => {
+    // A dificuldade só se escolhe no menu, antes da partida
+    mk(400, 'CONTINUAR', () => this.setPaused(false), true);
+    const rtx = mk(470, 'REINICIAR PARTIDA', () => {
       if (!this.restartArmed) {
         this.restartArmed = true;
         rtx.setText('TOQUE DE NOVO').setColor('#FF7B80');
@@ -368,7 +414,7 @@ export class MatchScene extends Phaser.Scene {
       this.newGame();
     });
     let menuArmed = false;
-    const mtx = mk(590, 'MENU PRINCIPAL', () => {
+    const mtx = mk(540, 'MENU PRINCIPAL', () => {
       if (!menuArmed) {
         menuArmed = true;
         mtx.setText('TOQUE DE NOVO').setColor('#FF7B80');
@@ -418,25 +464,6 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
-  /** Botão de dificuldade (canto direito, abaixo do placar): toque para trocar FÁCIL / NORMAL / DIFÍCIL. */
-  private buildDifficulty() {
-    const W = GAME_W;
-    const btn = new GlassButton(this, W - 12 - 52, 138, { w: 104, h: 36, radius: 12 });
-    const t = label(this, 0, -6, '', 10, '#FFFFFF').setOrigin(0.5);
-    const sub = label(this, 0, 8, 'DIFICULDADE', 7, UI.muted).setOrigin(0.5);
-    btn.add([t, sub]);
-    btn.setDepth(98);
-    const paint = () => {
-      const l = difficulty.level;
-      t.setText(difficulty.d.label).setColor(l === 'easy' ? '#3CCB5A' : l === 'hard' ? '#FF7B80' : '#FFD23F');
-    };
-    btn.onTap = () => {
-      difficulty.next();
-      paint();
-      vibrate(VIBE.tap);
-    };
-    paint();
-  }
 
   private buildBottom() {
     const W = GAME_W;
@@ -608,6 +635,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private setMode(m: 'pass' | 'run') {
+    if (this.practice) m = this.practice === 'rb' ? 'run' : 'pass'; // treino: posição fixa
     this.mode = m;
     this.toggle.setMode(m);
     this.refreshPlayUi();
@@ -711,6 +739,7 @@ export class MatchScene extends Phaser.Scene {
     }
     if (this.phase === 'pre') {
       // Play clock
+      if (this.practice) s.playClock = PLAY_CLOCK; // treino: sem play clock
       s.playClock -= dt;
       if (s.playClock <= 0) this.delayOfGame();
       this.hud.setPlayClock(Math.max(0, s.playClock));
@@ -728,6 +757,8 @@ export class MatchScene extends Phaser.Scene {
       this.updateLive(dt);
       if (this.phase === 'live' || this.phase === 'post') this.replay.record(dt, this.ball, this.world.targetY);
     }
+    if (this.phase === 'post' || this.phase === 'kickoff') this.stepTdRun(dt);
+    else this.tdRun = null;
     for (const p of [...this.offense, ...this.defense]) p.sync(dt);
 
     this.world.update(dt);
@@ -745,7 +776,7 @@ export class MatchScene extends Phaser.Scene {
     this.kickUi.update(real);
     this.defenseScreen.update(real);
     this.weather.setPillVisible(this.phase === 'pre' || (this.phase === 'live' && this.live?.phase === 'pocket'));
-    this.weather.pill?.setY(this.phase === 'pre' ? 196 : 128);
+    this.weather.pill?.setY(this.phase === 'pre' ? 166 : 108);
     this.fps?.setText(`${Math.round(this.game.loop.actualFps)} FPS`);
   }
 
@@ -883,12 +914,10 @@ export class MatchScene extends Phaser.Scene {
     this.ui = new Fx(this);
     this.feedback = new Feedback(this);
     this.ball = new Ball(this, this.world.proj, this.fx, this.fxTop);
+    this.ball.lights = shadowLights(this.world.tod);
     this.liveUi = new LiveUi(this, {
       onRun: () => this.scramble(),
       onThrowAway: () => this.throwAway(),
-      onSprint: (on) => {
-        if (this.ctl) this.ctl.sprint = on;
-      },
       onDive: () => {
         if (this.ctl?.dive()) vibrate(VIBE.tap);
       },
@@ -1010,6 +1039,11 @@ export class MatchScene extends Phaser.Scene {
     this.ctl = new CarrierControl(p);
     this.ctl.slipChance = this.weather.slipChance;
     this.ctl.rand = () => this.rng.next();
+    this.ctl.onLand = () => {
+      this.puff(p.x, p.y + 0.5);
+      this.feedback.shake(0.004, 90);
+      vibrate(VIBE.tap);
+    };
     this.ctl.onSlip = () => {
       this.ui.pop('ESCORREGOU!', '#C9CEE0', 14, 230, 500);
       vibrate(VIBE.tap);
@@ -1072,7 +1106,6 @@ export class MatchScene extends Phaser.Scene {
       const j = this.liveUi.joystick;
       this.ctl.update(j.vx, j.vy, dt);
       live.evasive = this.ctl.evasive;
-      this.liveUi.setStamina(this.ctl.stamina);
     }
     live.update(dt);
     if (this.phase !== 'live') return;
@@ -1093,7 +1126,7 @@ export class MatchScene extends Phaser.Scene {
       if (this.ctl?.diveDone) return this.endPlay('dive');
     }
     if (live.phase === 'pocket') {
-      const left = live.pocketLeft;
+      const left = this.practice === 'qb' ? 3.3 : live.pocketLeft; // treino de QB: sem pressão
       this.hud.setPocket(left, Math.min(1, left / 3.3));
       if (!this.aim.used) {
         const q = this.world.proj.project(this.qb.x, this.qb.y, 0);
@@ -1113,6 +1146,7 @@ export class MatchScene extends Phaser.Scene {
   private resolvePass() {
     const t = this.thr!;
     const read = this.read;
+    if (this.practice === 'qb' && !this.ballAway) return this.practiceLand(t);
     if (this.ballAway) return this.incomplete('BOLA FORA', 'JOGOU FORA · SEM RISCO');
     // Caiu fora das 4 linhas: incompleto
     if (t.tx < 0 || t.tx > FIELD.width || t.ty > 110 || t.ty < -10) return this.incomplete('BOLA FORA', 'O PASSE SAIU DO CAMPO');
@@ -1262,6 +1296,52 @@ export class MatchScene extends Phaser.Scene {
     this.gainXp(how === 'stiff' ? 3 : 8, this.live?.carrier ?? undefined);
   }
 
+  /** Começa a entrada na end zone + comemoração. `run` = ainda vem correndo (senão só comemora onde está). */
+  private startTdRun(p: Player, dir: 1 | -1, run = true) {
+    const goal = !run ? p.y : dir > 0 ? Phaser.Math.Clamp(p.y + 4, 104, 107) : Phaser.Math.Clamp(p.y - 4, -7, -4);
+    this.tdRun = { p, dir, goal, t: 0, cel: -1 };
+    p.angle = 0;
+    p.sx = p.sy = 1;
+    p.hop = 0;
+    p.pose = run ? 'carry' : 'catch';
+    if (!run) p.vx = p.vy = 0;
+  }
+
+  private stepTdRun(dt: number) {
+    const r = this.tdRun;
+    if (!r) return;
+    const p = r.p;
+    r.t += dt;
+    const left = (r.goal - p.y) * r.dir;
+    if (r.cel < 0 && left > 0.15 && r.t < 1.4) {
+      // Desacelera até parar dentro da end zone
+      const sp = Phaser.Math.Clamp(left * 3, 2.5, Math.max(4, Math.abs(p.vy)));
+      p.vy = r.dir * sp;
+      p.vx *= Math.exp(-4 * dt);
+      p.x = Phaser.Math.Clamp(p.x + p.vx * dt, 0.5, FIELD.width - 0.5);
+      p.y += p.vy * dt;
+    } else {
+      // Comemoração rápida: três pulinhos com a bola para cima, balançando o corpo
+      if (r.cel < 0) {
+        r.cel = 0;
+        p.vx = p.vy = 0;
+        p.pose = 'catch';
+        this.world.stand.cheer(0.8);
+      }
+      r.cel += dt;
+      const T = 1.05;
+      if (r.cel < T) {
+        p.hop = Math.abs(Math.sin((r.cel / T) * Math.PI * 3)) * 0.6;
+        p.angle = Math.sin(r.cel * 18) * 9;
+      } else {
+        p.hop = 0;
+        p.angle = 0;
+        this.tdRun = null;
+      }
+    }
+    this.world.targetY = Phaser.Math.Clamp(p.y - (r.dir > 0 ? 3 : 4), CAMERA.minY, CAMERA.maxY);
+  }
+
   /** Nuvem de poeira de pixel no chão. */
   private puff(x: number, y: number) {
     for (let i = 0; i < 14; i++) {
@@ -1279,6 +1359,78 @@ export class MatchScene extends Phaser.Scene {
     this.ui.xp(p.x, p.y, `+${n} XP`);
   }
 
+  // ------------------------------------------------------------ treino livre
+
+  /** Treino de QB: a bola caiu. Nota pelo alvo do recebedor mais próximo (como no Combine). */
+  private practiceLand(t: Throw) {
+    const ps = this.practiceStats;
+    const n = nearest(
+      this.receivers.map((r) => r.p),
+      t.tx,
+      t.ty,
+    );
+    const R = TARGET_R;
+    const out = this.thrOut;
+    const sc = out ? 0 : n.d <= R * 0.33 ? 100 : n.d <= R * 0.66 ? 75 : n.d <= R ? 50 : n.d <= R * 1.4 ? 25 : 0;
+    ps.plays++;
+    ps.sum += sc;
+    const good = sc >= 50;
+    if (good) {
+      ps.hits++;
+      ps.combo++;
+    } else ps.combo = 0;
+    const word = out ? 'BOLA FORA' : sc >= 100 ? 'PERFEITO!' : sc >= 75 ? 'ÓTIMO!' : sc >= 50 ? 'BOM' : sc >= 25 ? 'NA BORDA' : 'FALHOU';
+    this.ui.pop(`${word}${ps.combo > 2 ? ' x' + ps.combo : ''}`, good ? '#3CCB5A' : '#FF5A5F', 22, 200, 900);
+    this.ui.caption(`ACERTOS ${ps.hits}/${ps.plays} · MÉDIA ${Math.round(ps.sum / ps.plays)}`, 244, 1300);
+    this.puff(t.tx, t.ty);
+    vibrate(good ? VIBE.catch : VIBE.tap);
+    if (good && n.p) {
+      n.p.pose = 'catch';
+      this.ball.give(n.p);
+    } else this.ball.state = 'loose';
+    this.practiceEnd('inc', false, `PASSE NO ALVO · ${word}`, `${sc}`, good ? 0x3ccb5a : 0xe5484d);
+  }
+
+  /** Treino: fim do lance sem placar, relógio nem descidas; depois volta para a mesma linha. */
+  private practiceEnd(kind: 'td' | 'out' | 'dive' | 'tackle' | 'sack' | 'inc' | 'int', ranIn: boolean, text?: string, yards?: string, color?: number) {
+    const s = this.state;
+    const live = this.live!;
+    const c = live.carrier;
+    live.phase = 'dead';
+    this.phase = 'post';
+    this.postTimer = 1.6;
+    this.afterPost = null;
+    this.liveUi.show('none');
+    for (const t of [this.pressureTag, this.holeTag, this.dangerTag, this.meTag, this.aimTag]) t.setVisible(false);
+    this.statusTags.forEach((t) => t.setVisible(false));
+    this.ctl = null;
+
+    if (text === undefined) {
+      const ps = this.practiceStats;
+      const gained = kind === 'td' ? 100 - s.los : kind === 'sack' ? Math.round(this.qb.y - s.los) : kind === 'inc' || kind === 'int' ? 0 : Math.round((c?.y ?? s.los) - s.los);
+      if (kind === 'td') {
+        this.ui.pop('TOUCHDOWN!', UI.yellow, 26, 200, 1300);
+        this.ui.burst(80);
+        this.feedback.shake(0.012, 400);
+        vibrate(VIBE.td);
+        if (c) this.startTdRun(c, 1, ranIn);
+        this.postTimer = 2.2;
+      } else if (kind === 'out') this.ui.caption('FORA DE CAMPO', 250, 800);
+      else if (kind === 'dive') this.ui.caption('MERGULHOU!', 250, 800);
+      if (this.practice === 'rb' && kind !== 'inc' && kind !== 'int') {
+        ps.plays++;
+        ps.yards += gained;
+        ps.best = Math.max(ps.best, gained);
+        this.time.delayedCall(kind === 'td' ? 900 : 300, () => this.ui.caption(`CORRIDAS ${ps.plays} · MÉDIA ${(ps.yards / ps.plays).toFixed(1)} JDS · MAIOR ${ps.best}`, 290, 1300));
+      }
+      text = kind === 'td' ? `TD DE ${gained} JDS` : kind === 'inc' ? 'INCOMPLETO' : kind === 'sack' ? 'SACK' : `${this.playText} · ${gained} JDS`;
+      yards = kind === 'inc' ? '' : `${gained >= 0 ? '+' : ''}${gained}`;
+      color = gained >= 0 ? 0x3ccb5a : 0xe5484d;
+    }
+    this.hud.setResult(text, yards ?? '', color ?? 0x3ccb5a, ['TREINO', 0xffd23f, '#0D0D12']);
+    this.hud.setBar('result');
+  }
+
   /** Fim do lance: atualiza descida/distância, placar e estatísticas; mostra o resultado. */
   private endPlay(kind: 'td' | 'out' | 'dive' | 'tackle' | 'sack' | 'inc' | 'int', by?: Player) {
     if (this.phase !== 'live') return;
@@ -1286,7 +1438,9 @@ export class MatchScene extends Phaser.Scene {
     const live = this.live!;
     // Quem está com a bola na end zone (ou cruzou a linha de gol) fez touchdown, qualquer que seja o jeito de o lance acabar
     const holder = live.carrier;
+    const ranIn = kind === 'td';
     if (holder && holder.y >= 100 && (kind === 'tackle' || kind === 'dive' || kind === 'out')) kind = 'td';
+    if (this.practice) return this.practiceEnd(kind, ranIn);
     live.phase = 'dead';
     this.phase = 'post';
     this.postTimer = 1.6;
@@ -1319,6 +1473,7 @@ export class MatchScene extends Phaser.Scene {
       const good = kind === 'td';
       if (good) {
         s.score.home += 2;
+        if (c) this.startTdRun(c, 1, ranIn);
         this.ui.pop('CONVERTEU! +2', UI.yellow, 20, 200, 1300);
         this.ui.burst(50);
         vibrate(VIBE.td);
@@ -1344,10 +1499,7 @@ export class MatchScene extends Phaser.Scene {
       this.feedback.shake(0.012, 400);
       vibrate(VIBE.td);
       this.world.stand.cheer(1);
-      if (c) {
-        c.pose = 'catch';
-        c.angle = 0;
-      }
+      if (c) this.startTdRun(c, 1, ranIn);
       this.gainXp(60);
       text = passComplete ? `PASSE DE ${gained} JDS · TD` : `CORRIDA DE ${gained} JDS · TD`;
       yardsText = `+${gained}`;
@@ -1859,8 +2011,9 @@ export class MatchScene extends Phaser.Scene {
       sub: fgOk ? `FIELD GOAL DE ${dist} JDS · CHANCE ${Math.round(ch * 100)}%` : 'FORA DO ALCANCE DO FIELD GOAL',
       buttons: [
         { label: 'TENTAR', onTap: () => this.goForIt() },
-        { label: 'PUNT', onTap: () => this.startKick('punt') },
-        { label: 'FIELD GOAL', enabled: fgOk, primary: true, onTap: () => this.startKick('fg') },
+        // Dentro do alcance do field goal não há punt; fora dele, não há field goal
+        ...(fgOk ? [] : [{ label: 'PUNT', primary: true, onTap: () => this.startKick('punt') }]),
+        ...(fgOk ? [{ label: 'FIELD GOAL', primary: true, onTap: () => this.startKick('fg') }] : []),
       ],
     });
   }
@@ -1957,6 +2110,7 @@ export class MatchScene extends Phaser.Scene {
     const rng = this.rng;
     for (const p of [...this.offense, ...this.defense]) {
       p.vx = p.vy = p.angle = p.hop = 0;
+      p.sx = p.sy = 1;
       p.pose = null;
       p.state = 'idle';
       p.wait = 0;
@@ -2104,6 +2258,7 @@ export class MatchScene extends Phaser.Scene {
         }
         // Time que chutou: persegue e tenta o tackle
         for (const k of ko.kickers) {
+          if (this.koFree) k.wait = 1; // depuração (?kofree): ninguém tackleia, para testar o retorno de TD
           if (k.wait > 0) {
             k.wait -= dt;
             this.moveTo(k, k.x, k.y, 0, dt);
@@ -2121,13 +2276,28 @@ export class MatchScene extends Phaser.Scene {
           }
         }
         proj.targetY = Phaser.Math.Clamp(returner.y - 4 + (dirR < 0 ? 0 : 0), CAMERA.minY, CAMERA.maxY);
-        // Chegou na end zone ou passou do tempo
-        if (ko.stage === 'return' && (returner.y > 99.5 || returner.y < 0.5 || ko.t > 7)) {
+        // Passou por todo mundo e chegou na end zone: touchdown! (só é derrubado se alguém o alcançar)
+        if (ko.stage === 'return' && (dirR > 0 ? returner.y >= 100 : returner.y <= 0)) {
+          ko.stage = 'end';
+          ko.td = true;
+          ko.t = 0;
+        }
+        // Segurança: se a corrida durar demais sem ninguém alcançar, termina onde está
+        if (ko.stage === 'return' && ko.t > 25) {
           ko.stage = 'end';
           ko.t = 0;
         }
+        // Ninguém atravessa ninguém (quem derrubou o retornador pode encostar nele)
+        if (ko.stage === 'return') separatePlayers([...new Set([...ko.kickers, ko.kicker, ...ko.recvs, returner])], returner);
         for (const p of ko.kickers) if (p.wait > 0 && ko.stage === 'end') p.wait = 0;
-        if (ko.stage === 'end') {
+        if (ko.stage === 'end' && ko.td) {
+          this.startTdRun(returner, dirR > 0 ? 1 : -1);
+          this.ui.pop('TOUCHDOWN!', UI.yellow, 26, 200, 1300);
+          this.ui.burst(80);
+          this.feedback.shake(0.012, 400);
+          vibrate(VIBE.td);
+          this.world.stand.cheer(ko.receive ? 1 : 0.4);
+        } else if (ko.stage === 'end') {
           returner.vx = returner.vy = 0;
           this.feedback.shake(0.01, 200);
           vibrate(VIBE.tap);
@@ -2140,7 +2310,7 @@ export class MatchScene extends Phaser.Scene {
       }
       case 'end': {
         for (const p of [...ko.kickers, ...ko.recvs]) this.moveTo(p, p.x, p.y, 0, dt);
-        if (ko.t > 1.3) this.endKickoff();
+        if (ko.t > (ko.td ? 2.1 : 1.3)) this.endKickoff();
         break;
       }
     }
@@ -2151,6 +2321,34 @@ export class MatchScene extends Phaser.Scene {
     const s = this.state;
     this.ko = null;
     const y = Phaser.Math.Clamp(Math.round(ko.returner.y), 1, 99);
+    if (ko.td) {
+      this.phase = 'post';
+      this.postTimer = 1.2;
+      if (ko.receive) {
+        // Retorno de touchdown seu: +6, depois o ponto extra
+        s.score.home += 6;
+        s.confidence = Math.min(5, s.confidence + 1);
+        this.gainXp(60);
+        this.hud.setResult(`RETORNO DE ${100 - ko.land} JDS · TD`, '+6', 0x3ccb5a, ['TD', TEAMS.home.color, TEAMS.home.fg]);
+        this.hud.refresh();
+        const card = { ...this.tdCard(100 - ko.land, false, ko.returner), sub: `RETORNO DE KICKOFF PARA TOUCHDOWN`, head: `RETORNO DE ${100 - ko.land} JDS`, replay: undefined };
+        this.afterPost = () => this.showCard(card);
+      } else {
+        // Retorno de touchdown deles: +7 e a bola volta para você na 25
+        s.score.away += 7;
+        this.ui.pop(`TOUCHDOWN ${TEAMS.away.name}`, '#FFFFFF', 18, 200, 1400);
+        this.hud.setResult(`RETORNO DE TD · ${TEAMS.away.name}`, '', 0, ['TD', TEAMS.away.color, TEAMS.away.fg]);
+        this.hud.refresh();
+        this.afterPost = () => {
+          s.los = 25;
+          s.down = 1;
+          s.distance = 10;
+          this.phase = 'post';
+          this.backToPreSnap();
+        };
+      }
+      return;
+    }
     if (ko.receive) {
       // Você recebeu: a bola começa onde o retorno parou (entre a 12 e a 45)
       s.los = Phaser.Math.Clamp(y, 12, 45);
@@ -2216,6 +2414,16 @@ export class MatchScene extends Phaser.Scene {
     this.gameOver = false;
     this.card.hide();
     this.defenseScreen.close();
+    if (this.practice) {
+      // Treino: zera as estatísticas e volta para a linha
+      s.los = PRACTICE_LOS;
+      this.practiceStats = { plays: 0, hits: 0, sum: 0, combo: 0, yards: 0, best: 0 };
+      this.live = null;
+      this.ctl = null;
+      this.liveUi.show('none');
+      this.backToPreSnap();
+      return;
+    }
     this.startIntro();
   }
 
@@ -2301,6 +2509,15 @@ export class MatchScene extends Phaser.Scene {
         const pts = r.runner.pts.slice(r.runner.idx - 1);
         pts[0] = [r.p.x, r.p.y];
         if (pts.length > 1) groundPath(g, proj, pts, 0.4, RECV_COLORS[r.key], 0.35, 1, 0.7);
+      }
+    }
+
+    // Treino de QB: alvo no gramado em volta de cada recebedor (borda branca, anel amarelo, centro vermelho)
+    if (this.practice === 'qb' && live.phase !== 'carry') {
+      for (const r of this.receivers) {
+        groundRing(g, proj, r.p.x, r.p.y, TARGET_R, 0.22, 0xffffff, 0.95);
+        groundRing(g, proj, r.p.x, r.p.y, TARGET_R * 0.66, 0.22, 0xffd23f, 0.95);
+        groundRing(g, proj, r.p.x, r.p.y, TARGET_R * 0.33, 0.22, 0xff3b3b, 0.95);
       }
     }
 
