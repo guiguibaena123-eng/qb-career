@@ -66,8 +66,8 @@ export class PlayerTest extends Phaser.Scene {
     steps.push(() => ((lk.pants = cycle(['short', 'reg', 'long'] as const, lk.pants)), apply(), `CALÇA ${lk.pants}`));
     steps.push(() => ((lk.cleats = cycle(['low', 'mid', 'high'] as const, lk.cleats)), apply(), `CHUTEIRA ${lk.cleats}`));
     steps.push(() => ((lk.under = cycle(['none', 'short', 'long'] as const, lk.under)), apply(), `UNDER ${lk.under}`));
-    steps.push(() => ((lk.towel = !lk.towel), apply(), `TOALHA ${lk.towel}`));
-    steps.push(() => ((lk.visor = !lk.visor), apply(), `VISEIRA ${lk.visor}`));
+    steps.push(() => ((lk.towel = cycle(['none', 'L', 'R', 'F'] as const, lk.towel)), apply(), `TOALHA ${lk.towel}`));
+    steps.push(() => ((lk.visor = cycle(['none', 'clear', 'smoke', 'mirror', 'amber', 'blue'] as const, lk.visor)), apply(), `VISEIRA ${lk.visor}`));
     steps.push(() => ((lk.eyeblack = cycle(['none', 'solid', 'stripe', 'double'] as const, lk.eyeblack)), apply(), `EYE BLACK ${lk.eyeblack}`));
     let n = 0;
     let errs = 0;

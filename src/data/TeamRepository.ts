@@ -12,6 +12,10 @@ export interface KitDef {
   number: number;
   pants: number;
   stripe: number;
+  /** Contorno do número (padrão: tom escuro da camisa). */
+  outline?: number;
+  /** Desenho da listra da calça. */
+  pstripe?: 'side1' | 'side2' | 'side3' | 'panel' | 'belt';
 }
 
 export interface CareerTeam {
@@ -74,9 +78,9 @@ export function deriveKits(t: BaseTeam): Record<'home' | 'away' | 'night', KitDe
   const p = t.primary;
   const s = t.secondary;
   return {
-    home: { helmet: t.helmet ?? p, jersey: p, number: contrast(p, s), pants: t.pants ?? s, stripe: s },
-    away: { helmet: WHITE, jersey: WHITE, number: contrast(WHITE, p), pants: WHITE, stripe: p },
-    night: { helmet: DARK, jersey: DARK, number: contrast(DARK, p), pants: DARK, stripe: p },
+    home: { helmet: t.helmet ?? p, jersey: p, number: contrast(p, s), pants: t.pants ?? s, stripe: s, pstripe: 'side2' },
+    away: { helmet: WHITE, jersey: WHITE, number: contrast(WHITE, p), pants: WHITE, stripe: p, outline: s, pstripe: 'side3' },
+    night: { helmet: DARK, jersey: DARK, number: contrast(DARK, p), pants: DARK, stripe: p, outline: WHITE, pstripe: 'panel' },
   };
 }
 

@@ -69,10 +69,10 @@ export class DraftEscolhido extends Phaser.Scene {
     title(this, GAME_W - 30, 699, `PICK ${d.pick}`, 11, UI.yellow).setOrigin(1, 0.5);
 
     vibrate(VIBE.td);
-    // Assinar: grava o início da carreira e vai para o menu da carreira (Etapa 6 = CarreiraMenu; por enquanto, o hub)
+    // Assinar: vai para o menu da carreira
     bigButton(this, 'ASSINAR CONTRATO', team.colors.primary, () => {
       vibrate(VIBE.tap);
-      this.scene.start('CareerHub');
+      this.scene.start('CarreiraMenu');
     });
   }
 }

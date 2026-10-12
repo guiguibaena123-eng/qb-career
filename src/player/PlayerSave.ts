@@ -3,21 +3,99 @@
  * estado próprio. Persistido em localStorage (depois, Capacitor Preferences).
  */
 
+/** Opções do PERSONALIZAR (as cores do uniforme NÃO estão aqui: vêm do kit travado do time). */
 export interface LookOptions {
   kit: 'home' | 'away' | 'night';
+  // Capacete
   helmet: 'classic' | 'speed' | 'compact';
   gloss: boolean;
   mask: 'qb' | 'rb' | 'wr' | 'ol';
-  visor: boolean;
+  maskC: number;
+  visor: 'none' | 'clear' | 'smoke' | 'mirror' | 'amber' | 'blue';
   chin: 'two' | 'four';
+  chinC: number;
+  // Corpo
   jerseyLen: 'short' | 'mid';
   under: 'none' | 'short' | 'long';
+  underC: number;
   pants: 'short' | 'reg' | 'long';
+  knee: 'none' | 'sleeve';
+  kneeC: number;
+  nroll: 'none' | 'roll' | 'horse';
+  nrollC: number;
+  // Pés
+  sock: 'high' | 'mid' | 'low';
+  sockC: number;
+  sstripe: 'none' | 'band' | 'hoops' | 'wide';
+  sstripeC: number;
   cleats: 'low' | 'mid' | 'high';
+  cleatC: number;
+  cacc: 'none' | 'swoosh' | 'stripes' | 'toe';
+  caccC: number;
+  // Mãos
   gloves: 'none' | 'short' | 'full' | 'lineman';
-  towel: boolean;
+  gloveC: number;
+  wrist: 'none' | 'L' | 'R' | 'B' | 'P';
+  wristC: number;
+  asl: 'none' | 'fL' | 'fR' | 'fB' | 'lL' | 'lR' | 'lB';
+  aslC: number;
+  // Rosto e extras
   eyeblack: 'none' | 'solid' | 'stripe' | 'double';
+  hairOut: 'none' | 'short' | 'curls' | 'dreads';
+  mouth: 'none' | 'hang' | 'bite';
+  mouthC: number;
+  towel: 'none' | 'L' | 'R' | 'F';
+  towelC: number;
   celebration: number;
+}
+
+/** Visual padrão (o do design); `kitAccents` ajusta as cores dos acessórios a cada kit. */
+export const DEFAULT_LOOK: LookOptions = {
+  kit: 'home',
+  helmet: 'classic',
+  gloss: true,
+  mask: 'qb',
+  maskC: 0xc9ceda,
+  visor: 'none',
+  chin: 'two',
+  chinC: 0xf4f1e8,
+  jerseyLen: 'short',
+  under: 'long',
+  underC: 0x22406b,
+  pants: 'reg',
+  knee: 'none',
+  kneeC: 0xf4f1e8,
+  nroll: 'none',
+  nrollC: 0x22406b,
+  sock: 'high',
+  sockC: 0xf4f1e8,
+  sstripe: 'hoops',
+  sstripeC: 0xf26b1d,
+  cleats: 'mid',
+  cleatC: 0x0d0d12,
+  cacc: 'swoosh',
+  caccC: 0xf26b1d,
+  gloves: 'short',
+  gloveC: 0xf4f1e8,
+  wrist: 'R',
+  wristC: 0xf4f1e8,
+  asl: 'none',
+  aslC: 0xf4f1e8,
+  eyeblack: 'none',
+  hairOut: 'none',
+  mouth: 'hang',
+  mouthC: 0x22406b,
+  towel: 'none',
+  towelC: 0xf4f1e8,
+  celebration: 0,
+};
+
+/** Converte saves antigos (viseira e toalha eram liga/desliga). */
+function migrateLook(raw: Record<string, unknown> | undefined): Partial<LookOptions> {
+  const l = { ...(raw ?? {}) } as Record<string, unknown>;
+  if (typeof l.visor === 'boolean') l.visor = l.visor ? 'clear' : 'none';
+  if (typeof l.towel === 'boolean') l.towel = l.towel ? 'F' : 'none';
+  return l as Partial<LookOptions>;
 }
 
 export interface Attrs {
@@ -84,22 +162,7 @@ export function defaultSave(): PlayerSave {
     hair: 27,
     hairColor: 0,
     beard: 6,
-    look: {
-      kit: 'home',
-      helmet: 'classic',
-      gloss: true,
-      mask: 'qb',
-      visor: false,
-      chin: 'two',
-      jerseyLen: 'short',
-      under: 'none',
-      pants: 'reg',
-      cleats: 'low',
-      gloves: 'short',
-      towel: false,
-      eyeblack: 'none',
-      celebration: 0,
-    },
+    look: { ...DEFAULT_LOOK },
     attrs: { ...DEFAULT_ATTRS },
     ovr: calcOvr(DEFAULT_ATTRS),
     career: { teamId: null, season: 1, week: 0, record: { w: 0, l: 0 }, schedule: [], news: [] },
@@ -116,7 +179,7 @@ export function getSave(): PlayerSave {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null');
     if (raw && raw.version === 1) {
-      cache = { ...base, ...raw, look: { ...base.look, ...raw.look }, attrs: { ...base.attrs, ...raw.attrs }, career: { ...base.career, ...raw.career } };
+      cache = { ...base, ...raw, look: { ...base.look, ...migrateLook(raw.look) }, attrs: { ...base.attrs, ...raw.attrs }, career: { ...base.career, ...raw.career } };
       return cache!;
     }
   } catch {

@@ -59,7 +59,8 @@ export function runDraft(): DraftInfo {
   });
   const pick = best + 1;
   const info: DraftInfo = { teamId: order[best].id, pick, round, contract: { years: 4, value: contractValue(round, pick, n) } };
-  updateSave({ draft: info, career: { ...s.career, teamId: info.teamId } });
+  // Time novo = temporada nova (o menu da carreira recria calendário e notícias)
+  updateSave({ draft: info, career: { ...s.career, teamId: info.teamId, week: 0, record: { w: 0, l: 0 }, schedule: [], news: [] } });
   return info;
 }
 

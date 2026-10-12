@@ -22,6 +22,7 @@ export const SHAPE = [0, 1, 2, 3, 1, 0, 0, 1, 2, 3, 0, 1, 2, 0, 3, 1, 0, 2, 3, 1
 export interface FaceLook {
   face: number;
   skin: number;
+  /** -1 = sem cabelo */
   hair: number;
   hairColor: number;
   /** -1 = sem barba */
@@ -120,7 +121,10 @@ export class PlayerFace extends Phaser.GameObjects.Container {
     layer('features', face);
     layer('facial', face, hc);
     if (beard >= 0) layer('beards', shape * BEARD_COUNT + (beard % BEARD_COUNT), hc);
-    layer('hairmask', hair, hc);
-    layer('hairshade', hair);
+    // hair -1 = sem cabelo (dentro do capacete o cabelo vem da camada hair_* do corpo)
+    if (hair >= 0) {
+      layer('hairmask', hair, hc);
+      layer('hairshade', hair);
+    }
   }
 }

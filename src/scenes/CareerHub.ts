@@ -26,6 +26,7 @@ export class CareerHub extends Phaser.Scene {
     const items: [string, string, string][] = [
       ['CRIAR CARREIRA', 'NOME, FACULDADE E VISUAL DO JOGADOR', 'CareerCreate'],
       ['COMBINE', '4 TESTES: 40 JARDAS, CONES, PASSE E BRAÇO', 'CombineHub'],
+      ['MENU DA CARREIRA', 'CLUBE, ELENCO, STATS, TABELA, NOTÍCIAS E JOGOS', 'CarreiraMenu'],
       ['DRAFT', s.draft ? `${TeamRepository.get(s.draft.teamId).name} · PICK ${s.draft.pick} · ${s.draft.round}ª RODADA` : 'SALA DE ESPERA, LIGAÇÃO, ANÚNCIO E ESCOLHA', 'DraftEspera'],
       ['ETAPA 1 · TIMES E ASSETS', '32 TIMES, ESTÁDIOS, KITS E SAVE', 'CareerTest'],
       ['ETAPA 2 · JOGADOR E ROSTO', 'CAMADAS, KITS E ROSTO EDITÁVEL', 'PlayerTest'],

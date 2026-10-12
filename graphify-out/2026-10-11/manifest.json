@@ -2184,9 +2184,9 @@
     "semantic_hash": ""
   },
   "src/draft/art.ts": {
-    "mtime": 1791741442.7370024,
-    "seen": 1791741499.9553287,
-    "ast_hash": "edc7048342e3401fb476820aca98aaf5",
+    "mtime": 1791742124.10806,
+    "seen": 1791742257.911076,
+    "ast_hash": "d84534f85045fcbcc117cedde0e42b2e",
     "semantic_hash": ""
   },
   "src/draft/logic.ts": {
@@ -2196,9 +2196,9 @@
     "semantic_hash": ""
   },
   "src/draft/ui.ts": {
-    "mtime": 1791741335.7735176,
-    "seen": 1791741499.9553373,
-    "ast_hash": "123e2064e6b04d0094044f99a093cb6d",
+    "mtime": 1791742124.4823327,
+    "seen": 1791742257.911085,
+    "ast_hash": "e714fc9f25c6475697805893c294171f",
     "semantic_hash": ""
   },
   "src/scenes/DraftAnuncio.ts": {
