@@ -62,7 +62,7 @@ export class CombineHub extends Phaser.Scene {
     this.add.existing(res);
     const back = new GlassButton(this, 14 + 50, H - 40, { w: 100, h: 52, radius: 16 });
     back.add(label(this, 0, 0, 'SAIR', 9, '#FFFFFF').setOrigin(0.5));
-    back.onTap = () => this.time.delayedCall(30, () => this.scene.start('CareerHub'));
+    back.onTap = () => this.time.delayedCall(30, () => this.scene.start('CareerSlots'));
     this.add.existing(back);
     const reset = new GlassButton(this, W / 2, H - 98, { w: 150, h: 28, radius: 8 });
     reset.add(label(this, 0, 0, 'REINICIAR COMBINE', 7, UI.muted).setOrigin(0.5));

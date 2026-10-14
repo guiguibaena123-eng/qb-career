@@ -21,6 +21,8 @@ import { DraftTelefone } from './scenes/DraftTelefone';
 import { DraftAnuncio } from './scenes/DraftAnuncio';
 import { DraftEscolhido } from './scenes/DraftEscolhido';
 import { CarreiraMenu } from './scenes/CarreiraMenu';
+import { PreJogo } from './scenes/PreJogo';
+import { CareerSlots } from './scenes/CareerSlots';
 
 async function boot() {
   // Espera as fontes carregarem para os textos do Phaser não nascerem com fonte padrão
@@ -38,7 +40,7 @@ async function boot() {
     fps: { target: 60 },
     // Vários dedos ao mesmo tempo: segurar o joystick e apertar SPRINT/JUKE/SPIN/MERGULHO
     input: { activePointers: 4 },
-    scene: [Boot, MainMenu, CareerTest, PlayerTest, CareerHub, CareerCreate, CombineHub, Combine40, Combine3Cones, CombinePasse, CombineForca, CombineResultado, DraftEspera, DraftTelefone, DraftAnuncio, DraftEscolhido, CarreiraMenu],
+    scene: [Boot, MainMenu, CareerTest, PlayerTest, CareerHub, CareerCreate, CombineHub, Combine40, Combine3Cones, CombinePasse, CombineForca, CombineResultado, DraftEspera, DraftTelefone, DraftAnuncio, DraftEscolhido, CarreiraMenu, PreJogo, CareerSlots],
   });
 }
 

@@ -44,14 +44,16 @@ export class Weather {
   private boltNext = 6;
   readonly pill: Phaser.GameObjects.Container | null = null;
 
-  constructor(private scene: Phaser.Scene, kind: WeatherKind, private rng: Rng) {
+  /** `night`: a iluminação da noite é a mesma do tempo limpo — a névoa do clima fica fraca e por baixo da luz. */
+  constructor(private scene: Phaser.Scene, kind: WeatherKind, private rng: Rng, night = false) {
     this.kind = kind;
     const W = GAME_W;
     const H = GAME_H;
+    const haze = kind === 'rain' ? (night ? 0.1 : 0.4) : kind === 'snow' ? (night ? 0.08 : 0.48) : 0;
     this.tint = scene.add
-      .rectangle(0, 0, W, H, kind === 'rain' ? 0x0a1426 : 0xf2f6ff, kind === 'rain' ? 0.4 : kind === 'snow' ? 0.48 : 0)
+      .rectangle(0, 0, W, H, kind === 'rain' ? 0x0a1426 : 0xf2f6ff, haze)
       .setOrigin(0)
-      .setDepth(60);
+      .setDepth(night ? 58.5 : 60);
     this.g = scene.add.graphics().setDepth(61);
     this.gs = scene.add.graphics().setDepth(0.9);
     this.flash = scene.add.rectangle(0, 0, W, H, 0xffffff, 0).setOrigin(0).setDepth(62);

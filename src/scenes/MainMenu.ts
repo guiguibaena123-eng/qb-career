@@ -163,8 +163,8 @@ export class MainMenu extends Phaser.Scene {
     play.onTap = () => this.time.delayedCall(30, () => this.setup());
     const career = new GlassButton(this, W / 2, 528, { w: bw, h: 68, radius: 18 });
     career.add(title(this, 0, -6, 'CARREIRA', 13, '#FFFFFF').setOrigin(0.5));
-    career.add(label(this, 0, 14, 'CRIAÇÃO, TIMES E TESTES', 9, UI.muted).setOrigin(0.5));
-    career.onTap = () => this.time.delayedCall(30, () => this.scene.start('CareerHub'));
+    career.add(label(this, 0, 14, 'ATÉ 3 SAVES · TEMPORADA COMPLETA', 9, UI.muted).setOrigin(0.5));
+    career.onTap = () => this.time.delayedCall(30, () => this.scene.start('CareerSlots'));
     const practice = new GlassButton(this, W / 2, 604, { w: bw, h: 68, radius: 18 });
     practice.add(title(this, 0, -6, 'TREINO LIVRE', 13, '#FFFFFF').setOrigin(0.5));
     practice.add(label(this, 0, 14, 'QB NO ALVO · RB NA CORRIDA', 9, UI.muted).setOrigin(0.5));

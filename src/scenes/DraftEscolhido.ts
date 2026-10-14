@@ -64,7 +64,7 @@ export class DraftEscolhido extends Phaser.Scene {
     // Cartão do contrato
     glassCard(this, 16, 664, 358, 70);
     teamLogo(this, team, 16 + 14 + 17, 699, 36);
-    title(this, 78, 688, `${s.name} · QB · #12`, 10, '#FFFFFF').setOrigin(0, 0.5);
+    title(this, 78, 688, `${s.name} · QB · #${s.number}`, 10, '#FFFFFF').setOrigin(0, 0.5);
     label(this, 78, 710, `${team.name} · ${d.contract.years} ANOS · ${money(d.contract.value)}`, 10, '#9AA3C0').setOrigin(0, 0.5);
     title(this, GAME_W - 30, 699, `PICK ${d.pick}`, 11, UI.yellow).setOrigin(1, 0.5);
 

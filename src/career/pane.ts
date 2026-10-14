@@ -27,7 +27,7 @@ export class Pane {
     readonly x: number,
     public y: number,
     readonly w: number,
-    readonly h: number,
+    public h: number,
     private axis: 'x' | 'y' = 'y',
     depth = 10,
   ) {
@@ -35,7 +35,7 @@ export class Pane {
     this.maskG = scene.make.graphics({}, false);
     this.maskG.fillRect(x, y, w, h);
     this.content.setMask(this.maskG.createGeometryMask());
-    const inside = (p: Phaser.Input.Pointer) => p.worldX >= x && p.worldX <= x + w && p.worldY >= this.y && p.worldY <= this.y + h;
+    const inside = (p: Phaser.Input.Pointer) => p.worldX >= x && p.worldX <= x + w && p.worldY >= this.y && p.worldY <= this.y + this.h;
     const pos = (p: Phaser.Input.Pointer) => (axis === 'y' ? p.worldY : p.worldX);
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (!this.content.visible || !inside(p) || this.drag) return;
@@ -113,11 +113,13 @@ export class Pane {
     this.setScroll(this.scroll);
   }
 
-  /** Move a área inteira (recorte junto) para outra altura. */
-  moveTo(y: number) {
+  /** Move a área inteira (recorte junto) para outra altura; `h` muda também o tamanho visível. */
+  moveTo(y: number, h = this.h) {
     this.y = y;
+    this.h = h;
+    if (this.axis === 'y') this.content.y = y - this.scroll;
     this.maskG.clear();
-    this.maskG.fillRect(this.x, y, this.w, this.h);
+    this.maskG.fillRect(this.x, y, this.w, h);
     if (this.axis === 'x') this.content.y = y;
     this.setScroll(this.scroll);
   }

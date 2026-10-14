@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CAMERA, GAME_H, GAME_W, TEAMS } from '../config';
+import { CAMERA, GAME_H, GAME_W, guestTeam, hostTeam } from '../config';
 import { STAND_GAP } from './grandstand';
 import { todInfo, type SkyWeather, type TimeOfDay } from './daytime';
 import { PLANE, type Projection } from './projection';
@@ -84,8 +84,8 @@ export class StadiumShader {
       uShift: { type: '1f', value: 0 },
       uSin: { type: '1f', value: 0 },
       uCos: { type: '1f', value: 1 },
-      uTeam: { type: '3f', value: rgb(TEAMS.home.color) },
-      uOpp: { type: '3f', value: rgb(TEAMS.away.color) },
+      uTeam: { type: '3f', value: rgb(hostTeam().color) },
+      uOpp: { type: '3f', value: rgb(guestTeam().color) },
       uSkyTop: { type: '3f', value: v3(t.skyTop) },
       uSkyHor: { type: '3f', value: v3(t.skyHor) },
       uBg: { type: '3f', value: v3(t.bg) },

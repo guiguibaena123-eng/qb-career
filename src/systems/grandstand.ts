@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_TITLE, MATCH_SEED, TEAMS, matchConfig } from '../config';
+import { FONT_TITLE, MATCH_SEED, TEAMS, guestTeam, hostTeam, matchConfig, venue } from '../config';
 import { stadiumOf, type StandModelId } from '../data/stadiums';
 import { wallQuad } from './ground';
 import { hex, shade } from './pixelart';
@@ -81,7 +81,7 @@ export function pickStandModel(): StandModel {
   const byNum = q && /^\d+$/.test(q) ? MODELS[Number(q) - 1] : undefined;
   const byId = q ? MODELS.find((m) => m.id === q) : undefined;
   if (byNum ?? byId) return (byNum ?? byId)!;
-  const id = matchConfig.stand === 'auto' ? stadiumOf(TEAMS.home.id).model : matchConfig.stand;
+  const id = matchConfig.stand === 'auto' ? stadiumOf(venue.id ?? TEAMS.home.id).model : matchConfig.stand;
   return MODELS.find((m) => m.id === id) ?? MODELS[0];
 }
 
@@ -168,8 +168,8 @@ function makeRowTexture(scene: Phaser.Scene, key: string, spec: RowSpec, m: Stan
   const tex = scene.textures.createCanvas(key, W, H)!;
   const ctx = tex.getContext();
   const tx = (u: number) => Math.round(u * TPY);
-  const home = [hex(TEAMS.home.color), shade(TEAMS.home.color, 0.25), shade(TEAMS.home.color, -0.2)];
-  const away = [hex(TEAMS.away.color), shade(TEAMS.away.color, 0.3), shade(TEAMS.away.color, -0.25)];
+  const home = [hex(hostTeam().color), shade(hostTeam().color, 0.25), shade(hostTeam().color, -0.2)];
+  const away = [hex(guestTeam().color), shade(guestTeam().color, 0.3), shade(guestTeam().color, -0.25)];
   const stairs = stairsU(r);
   const awayRow = row >= m.awayRows[0] && row <= m.awayRows[1];
   const awayA = stairs[3] + STAIR_W / 2;
@@ -187,7 +187,7 @@ function makeRowTexture(scene: Phaser.Scene, key: string, spec: RowSpec, m: Stan
   ctx.fillStyle = '#262a3d';
   ctx.fillRect(0, H - 3, W, 3);
   if (awayRow) {
-    ctx.fillStyle = shade(TEAMS.away.color, -0.3);
+    ctx.fillStyle = shade(guestTeam().color, -0.3);
     ctx.fillRect(tx(awayA), H - 6, tx(awayB) - tx(awayA), 3);
   }
 
@@ -293,7 +293,7 @@ function makeBandTexture(scene: Phaser.Scene, key: string, spec: RowSpec, rng: R
       ctx.fillRect(tx(u), 4, 7, 5);
     }
     if (spec.inTier === 0) {
-      ctx.fillStyle = TEAMS.home.colorHex; // faixa do time na base do corredor
+      ctx.fillStyle = hostTeam().colorHex; // faixa do time na base do corredor
       ctx.fillRect(0, H - 4, W, 3);
     }
     if (last) {
@@ -353,6 +353,8 @@ export class Grandstand {
   /** Refletores nos cantos e no fundo das arquibancadas compactas: postes/painéis num Graphics e brilhos aditivos. */
   private lg: Phaser.GameObjects.Graphics;
   private glows: Phaser.GameObjects.Image[] = [];
+  /** Painel de lâmpadas de cada torre (textura em alta resolução). */
+  private panels: Phaser.GameObjects.Image[] = [];
   private fx = new Rng(MATCH_SEED + 9);
   private flashes: { k: number; u: number; life: number }[] = [];
   private time = 0;
@@ -373,32 +375,40 @@ export class Grandstand {
       this.phases.push(rng.range(0, Math.PI * 2));
     });
     if (this.model.id !== 'classica') {
-      makeSkylineTexture(scene, 'skyline', stadiumOf(TEAMS.home.id).city, 11 + TEAMS.home.id.charCodeAt(0) * 7, tod, weather);
+      makeSkylineTexture(scene, 'skyline', stadiumOf(venue.id ?? TEAMS.home.id).city, 11 + (venue.id ?? TEAMS.home.id).charCodeAt(0) * 7, tod, weather);
       this.skyline = scene.add.image(0, 0, 'skyline').setOrigin(0, 1).setDepth(2.9);
     }
     this.lg = scene.add.graphics().setDepth(3.45);
     if (this.model.id !== 'classica') {
+      // Brilho do refletor: textura grande e suave (filtro linear: nada de pixel serrilhado ao ampliar)
       if (scene.textures.exists('glow')) scene.textures.remove('glow');
-      const gt = scene.textures.createCanvas('glow', 64, 64)!;
+      const gt = scene.textures.createCanvas('glow', 256, 256)!;
       const gc = gt.getContext();
-      const rg = gc.createRadialGradient(32, 32, 0, 32, 32, 32);
-      rg.addColorStop(0, 'rgba(255,246,216,1)');
-      rg.addColorStop(0.25, 'rgba(255,240,200,0.5)');
-      rg.addColorStop(1, 'rgba(255,240,200,0)');
+      const rg = gc.createRadialGradient(128, 128, 0, 128, 128, 128);
+      rg.addColorStop(0, 'rgba(255,248,226,0.95)');
+      rg.addColorStop(0.1, 'rgba(255,244,214,0.55)');
+      rg.addColorStop(0.35, 'rgba(255,238,200,0.16)');
+      rg.addColorStop(0.7, 'rgba(255,236,196,0.04)');
+      rg.addColorStop(1, 'rgba(255,236,196,0)');
       gc.fillStyle = rg;
-      gc.fillRect(0, 0, 64, 64);
+      gc.fillRect(0, 0, 256, 256);
       gt.refresh();
-      for (let i = 0; i < 4; i++) this.glows.push(scene.add.image(0, 0, 'glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(59.5).setVisible(false));
+      gt.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      makeFloodPanels(scene);
+      for (let i = 0; i < 4; i++) {
+        this.glows.push(scene.add.image(0, 0, 'glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(59.5).setVisible(false));
+        this.panels.push(scene.add.image(0, 0, 'flood_off').setDepth(3.46).setVisible(false));
+      }
     }
     this.g = scene.add.graphics().setDepth(3.9);
     this.sg = scene.add.graphics().setDepth(3.5);
     this.wallText = scene.add
-      .text(0, 0, 'QB CAREER :: QB CAREER :: QB CAREER', { fontFamily: FONT_TITLE, fontSize: '32px', color: TEAMS.home.colorHex })
+      .text(0, 0, 'QB CAREER :: QB CAREER :: QB CAREER', { fontFamily: FONT_TITLE, fontSize: '32px', color: hostTeam().colorHex })
       .setOrigin(0.5, 0.5)
       .setDepth(3.95);
     if (this.model.screen) {
       this.screenText = scene.add
-        .text(0, 0, TEAMS.home.name, { fontFamily: FONT_TITLE, fontSize: '32px', color: '#ffffff' })
+        .text(0, 0, hostTeam().name, { fontFamily: FONT_TITLE, fontSize: '32px', color: '#ffffff' })
         .setOrigin(0.5, 0.5)
         .setDepth(3.55);
     }
@@ -448,9 +458,9 @@ export class Grandstand {
     wallQuad(sg, proj, x0, y, x1, y, h0, h1, 0x090b18); // tela
     const tall = h1 - h0;
     wallQuad(sg, proj, x0 + 0.3, y, x1 - 0.3, y, h0 + tall * 0.7, h1 - 0.3, 0x142257, 0.9); // brilho do topo
-    wallQuad(sg, proj, x0 + 0.3, y, x1 - 0.3, y, h0 + 0.3, h0 + tall * 0.2, TEAMS.home.color, 0.55 + 0.3 * pulse); // faixa do time
+    wallQuad(sg, proj, x0 + 0.3, y, x1 - 0.3, y, h0 + 0.3, h0 + tall * 0.2, hostTeam().color, 0.55 + 0.3 * pulse); // faixa do time
     // Texto do telão: nome do time e "QB CAREER" alternando
-    t.setText(Math.floor(this.time / 4) % 2 ? 'QB CAREER' : TEAMS.home.name);
+    t.setText(Math.floor(this.time / 4) % 2 ? 'QB CAREER' : hostTeam().name);
     proj.project((x0 + x1) / 2, y, (h0 + h1) / 2 + tall * 0.08, pa);
     proj.project(x0, y, h0, pb);
     const wpx = Math.abs(pa.x - pb.x) * 2;
@@ -473,8 +483,10 @@ export class Grandstand {
     us.forEach((u, i) => {
       const img = this.glows[i];
       const [x, y] = pointAt(top.r, u);
+      const panel = this.panels[i];
       if (y < proj.nearY) {
         img.setVisible(false);
+        panel.setVisible(false);
         return;
       }
       const ht = top.h + poleH;
@@ -482,23 +494,19 @@ export class Grandstand {
       proj.project(x, y, ht, pb);
       g.lineStyle(Math.max(1.4, pa.s * 1.7), 0x2a2f45, 1);
       g.lineBetween(pa.x, pa.y, pb.x, pb.y);
-      // Painel de lâmpadas (4 colunas × 3 fileiras)
-      wallQuad(g, proj, x - 2.8, y, x + 2.8, y, ht - 0.3, ht + 3.7, 0x555b73);
-      wallQuad(g, proj, x - 2.5, y, x + 2.5, y, ht, ht + 3.4, 0x14172a);
+      // Painel de lâmpadas (4 colunas × 3 fileiras), imagem suave do tamanho projetado
       const lit = lvl > 0.05;
-      g.fillStyle(lit ? 0xfff6d8 : 0x8a90a4, lit ? 0.55 + 0.45 * lvl : 1);
-      const r = Math.max(0.9, pa.s * 2.3);
-      for (let cx = 0; cx < 4; cx++) {
-        for (let cy = 0; cy < 3; cy++) {
-          proj.project(x - 1.8 + cx * 1.2, y, ht + 0.55 + cy * 1.1, pa);
-          g.fillCircle(pa.x, pa.y, r);
-        }
-      }
-      proj.project(x, y, ht + 1.7, pa);
-      const k = lvl * (0.9 + 0.1 * Math.sin(this.time * 3 + i));
+      proj.project(x - 2.9, y, ht + 1.7, pa);
+      proj.project(x + 2.9, y, ht + 1.7, pb);
+      const pw = Math.abs(pb.x - pa.x);
+      const ph = Math.abs(proj.project(x, y, ht - 0.3, pb).y - proj.project(x, y, ht + 3.8, pa).y);
+      proj.project(x, y, ht + 1.75, pa);
+      panel.setTexture(lit ? 'flood_on' : 'flood_off').setVisible(pa.y > -80).setPosition(pa.x, pa.y).setDisplaySize(pw, ph);
+      // Brilho: mais fraco que antes (a luz do campo já vem da camada da noite)
+      const k = lvl * 0.42 * (0.94 + 0.06 * Math.sin(this.time * 3 + i));
       img.setVisible(k > 0.02 && pa.y > -80)
         .setPosition(pa.x, pa.y)
-        .setScale((pa.s * 10 * 26) / 64)
+        .setScale((pa.s * 10 * 20) / 256)
         .setAlpha(k);
     });
   }
@@ -591,5 +599,68 @@ export class Grandstand {
       g.fillRect(pa.x - 0.5, pa.y - fu * k, 1, fu * 2 * k);
     }
     this.flashes = this.flashes.filter((f) => f.life > 0);
+  }
+}
+
+/** Texturas do painel do refletor (aceso e apagado): carcaça com degradê, moldura e 12 lâmpadas com brilho. */
+function makeFloodPanels(scene: Phaser.Scene) {
+  const W = 160;
+  const H = 112;
+  for (const lit of [true, false]) {
+    const key = lit ? 'flood_on' : 'flood_off';
+    if (scene.textures.exists(key)) continue;
+    const t = scene.textures.createCanvas(key, W, H)!;
+    const c = t.getContext();
+    const rr = (x: number, y: number, w: number, h: number, r: number) => {
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.arcTo(x + w, y, x + w, y + h, r);
+      c.arcTo(x + w, y + h, x, y + h, r);
+      c.arcTo(x, y + h, x, y, r);
+      c.arcTo(x, y, x + w, y, r);
+      c.closePath();
+    };
+    // Carcaça metálica
+    const body = c.createLinearGradient(0, 0, 0, H);
+    body.addColorStop(0, '#6c7390');
+    body.addColorStop(0.5, '#3a3f58');
+    body.addColorStop(1, '#23273a');
+    c.fillStyle = body;
+    rr(2, 2, W - 4, H - 4, 12);
+    c.fill();
+    c.strokeStyle = 'rgba(255,255,255,0.35)';
+    c.lineWidth = 2;
+    c.stroke();
+    // Fundo das lâmpadas
+    c.fillStyle = '#10121f';
+    rr(10, 10, W - 20, H - 20, 8);
+    c.fill();
+    // Lâmpadas
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 3; j++) {
+        const x = 30 + i * 33;
+        const y = 29 + j * 27;
+        if (lit) {
+          const halo = c.createRadialGradient(x, y, 0, x, y, 16);
+          halo.addColorStop(0, 'rgba(255,250,230,0.9)');
+          halo.addColorStop(1, 'rgba(255,240,200,0)');
+          c.fillStyle = halo;
+          c.fillRect(x - 16, y - 16, 32, 32);
+        }
+        const bulb = c.createRadialGradient(x - 3, y - 3, 1, x, y, 10);
+        bulb.addColorStop(0, lit ? '#ffffff' : '#c9cedc');
+        bulb.addColorStop(0.6, lit ? '#fff3cf' : '#7d8399');
+        bulb.addColorStop(1, lit ? '#f5d98f' : '#4a4f66');
+        c.fillStyle = bulb;
+        c.beginPath();
+        c.arc(x, y, 10, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = 'rgba(0,0,0,0.45)';
+        c.lineWidth = 1.5;
+        c.stroke();
+      }
+    }
+    t.refresh();
+    t.setFilter(Phaser.Textures.FilterMode.LINEAR);
   }
 }

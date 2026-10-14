@@ -118,8 +118,21 @@ export interface CareerState {
   season: number;
   week: number;
   record: { w: number; l: number };
-  schedule: { week: number; opp: string; home: boolean; result?: { us: number; them: number } }[];
-  news: { week: number; text: string }[];
+  schedule: { week: number; opp: string; home: boolean; result?: { us: number; them: number }; stats?: GameLine }[];
+  news: { week: number; text: string; body?: string }[];
+  /** XP somado nas partidas da carreira e confiança no fim do último jogo (0-5). */
+  xp?: number;
+  confidence?: number;
+}
+
+/** Linha do QB numa partida da carreira. */
+export interface GameLine {
+  comp: number;
+  att: number;
+  yards: number;
+  td: number;
+  int: number;
+  sacks: number;
 }
 
 export interface PlayerSave {
@@ -127,7 +140,8 @@ export interface PlayerSave {
   created: boolean;
   firstName: string;
   name: string;
-  number: 12;
+  /** Número do uniforme (0 a 99; -1 = ainda não escolhido na criação). */
+  number: number;
   college: { id: string; name: string; colors: [string, string] };
   face: number;
   skin: number;
@@ -140,6 +154,8 @@ export interface PlayerSave {
   combine?: CombineResult;
   draft?: { teamId: string; pick: number; round: number; contract: { years: number; value: number } };
   career: CareerState;
+  /** Última gravação (ms), mostrada na tela de saves. */
+  updated?: number;
 }
 
 /** OVR único do jogador, usado em todas as telas (rookie ≈ 62). */
@@ -169,45 +185,98 @@ export function defaultSave(): PlayerSave {
   };
 }
 
-const KEY = 'qb-career-save';
+/*
+ * Saves: até SLOT_COUNT carreiras, cada uma numa chave própria ('qb-career-save-1'..3). A carreira em
+ * uso fica em 'qb-career-slot'. O save antigo (chave única 'qb-career-save') vira o espaço 1.
+ */
+export const SLOT_COUNT = 3;
+const LEGACY = 'qb-career-save';
+const SLOT_KEY = 'qb-career-slot';
+const keyOf = (n: number) => `qb-career-save-${n}`;
 let cache: PlayerSave | null = null;
+let slot = 1;
+try {
+  const legacy = localStorage.getItem(LEGACY);
+  if (legacy && !localStorage.getItem(keyOf(1))) localStorage.setItem(keyOf(1), legacy);
+  if (legacy) localStorage.removeItem(LEGACY);
+  const n = Number(localStorage.getItem(SLOT_KEY));
+  if (n >= 1 && n <= SLOT_COUNT) slot = n;
+} catch {
+  /* sem armazenamento: espaço 1 só nesta sessão */
+}
 
-/** Lê o save (ou cria o padrão). Campos novos de versões futuras entram com o valor padrão. */
+/** Lê e completa um save cru (campos novos entram com o padrão). */
+function parse(raw: unknown): PlayerSave | null {
+  const r = raw as (Partial<PlayerSave> & { look?: Record<string, unknown> }) | null;
+  if (!r || r.version !== 1) return null;
+  const base = defaultSave();
+  return { ...base, ...r, look: { ...base.look, ...migrateLook(r.look) }, attrs: { ...base.attrs, ...r.attrs }, career: { ...base.career, ...r.career } } as PlayerSave;
+}
+
+/** Espaço de save em uso (1..SLOT_COUNT). */
+export const activeSlot = () => slot;
+
+/** Troca a carreira em uso. */
+export function setActiveSlot(n: number) {
+  slot = Math.max(1, Math.min(SLOT_COUNT, n));
+  cache = null;
+  try {
+    localStorage.setItem(SLOT_KEY, String(slot));
+  } catch {
+    /* ignora */
+  }
+}
+
+/** Conteúdo de um espaço sem trocar a carreira em uso (null = vazio). */
+export function peekSlot(n: number): PlayerSave | null {
+  if (n === slot && cache) return cache.created || cache.draft ? cache : null;
+  try {
+    const s = parse(JSON.parse(localStorage.getItem(keyOf(n)) ?? 'null'));
+    return s && (s.created || s.draft) ? s : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Apaga um espaço. */
+export function deleteSlot(n: number) {
+  try {
+    localStorage.removeItem(keyOf(n));
+  } catch {
+    /* ignora */
+  }
+  if (n === slot) cache = null;
+}
+
+/** Lê o save da carreira em uso (ou cria o padrão). */
 export function getSave(): PlayerSave {
   if (cache) return cache;
-  const base = defaultSave();
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null');
-    if (raw && raw.version === 1) {
-      cache = { ...base, ...raw, look: { ...base.look, ...migrateLook(raw.look) }, attrs: { ...base.attrs, ...raw.attrs }, career: { ...base.career, ...raw.career } };
-      return cache!;
-    }
+    const s = parse(JSON.parse(localStorage.getItem(keyOf(slot)) ?? 'null'));
+    if (s) return (cache = s);
   } catch {
     /* save corrompido ou sem armazenamento: começa do zero */
   }
-  cache = base;
+  cache = defaultSave();
   return cache;
 }
 
 /** Aplica mudanças ao save, recalcula o OVR e grava. */
 export function updateSave(patch: Partial<PlayerSave>): PlayerSave {
-  const s = { ...getSave(), ...patch };
+  const s = { ...getSave(), ...patch, updated: Date.now() };
   s.ovr = calcOvr(s.attrs);
   cache = s;
   try {
-    localStorage.setItem(KEY, JSON.stringify(s));
+    localStorage.setItem(keyOf(slot), JSON.stringify(s));
   } catch {
     /* sem armazenamento: o save vale só nesta sessão */
   }
   return s;
 }
 
+/** Zera a carreira em uso (o espaço fica vazio). */
 export function resetSave(): PlayerSave {
+  deleteSlot(slot);
   cache = null;
-  try {
-    localStorage.removeItem(KEY);
-  } catch {
-    /* ignora */
-  }
   return getSave();
 }

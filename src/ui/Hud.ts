@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_W, TEAMS, logoKey } from '../config';
+import { GAME_W, TEAMS, broadcast, logoKey } from '../config';
 import type { GameState } from '../state/GameState';
 import { label, title, UI } from './widgets';
 
@@ -24,7 +24,7 @@ export class Hud {
     const W = GAME_W;
     const L = 12;
     const R = W - 12;
-    this.root = scene.add.container(GAME_W / 2 - (GAME_W / 2) * HUD_SCALE, 2).setScale(HUD_SCALE).setDepth(depth);
+    this.root = scene.add.container(GAME_W / 2 - (GAME_W / 2) * HUD_SCALE, broadcast.prime ? 8 : 2).setScale(HUD_SCALE).setDepth(depth);
     const g = scene.add.graphics();
 
     // Placar
@@ -32,12 +32,28 @@ export class Hud {
     const h = 44;
     const mid = 96;
     const side = (R - L - mid) / 2;
+    // Horário nobre: moldura dupla na cor da transmissão, centro escuro e a faixa com o nome do jogo
+    const pr = broadcast.prime;
+    if (pr) {
+      g.fillStyle(pr.glow, 1);
+      g.fillRect(L - 6, top - 6, R - L + 12, h + 12);
+      g.fillStyle(pr.color, 1);
+      g.fillRect(L - 4, top - 4, R - L + 8, h + 8);
+    }
     g.fillStyle(UI.dark, 1);
     g.fillRect(L - 3, top - 3, R - L + 6, h + 6);
     g.fillStyle(TEAMS.home.color, 1);
     g.fillRect(L, top, side, h);
-    g.fillStyle(0xf3f0e6, 1);
+    g.fillStyle(pr ? 0x0d0f1f : 0xf3f0e6, 1);
     g.fillRect(L + side, top, mid, h);
+    if (pr) {
+      // brilho no centro e filetes na cor da transmissão
+      g.fillStyle(pr.color, 0.35);
+      g.fillRect(L + side, top, mid, h / 2);
+      g.fillStyle(pr.glow, 1);
+      g.fillRect(L + side, top, 2, h);
+      g.fillRect(L + side + mid - 2, top, 2, h);
+    }
     g.fillStyle(TEAMS.away.color, 1);
     g.fillRect(L + side + mid, top, side, h);
 
@@ -47,8 +63,23 @@ export class Hud {
     const logoA = scene.add.image(R - 5 - 36, top + 4, logoKey(TEAMS.away.id)).setOrigin(0).setDisplaySize(36, 36);
     t('homeAbbr', title(scene, L + 46, top + h / 2, TEAMS.home.abbr, 11, TEAMS.home.fg).setOrigin(0, 0.5));
     t('homeScore', title(scene, L + side - 10, top + h / 2, '', 18, TEAMS.home.fg).setOrigin(1, 0.5));
-    t('quarter', label(scene, L + side + mid / 2, top + 13, '', 11, '#0D0D12').setOrigin(0.5));
-    t('clock', title(scene, L + side + mid / 2, top + 31, '', 12, '#0D0D12').setOrigin(0.5));
+    t('quarter', label(scene, L + side + mid / 2, top + 13, '', 11, pr ? '#' + pr.glow.toString(16).padStart(6, '0') : '#0D0D12').setOrigin(0.5));
+    t('clock', title(scene, L + side + mid / 2, top + 31, '', 12, pr ? '#FFFFFF' : '#0D0D12').setOrigin(0.5));
+    // Faixa "SUNDAY NIGHT" em cima do placar
+    const ribbon: Phaser.GameObjects.GameObject[] = [];
+    if (pr) {
+      const rt = title(scene, L + side + mid / 2, top - 9, pr.short, 7, '#FFFFFF').setOrigin(0.5);
+      const rw = Math.max(mid + 30, rt.width + 24);
+      const rg = scene.add.graphics();
+      rg.fillStyle(UI.dark, 1);
+      rg.fillRect(L + side + mid / 2 - rw / 2 - 3, top - 19, rw + 6, 18);
+      rg.fillStyle(pr.color, 1);
+      rg.fillRect(L + side + mid / 2 - rw / 2, top - 17, rw, 14);
+      rg.fillStyle(pr.glow, 1);
+      rg.fillRect(L + side + mid / 2 - rw / 2, top - 17, 3, 14);
+      rg.fillRect(L + side + mid / 2 + rw / 2 - 3, top - 17, 3, 14);
+      ribbon.push(rg, rt);
+    }
     t('awayScore', title(scene, L + side + mid + 10, top + h / 2, '', 18, TEAMS.away.fg).setOrigin(0, 0.5));
     t('awayAbbr', title(scene, R - 46, top + h / 2, TEAMS.away.abbr, 11, TEAMS.away.fg).setOrigin(1, 0.5));
 
@@ -108,7 +139,7 @@ export class Hud {
 
     // Tudo num container só (escalado): placar, barra de descida e card do QB
     const top6 = ['homeAbbr', 'homeScore', 'quarter', 'clock', 'awayScore', 'awayAbbr'].map((k) => this.texts[k]);
-    this.root.add([g, logoH, logoA, ...top6, this.downBar, this.card]);
+    this.root.add([g, ...ribbon, logoH, logoA, ...top6, this.downBar, this.card]);
 
     this.refresh();
   }

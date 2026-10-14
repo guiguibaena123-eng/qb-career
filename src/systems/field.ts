@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, FIELD, FONT_TITLE, TEAMS, logoKey } from '../config';
+import { COLORS, FIELD, FONT_TITLE, hostTeam, logoKey } from '../config';
 import { drawGoalPost, drawPylon } from '../entities/GoalPost';
 import { fillQuad } from './ground';
 import type { ShadowLight } from './daytime';
@@ -59,12 +59,12 @@ export class FieldRenderer {
     }
     // Nome do mandante nas duas end zones (o estádio é do time da casa)
     const ez = [
-      { name: fieldOptions.combine ? 'QBL COMBINE' : TEAMS.home.name, y: -5 },
-      { name: fieldOptions.combine ? 'QBL COMBINE' : TEAMS.home.name, y: 105 },
+      { name: fieldOptions.combine ? 'QBL COMBINE' : hostTeam().name, y: -5 },
+      { name: fieldOptions.combine ? 'QBL COMBINE' : hostTeam().name, y: 105 },
     ];
     for (const e of ez) {
       const t = scene.add
-        .text(0, 0, e.name, { fontFamily: FONT_TITLE, fontSize: fieldOptions.combine ? '52px' : '64px', color: fieldOptions.combine ? '#FFFFFF' : TEAMS.home.fg })
+        .text(0, 0, e.name, { fontFamily: FONT_TITLE, fontSize: fieldOptions.combine ? '52px' : '64px', color: fieldOptions.combine ? '#FFFFFF' : hostTeam().fg })
         .setOrigin(0.5, 0.5)
         .setAlpha(0.85)
         .setDepth(1);
@@ -101,7 +101,7 @@ export class FieldRenderer {
       this.quad(0, y, W, y + 5, (y / 5) % 2 === 0 ? this.grass[0] : this.grass[1]);
     }
     // As duas end zones nas cores do mandante
-    const ezColor = fieldOptions.combine ? COMBINE_BLUE : TEAMS.home.color;
+    const ezColor = fieldOptions.combine ? COMBINE_BLUE : hostTeam().color;
     this.quad(0, -10, W, 0, ezColor);
     this.quad(0, 100, W, 110, ezColor);
 
@@ -147,7 +147,7 @@ export class FieldRenderer {
 
   /** Logo do mandante no meio (50 jardas): rotacionada 90° para a esquerda, com a tinta "gasta" para parecer pintada no gramado. */
   private buildMidLogo(scene: Phaser.Scene) {
-    const src = scene.textures.get(fieldOptions.combine ? 'logoLeague' : logoKey(TEAMS.home.id, 'l')).getSourceImage() as HTMLImageElement;
+    const src = scene.textures.get(fieldOptions.combine ? 'logoLeague' : logoKey(hostTeam().id, 'l')).getSourceImage() as HTMLImageElement;
     const N = 384;
     if (scene.textures.exists('midlogo')) scene.textures.remove('midlogo');
     const tex = scene.textures.createCanvas('midlogo', N, N)!;

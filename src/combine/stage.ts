@@ -37,7 +37,7 @@ export function playerLook(): ActorLook {
   const c = COLLEGES.find((k) => k.id === s.college.id) ?? COLLEGES[0];
   const p = parseInt(c.colors[0].slice(1), 16);
   const q = parseInt(c.colors[1].slice(1), 16);
-  return { jersey: p, helmet: p, pants: 0x232a4a, trim: q, num: q, skin: SKINS[s.skin % SKINS.length], digits: '12', hair: HAIR_COLORS[s.hairColor % HAIR_COLORS.length] };
+  return { jersey: p, helmet: p, pants: 0x232a4a, trim: q, num: q, skin: SKINS[s.skin % SKINS.length], digits: String(Math.max(0, s.number)), hair: HAIR_COLORS[s.hairColor % HAIR_COLORS.length] };
 }
 
 /** Pessoa em campo: posição em jardas, sprite do jogo e animação de corrida. */

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_TITLE, GAME_H, GAME_W, TEAMS, logoKey } from '../config';
+import { FONT_TITLE, GAME_H, GAME_W, TEAMS, broadcast, logoKey } from '../config';
 import type { Rng } from '../systems/rng';
 import { GlassButton, label, title, UI } from './widgets';
 
@@ -14,6 +14,9 @@ import { GlassButton, label, title, UI } from './widgets';
 export class Intro {
   private root: Phaser.GameObjects.Container | null = null;
   private objs: Phaser.GameObjects.GameObject[] = [];
+
+  /** Textos da apresentação (a carreira troca pelo jogador do save e pelo estádio do mandante). */
+  info = { mode: 'PARTIDA RÁPIDA', qb: '#12 · ROOKIE', ovr: 68, traits: 'BRAÇO FORTE · MÃOS SEGURAS', arena: 'ARENA QB CAREER · 38.200 TORCEDORES', homeHosts: true };
 
   constructor(private scene: Phaser.Scene, private rng: Rng) {}
 
@@ -50,13 +53,53 @@ export class Intro {
 
   // ------------------------------------------------------------ 1) apresentação
 
+  /** Abertura de horário nobre: faixa na cor da transmissão, estrelas, nome do jogo com brilho. */
+  private primeBanner(pr: { name: string; color: number; glow: number }) {
+    const sc = this.scene;
+    const W = GAME_W;
+    const glowHex = '#' + pr.glow.toString(16).padStart(6, '0');
+    const band = this.add(sc.add.graphics());
+    band.fillStyle(pr.color, 0.18);
+    band.fillRect(0, 22, W, 100);
+    band.fillStyle(pr.color, 1);
+    band.fillRect(0, 34, W, 4);
+    band.fillRect(0, 106, W, 4);
+    band.fillStyle(pr.glow, 1);
+    band.fillRect(0, 38, W, 2);
+    band.fillRect(0, 104, W, 2);
+    // estrelas que piscam
+    for (let i = 0; i < 14; i++) {
+      const x = 14 + ((i * 97) % (W - 28));
+      const y = 48 + ((i * 37) % 52);
+      const st = this.add(sc.add.star(x, y, 4, 1.5, i % 3 ? 3 : 5, 0xffffff, 1).setAlpha(0.2));
+      sc.tweens.add({ targets: st, alpha: 0.95, duration: 500 + (i % 5) * 160, yoyo: true, repeat: -1, delay: i * 90 });
+    }
+    const words = pr.name.split(' ');
+    const big = this.add(
+      sc.add
+        .text(W / 2, 64, `${words[0]} ${words[1]}`, { fontFamily: FONT_TITLE, fontSize: '19px', color: '#FFFFFF', stroke: '#0D0D12', strokeThickness: 6, shadow: { offsetX: 3, offsetY: 4, color: '#' + pr.color.toString(16).padStart(6, '0'), fill: true, stroke: true } })
+        .setOrigin(0.5)
+        .setScale(0.6)
+        .setAlpha(0),
+    );
+    const sub = this.add(title(sc, W / 2, 92, words.slice(2).join(' ') || 'GAME', 11, glowHex).setOrigin(0.5).setAlpha(0));
+    sc.tweens.add({ targets: big, scale: 1, alpha: 1, duration: 420, ease: 'Back.Out' });
+    sc.tweens.add({ targets: sub, alpha: 1, duration: 300, delay: 250 });
+    sc.tweens.add({ targets: big, scale: 1.04, duration: 900, yoyo: true, repeat: -1, delay: 500, ease: 'Sine.InOut' });
+    this.add(label(sc, W / 2, 12, `QB CAREER · ${this.info.mode} · AO VIVO`, 8, '#C9CEE0').setOrigin(0.5));
+  }
+
   private presentation(next: () => void) {
     const sc = this.scene;
     const W = GAME_W;
     const H = GAME_H;
     this.clear();
-    this.add(label(sc, W / 2, 62, 'QB CAREER · PARTIDA RÁPIDA', 10, UI.muted).setOrigin(0.5));
-    this.add(title(sc, W / 2, 92, 'HOJE NO ESTÁDIO', 12, '#FFFFFF').setOrigin(0.5));
+    const pr = broadcast.prime;
+    if (pr) this.primeBanner(pr);
+    else {
+      this.add(label(sc, W / 2, 62, `QB CAREER · ${this.info.mode}`, 10, UI.muted).setOrigin(0.5));
+      this.add(title(sc, W / 2, 92, 'HOJE NO ESTÁDIO', 12, '#FFFFFF').setOrigin(0.5));
+    }
 
     const card = (side: 'home' | 'away', y: number) => {
       const t = TEAMS[side];
@@ -80,7 +123,7 @@ export class Intro {
       c.add(sc.add.image(x0 + 64, 75, logoKey(t.id, 'l')).setDisplaySize(100, 100));
       const tx = x0 + 136;
       c.add(title(sc, tx, 22, t.name, 14, '#FFFFFF').setOrigin(0, 0.5));
-      c.add(label(sc, tx, 44, `${fromLeft ? 'MANDANTE' : 'VISITANTE'} · OVR ${t.rating.ovr}`, 10, UI.muted).setOrigin(0, 0.5));
+      c.add(label(sc, tx, 44, `${fromLeft === this.info.homeHosts ? 'MANDANTE' : 'VISITANTE'} · OVR ${t.rating.ovr}`, 10, UI.muted).setOrigin(0, 0.5));
       const R = t.rating;
       [['ATAQUE', R.atk], ['DEFESA', R.def], ['ESPECIAIS', R.esp]].forEach(([n, v], i) => {
         const yy = 70 + i * 26;
@@ -125,12 +168,12 @@ export class Intro {
     info.add([
       g2,
       label(sc, 28, 534, 'SEU QUARTERBACK', 9, UI.muted).setOrigin(0, 0.5),
-      title(sc, 28, 558, '#12 · ROOKIE', 12, UI.yellow).setOrigin(0, 0.5),
-      label(sc, 28, 584, 'OVR 68 · BRAÇO FORTE · MÃOS SEGURAS', 10, '#E8EAF2').setOrigin(0, 0.5),
-      title(sc, W - 28, 558, 'OVR 68', 11, '#FFFFFF').setOrigin(1, 0.5),
+      title(sc, 28, 558, this.info.qb, 12, UI.yellow).setOrigin(0, 0.5),
+      label(sc, 28, 584, `OVR ${this.info.ovr} · ${this.info.traits}`, 10, '#E8EAF2').setOrigin(0, 0.5),
+      title(sc, W - 28, 558, `OVR ${this.info.ovr}`, 11, '#FFFFFF').setOrigin(1, 0.5),
     ]);
     sc.tweens.add({ targets: info, alpha: 1, duration: 400, delay: 1100 });
-    const arena = this.add(label(sc, W / 2, 640, 'ARENA QB CAREER · 38.200 TORCEDORES', 10, UI.muted).setOrigin(0.5).setAlpha(0));
+    const arena = this.add(label(sc, W / 2, 640, this.info.arena, 10, UI.muted).setOrigin(0.5).setAlpha(0));
     sc.tweens.add({ targets: arena, alpha: 1, duration: 400, delay: 1300 });
 
     const btn = new GlassButton(sc, W / 2, H - 60, { w: W - 60, h: 60, radius: 16, fill: TEAMS.home.color, fillAlpha: 1, borderAlpha: 0.35, primary: true });

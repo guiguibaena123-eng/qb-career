@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS, matchConfig } from '../config';
+import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS, matchConfig, venue } from '../config';
 import {
   FORMATION_NAME,
   HOT_ROUTE_CYCLE,
@@ -45,6 +45,9 @@ import { KickUi } from '../ui/KickUi';
 import { DefenseScreen } from '../ui/DefenseScreen';
 import { Menu } from '../ui/Menu';
 import { Intro } from '../ui/Intro';
+import { careerMatch, finishCareerMatch, leaveCareerMatch } from '../integration/MatchBridge';
+import { TeamRepository } from '../data/TeamRepository';
+import { getSave } from '../player/PlayerSave';
 import { bottomGradient, GlassButton, label, Tag, title, UI } from '../ui/widgets';
 
 const KEYS: RecvKey[] = ['A', 'B', 'C', 'D', 'E'];
@@ -198,6 +201,8 @@ export class MatchScene extends Phaser.Scene {
   constructor(
     key = 'MatchScene',
     readonly practice: 'qb' | 'rb' | null = null,
+    /** Partida da carreira (MatchBridge): OVR do save e resultado gravado no fim. */
+    readonly career = false,
   ) {
     super(key);
   }
@@ -212,6 +217,8 @@ export class MatchScene extends Phaser.Scene {
   create() {
     setupHiRes(this);
     const s = this.state;
+    if (this.career) Object.assign(s.qb, { ovr: getSave().ovr, number: getSave().number }); // HUD com o OVR (calcOvr) e o número da carreira
+    if (import.meta.env.DEV) (window as unknown as { __qb: unknown }).__qb = this; // gancho de teste automático
     if (this.practice) {
       // Treino: arquibancada sem torcedores (o resto do gráfico igual ao da partida)
       s.los = PRACTICE_LOS;
@@ -270,13 +277,15 @@ export class MatchScene extends Phaser.Scene {
 
     // Clima e vento da partida
     new Daylight(this, this.world.tod, GAME_W, GAME_H);
-    this.weather = new Weather(this, weatherKind, this.rng);
+    this.weather = new Weather(this, weatherKind, this.rng, this.world.tod === 'night');
     this.world.sideline.snow = this.weather.kind === 'snow';
     this.state.wind = { dir: this.rng.chance(0.5) ? -1 : 1, mph: this.rng.int(0, 18) };
     this.kickUi = new KickUi(this);
     this.defenseScreen = new DefenseScreen(this);
     this.menu = new Menu(this);
     this.intro = new Intro(this, this.rng);
+    if (this.career) this.careerIntro();
+    else this.intro.info.arena = TeamRepository.get(venue.id ?? TEAMS.home.id).stadium.name;
     // ?chute=fg|punt|pat abre direto no chute; ?defesa abre a campanha deles
     const kq = q.get('chute');
     if (kq === 'fg' || kq === 'punt' || kq === 'pat') this.time.delayedCall(300, () => this.startKick(kq));
@@ -298,7 +307,12 @@ export class MatchScene extends Phaser.Scene {
 
   private spawnPlayers() {
     let i = 0;
-    for (const slot of SHOTGUN_TRIPS) this.offense.push(new Player(this.world.players, this, 'off', slot, this.state.los, i++));
+    // Carreira: o QB usa o número escolhido na criação do jogador
+    const qbNum = this.career ? Math.max(0, getSave().number) : null;
+    for (const slot of SHOTGUN_TRIPS) {
+      const sl = qbNum !== null && slot.role === 'QB' ? { ...slot, num: qbNum } : slot;
+      this.offense.push(new Player(this.world.players, this, 'off', sl, this.state.los, i++));
+    }
     for (const slot of NICKEL_425) this.defense.push(new Player(this.world.players, this, 'def', slot, this.state.los, i++));
   }
 
@@ -414,13 +428,14 @@ export class MatchScene extends Phaser.Scene {
       this.newGame();
     });
     let menuArmed = false;
-    const mtx = mk(540, 'MENU PRINCIPAL', () => {
+    const menuText = this.career ? 'SAIR (NÃO CONTA)' : 'MENU PRINCIPAL';
+    const mtx = mk(540, menuText, () => {
       if (!menuArmed) {
         menuArmed = true;
         mtx.setText('TOQUE DE NOVO').setColor('#FF7B80');
         setTimeout(() => {
           menuArmed = false;
-          if (mtx.active) mtx.setText('MENU PRINCIPAL').setColor('#FFFFFF');
+          if (mtx.active) mtx.setText(menuText).setColor('#FFFFFF');
         }, 2500);
         return;
       }
@@ -436,12 +451,28 @@ export class MatchScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.game.events.off(Phaser.Core.Events.HIDDEN, onHidden));
   }
 
+  /** Abertura da carreira: semana, o seu QB (nome, OVR, pontos fortes) e o estádio do mandante. */
+  private careerIntro() {
+    const sv = getSave();
+    const cm = careerMatch()!;
+    const A = sv.attrs;
+    const traits = ([[A.arm, 'BRAÇO FORTE'], [A.accuracy, 'PRECISO'], [A.reading, 'BOA LEITURA'], [A.speed, 'MÓVEL']] as [number, string][])
+      .sort((a, b) => b[0] - a[0])
+      .slice(0, 2)
+      .map((t) => t[1])
+      .join(' · ');
+    const host = TeamRepository.get(cm.home ? TEAMS.home.id : cm.opp);
+    Object.assign(this.intro.info, { mode: `CARREIRA · SEMANA ${cm.week}`, qb: `#${sv.number} · ${sv.name}`, ovr: sv.ovr, traits, arena: host.stadium.name, homeHosts: cm.home });
+  }
+
   /** Volta ao menu principal e descarta esta partida. */
   private toMenu() {
     const key = this.scene.key;
     this.time.paused = false;
     this.tweens.resumeAll();
-    this.scene.start('MainMenu');
+    // Carreira: volta ao menu da carreira (sair no meio do jogo não conta resultado)
+    if (this.career) leaveCareerMatch();
+    this.scene.start(this.career ? 'CarreiraMenu' : 'MainMenu');
     this.game.scene.remove(key);
   }
   private pauseInfo!: Phaser.GameObjects.Text;
@@ -1441,6 +1472,7 @@ export class MatchScene extends Phaser.Scene {
     const ranIn = kind === 'td';
     if (holder && holder.y >= 100 && (kind === 'tackle' || kind === 'dive' || kind === 'out')) kind = 'td';
     if (this.practice) return this.practiceEnd(kind, ranIn);
+    if (kind === 'sack') s.stats.sacks++;
     live.phase = 'dead';
     this.phase = 'post';
     this.postTimer = 1.6;
@@ -2034,6 +2066,16 @@ export class MatchScene extends Phaser.Scene {
    * Campanha deles: a tela fica borrada e o feed mostra jogada a jogada.
    * `at` = onde eles pegam a bola (nossas jardas). `kick` = depois de um placar nosso (começam na 25 deles).
    */
+  /**
+   * Força da campanha da CPU: base +0,5 (a CPU marca de verdade), ataque deles contra a sua defesa e o
+   * OVR do time (times fortes marcam bem mais), mais a dificuldade. ~2,5 pts/posse (time fraco) a ~5,5 (elite).
+   */
+  private oppEdge() {
+    const a = TEAMS.away.rating;
+    const h = TEAMS.home.rating;
+    return Phaser.Math.Clamp(0.5 + difficulty.d.oppEdge + (a.atk - h.def) / 20 + (a.ovr - 80) / 20, -1.2, 2.2);
+  }
+
   private opponentDrive(at: number, kick: boolean) {
     const s = this.state;
     this.card.hide();
@@ -2042,7 +2084,7 @@ export class MatchScene extends Phaser.Scene {
     this.weather.setPillVisible(false);
     this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
     this.liveUi.show('none');
-    const drive = simulateDrive(kick ? 75 : at, this.rng, TEAMS.home.abbr, TEAMS.away.abbr, TEAMS.away.name, Phaser.Math.Clamp(difficulty.d.oppEdge + (TEAMS.away.rating.atk - TEAMS.home.rating.def) / 40, -1.6, 1.6));
+    const drive = simulateDrive(kick ? 75 : at, this.rng, TEAMS.home.abbr, TEAMS.away.abbr, TEAMS.away.name, this.oppEdge());
     const los = Phaser.Math.Clamp(drive.ourLos, 1, 99);
     const where = los < 50 ? `NA SUA ${los}` : los === 50 ? 'NO MEIO' : `NA ${TEAMS.away.abbr} ${100 - los}`;
     this.phase = 'defense';
@@ -2377,6 +2419,7 @@ export class MatchScene extends Phaser.Scene {
     this.playXp = 0;
     this.gainXp(win ? 150 : 50);
     const st = s.stats;
+    if (this.career) finishCareerMatch({ us: h, them: a, stats: { ...st }, xp: s.xp, confidence: s.confidence });
     this.hud.setBar('result');
     this.hud.refresh();
     this.showCard({
@@ -2387,16 +2430,15 @@ export class MatchScene extends Phaser.Scene {
       chip: `${TEAMS.home.abbr} ${h} x ${a} ${TEAMS.away.abbr}`,
       chipBg: win ? TEAMS.home.color : TEAMS.away.color,
       chipFg: win ? TEAMS.home.fg : TEAMS.away.fg,
-      header: 'FIM DE JOGO',
+      header: this.career ? 'FIM DE JOGO · PROGRESSO SALVO ✓' : 'FIM DE JOGO',
       head: `${st.comp}/${st.att} · ${st.yards} JDS`,
       sub: `${st.td} TD · ${st.int} INT`,
       stats: this.statsRow(),
       bar: this.xpBar(),
       teamColor: TEAMS.home.color,
-      replay: () => this.toMenu(),
-      replayLabel: 'MENU',
-      next: () => this.newGame(),
-      nextLabel: 'NOVO JOGO',
+      ...(this.career
+        ? { next: () => this.toMenu(), nextLabel: 'CONTINUAR' }
+        : { replay: () => this.toMenu(), replayLabel: 'MENU', next: () => this.newGame(), nextLabel: 'NOVO JOGO' }),
     });
   }
 

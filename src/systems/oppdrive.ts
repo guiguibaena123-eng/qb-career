@@ -35,7 +35,7 @@ export function spotName(y: number, homeAbbr: string, awayAbbr: string) {
 }
 
 export function simulateDrive(start: number, rng: Rng, home = 'LOB', away = 'TOU', teamName = 'TOUROS', edge = 0): DriveResult {
-  const w = 1 - 0.5 * edge; // largura das jogadas ruins para eles
+  const w = Math.max(0.3, 1 - 0.5 * edge); // largura das jogadas ruins para eles (nunca zera: até time de elite erra)
   const gm = 1 + 0.25 * edge; // ganho das jogadas boas
   const rows: DriveRow[] = [];
   let y = start;

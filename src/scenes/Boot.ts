@@ -35,6 +35,6 @@ export class Boot extends Phaser.Scene {
     for (const k of this.textures.getTextureKeys()) if (k.startsWith('draftimg_')) this.textures.get(k).setFilter(Phaser.Textures.FilterMode.NEAREST);
     const q = new URLSearchParams(location.search);
     // ?draft=Espera|Telefone|Anuncio|Escolhido abre direto numa tela do Draft
-    this.scene.start(q.has('carreiratest') ? 'CareerTest' : q.get('draft') ? `Draft${q.get('draft')}` : q.has('menu') ? 'CarreiraMenu' : q.get('combine') ? q.get('combine')! :q.has('criar') ? 'CareerCreate' : q.has('hub') ? 'CareerHub' : q.has('jogadortest') ? 'PlayerTest' : 'MainMenu');
+    this.scene.start(q.has('carreiratest') ? 'CareerTest' : q.get('draft') ? `Draft${q.get('draft')}` : q.has('saves') ? 'CareerSlots' : q.has('prejogo') ? 'PreJogo' : q.has('menu') ? 'CarreiraMenu' : q.get('combine') ? q.get('combine')! :q.has('criar') ? 'CareerCreate' : q.has('hub') ? 'CareerHub' : q.has('jogadortest') ? 'PlayerTest' : 'MainMenu');
   }
 }

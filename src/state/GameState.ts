@@ -7,6 +7,8 @@ export interface QbStats {
   yards: number;
   td: number;
   int: number;
+  /** Sacks sofridos. */
+  sacks: number;
 }
 
 export class GameState {
@@ -22,7 +24,7 @@ export class GameState {
   los = 25;
   possession: 'home' | 'away' = 'home';
   qb = { number: 12, level: 'ROOKIE', ovr: 68 };
-  stats: QbStats = { comp: 0, att: 0, yards: 0, td: 0, int: 0 };
+  stats: QbStats = { comp: 0, att: 0, yards: 0, td: 0, int: 0, sacks: 0 };
   /** Confiança do QB (0–5). */
   confidence = 3;
   xp = 0;

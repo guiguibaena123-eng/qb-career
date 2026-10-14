@@ -84,6 +84,11 @@ export function deriveKits(t: BaseTeam): Record<'home' | 'away' | 'night', KitDe
   };
 }
 
+/** Cidade do time ("NY JITS" -> "NEW YORK", "LA VAMS" -> "LOS ANGELES"). */
+function cityOf(name: string) {
+  return name.startsWith('NY ') ? 'NEW YORK' : name.startsWith('LA ') ? 'LOS ANGELES' : name;
+}
+
 function hash(id: string) {
   let h = 7;
   for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
@@ -94,12 +99,12 @@ function build(t: BaseTeam): CareerTeam {
   const image = PHOTO[t.id] ?? null;
   return {
     id: t.id,
-    city: t.name,
+    city: cityOf(t.name),
     name: t.name,
     abbr: t.abbr,
     colors: { primary: t.primary, secondary: t.secondary },
     logo: { large: `logoL_${t.id}`, small: `logoS_${t.id}` },
-    stadium: { name: `ESTÁDIO DE ${t.name}`, capacity: 61000 + (hash(t.id) % 12) * 1000, image: image ? `stad_${image}` : null },
+    stadium: { name: `${cityOf(t.name)} STADIUM`, capacity: 61000 + (hash(t.id) % 12) * 1000, image: image ? `stad_${image}` : null },
     kits: deriveKits(t),
     ovr: t.ovr,
   };

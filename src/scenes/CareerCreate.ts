@@ -6,7 +6,10 @@ import { PlayerBody } from '../player/PlayerBody';
 import { BEARD_COUNT, FACE_COUNT, HAIR_COLORS, HAIR_COUNT, PlayerFace, SKINS } from '../player/PlayerFace';
 import { getSave, updateSave } from '../player/PlayerSave';
 import { setupHiRes } from '../systems/hires';
+import { jerseyTexture } from '../ui/jerseyArt';
 import { GlassButton, label, title, UI } from '../ui/widgets';
+
+const fgOnHex = (c: number) => (((c >> 16) & 255) * 0.299 + ((c >> 8) & 255) * 0.587 + (c & 255) * 0.114 > 150 ? '#0D0D12' : '#FFFFFF');
 
 /*
  * Criação da carreira (Etapa 3): Nome → Faculdade → Rosto → Pele → Cabelo → Barba → Confirmação.
@@ -14,7 +17,6 @@ import { GlassButton, label, title, UI } from '../ui/widgets';
  * qualquer passo e na confirmação. `?passo=0..6` abre direto num passo.
  */
 const STEPS = ['NOME', 'FACULDADE', 'ROSTO', 'PELE', 'CABELO', 'BARBA', 'CONFIRMAR'];
-const KEYS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
 
 type Add = <T extends Phaser.GameObjects.GameObject>(o: T) => T;
 
@@ -27,7 +29,7 @@ export function collegeKit(colors: [string, string]): KitDef {
 
 export class CareerCreate extends Phaser.Scene {
   private step = 0;
-  private field: 'first' | 'last' = 'last';
+  private field: 'first' | 'last' | 'num' | null = null;
   private ui!: Phaser.GameObjects.Container;
 
   constructor() {
@@ -39,7 +41,17 @@ export class CareerCreate extends Phaser.Scene {
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0c1a).setOrigin(0);
     const raw = new URLSearchParams(location.search).get('passo');
     this.step = raw === null ? 0 : Phaser.Math.Clamp(Number(raw) || 0, 0, STEPS.length - 1);
+    this.field = null;
     this.build();
+    // Campos de texto do celular: acompanham o tamanho do canvas e somem ao sair da cena
+    const place = () => this.placeInputs();
+    this.scale.on('resize', place);
+    window.addEventListener('resize', place);
+    this.events.once('shutdown', () => {
+      window.removeEventListener('resize', place);
+      for (const el of Object.values(this.inputs)) el?.remove();
+      this.inputs = {};
+    });
   }
 
   private faceLook() {
@@ -50,6 +62,7 @@ export class CareerCreate extends Phaser.Scene {
   private build() {
     this.ui?.destroy();
     this.ui = this.add.container(0, 0);
+    this.syncInputs();
     const W = GAME_W;
     const H = GAME_H;
     const s = getSave();
@@ -101,7 +114,7 @@ export class CareerCreate extends Phaser.Scene {
     // Navegação
     const back = new GlassButton(this, 14 + 55, H - 40, { w: 110, h: 52, radius: 16 });
     back.add(label(this, 0, 0, this.step === 0 ? 'SAIR' : 'VOLTAR', 10, '#FFFFFF').setOrigin(0.5));
-    back.onTap = () => this.time.delayedCall(30, () => (this.step === 0 ? this.scene.start('CareerHub') : this.go(this.step - 1)));
+    back.onTap = () => this.time.delayedCall(30, () => (this.step === 0 ? this.scene.start('CareerSlots') : this.go(this.step - 1)));
     add(back);
     const pw = W - 28 - 110 - 10;
     const next = new GlassButton(this, W - 14 - pw / 2, H - 40, { w: pw, h: 52, radius: 16, fill: 0xffd23f, fillAlpha: 1, borderAlpha: 0.35, primary: true });
@@ -122,47 +135,148 @@ export class CareerCreate extends Phaser.Scene {
     this.build();
   }
 
-  // ---- 1. nome
+  // ---- 1. nome e número
+  /**
+   * Os campos são <input> de verdade (por cima do canvas, transparentes): tocar abre o teclado do
+   * celular (o de números, no NÚMERO). O texto aparece desenhado no estilo do jogo.
+   */
+  private inputs: Partial<Record<'first' | 'last' | 'num', HTMLInputElement>> = {};
+
+  /** Posição de cada campo na tela do jogo (coordenadas do jogo). */
+  private static FIELDS = {
+    first: { x: 20, y: 102, w: GAME_W - 40, h: 56 },
+    last: { x: 20, y: 168, w: GAME_W - 40, h: 56 },
+    num: { x: 20, y: 234, w: 150, h: 56 },
+  };
+
+  private syncInputs() {
+    const want = this.step === 0;
+    if (!want) {
+      for (const el of Object.values(this.inputs)) el?.remove();
+      this.inputs = {};
+      return;
+    }
+    const s = getSave();
+    const make = (which: 'first' | 'last' | 'num', max: number, value: string, numeric = false) => {
+      let el = this.inputs[which];
+      if (!el) {
+        el = document.createElement('input');
+        el.type = numeric ? 'tel' : 'text';
+        if (numeric) el.inputMode = 'numeric';
+        el.maxLength = max;
+        el.autocomplete = 'off';
+        el.spellcheck = false;
+        el.setAttribute('autocapitalize', 'characters');
+        el.setAttribute('autocorrect', 'off');
+        // Transparente: o jogo desenha o texto; font-size 16px evita o zoom do iPhone ao focar
+        Object.assign(el.style, { position: 'fixed', zIndex: '10', background: 'transparent', border: 'none', outline: 'none', color: 'transparent', caretColor: 'transparent', fontSize: '16px', padding: '0', margin: '0', opacity: '0.01' });
+        el.value = value;
+        el.addEventListener('focus', () => {
+          // Número: seleciona o atual para que digitar substitua (o campo tem só 2 dígitos)
+          if (numeric) setTimeout(() => el!.select(), 0);
+          this.field = which;
+          this.build();
+        });
+        el.addEventListener('input', () => {
+          if (numeric) {
+            el!.value = el!.value.replace(/\D/g, '').slice(0, 2);
+            updateSave({ number: el!.value === '' ? -1 : Number(el!.value) });
+          } else {
+            const v = el!.value.toUpperCase().replace(/[^A-ZÇÁÉÍÓÚÃÕÂÊÔÀÜ' -]/g, '').replace(/ {2,}/g, ' ').replace(/^ /, '').slice(0, max);
+            el!.value = v;
+            updateSave(which === 'first' ? { firstName: v } : { name: v });
+          }
+          this.build();
+        });
+        el.addEventListener('keydown', (e) => {
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          if (which === 'first') this.inputs.last?.focus();
+          else if (which === 'last') this.inputs.num?.focus();
+          else el!.blur();
+        });
+        el.addEventListener('blur', () => {
+          if (this.field === which) {
+            this.field = null;
+            if (this.step === 0) this.build();
+          }
+        });
+        document.body.appendChild(el);
+        this.inputs[which] = el;
+      }
+      return el;
+    };
+    make('first', 10, s.firstName);
+    make('last', 12, s.name);
+    make('num', 2, s.number >= 0 ? String(s.number) : '', true);
+    this.placeInputs();
+  }
+
+  /** Coloca cada <input> exatamente sobre o campo desenhado (acompanha a escala do canvas). */
+  private placeInputs() {
+    const r = this.game.canvas.getBoundingClientRect();
+    const k = r.width / GAME_W;
+    for (const [which, el] of Object.entries(this.inputs)) {
+      const f = CareerCreate.FIELDS[which as 'first' | 'last' | 'num'];
+      if (!el) continue;
+      Object.assign(el.style, { left: `${r.left + f.x * k}px`, top: `${r.top + f.y * k}px`, width: `${f.w * k}px`, height: `${f.h * k}px` });
+    }
+  }
+
   private stepName(add: Add): boolean {
     const W = GAME_W;
     const s = getSave();
-    const draw = (which: 'first' | 'last', y: number, name: string, val: string, max: number) => {
+    const F = CareerCreate.FIELDS;
+    const draw = (which: 'first' | 'last' | 'num', name: string, val: string, max: number) => {
       const on = this.field === which;
-      const f = new GlassButton(this, W / 2, y, { w: W - 40, h: 56, radius: 12, fill: on ? 0x3a4378 : UI.glass, border: on ? 0xffd23f : 0xffffff, borderAlpha: on ? 1 : 0.16 });
-      f.add(label(this, -(W - 40) / 2 + 14, -14, name, 7, UI.muted).setOrigin(0, 0.5));
-      f.add(title(this, -(W - 40) / 2 + 14, 8, val + (on ? '_' : ''), 15, '#FFFFFF').setOrigin(0, 0.5));
-      f.add(label(this, (W - 40) / 2 - 14, -14, `${val.length}/${max}`, 7, UI.muted).setOrigin(1, 0.5));
-      f.onTap = () => {
-        this.field = which;
+      const f = F[which];
+      const g = this.add.graphics();
+      g.fillStyle(on ? 0x3a4378 : 0x1c2142, on ? 1 : 0.85);
+      g.fillRoundedRect(f.x, f.y, f.w, f.h, 12);
+      g.lineStyle(on ? 2 : 1, on ? 0xffd23f : 0xffffff, on ? 1 : 0.16);
+      g.strokeRoundedRect(f.x, f.y, f.w, f.h, 12);
+      add(g);
+      add(label(this, f.x + 14, f.y + 14, name, 7, UI.muted).setOrigin(0, 0.5));
+      const blink = on && Math.floor(this.time.now / 500) % 2 === 0;
+      add(title(this, f.x + 14, f.y + 36, (val || (on ? '' : which === 'num' ? '–' : 'TOQUE PARA DIGITAR')) + (on ? '_' : ''), val || on ? 15 : 8, val || on ? '#FFFFFF' : '#6E7593').setOrigin(0, 0.5));
+      void blink;
+      add(label(this, f.x + f.w - 14, f.y + 14, `${val.length}/${max}`, 7, UI.muted).setOrigin(1, 0.5));
+    };
+    const num = s.number >= 0 ? String(s.number) : '';
+    draw('first', 'NOME', s.firstName, 10);
+    draw('last', 'SOBRENOME (NOME NO UNIFORME)', s.name, 12);
+    draw('num', 'NÚMERO (0 A 99)', num, 2);
+    // Números clássicos de QB (atalho)
+    add(label(this, F.num.x + F.num.w + 14, F.num.y + 12, 'NÚMEROS DE QB', 7, UI.muted).setOrigin(0, 0.5));
+    const picks = [1, 4, 7, 9, 10, 12, 15, 16, 17, 18];
+    const cw = 34;
+    picks.forEach((n, i) => {
+      const x = F.num.x + F.num.w + 14 + (i % 5) * (cw + 3);
+      const y = F.num.y + 22 + Math.floor(i / 5) * 18;
+      const on = n === s.number;
+      const g = this.add.graphics();
+      g.fillStyle(on ? 0xffd23f : 0x2a3156, 1);
+      g.fillRoundedRect(x, y, cw, 15, 4);
+      add(g);
+      add(label(this, x + cw / 2, y + 7.5, String(n), 8, on ? '#0D0D12' : '#FFFFFF').setOrigin(0.5));
+      const z = this.add.zone(x, y, cw, 15).setOrigin(0).setInteractive({ useHandCursor: true });
+      z.on('pointerdown', () => {
+        updateSave({ number: n });
+        if (this.inputs.num) this.inputs.num.value = String(n);
         this.build();
-      };
-      add(f);
-    };
-    draw('first', 130, 'NOME', s.firstName, 10);
-    draw('last', 196, 'SOBRENOME (NOME NO UNIFORME)', s.name, 12);
-    add(label(this, W / 2, 246, `UNIFORME: ${s.name || '—'}  #12`, 9, UI.yellow).setOrigin(0.5));
-
-    const type = (ch: string) => {
-      const key = this.field === 'first' ? 'firstName' : 'name';
-      const max = this.field === 'first' ? 10 : 12;
-      let v = getSave()[key];
-      if (ch === '<') v = v.slice(0, -1);
-      else if (v.length < max) v += ch;
-      updateSave({ [key]: v });
-      this.build();
-    };
-    const kw = 33;
-    KEYS.forEach((row, r) => {
-      const keys = r === 2 ? [...row, '<'] : [...row];
-      keys.forEach((ch, i) => {
-        const x = W / 2 + (i - (keys.length - 1) / 2) * (kw + 4);
-        const k = new GlassButton(this, x, 330 + r * 50, { w: ch === '<' ? kw + 10 : kw, h: 42, radius: 8 });
-        k.add(title(this, 0, 0, ch === '<' ? 'DEL' : ch, ch === '<' ? 8 : 12, '#FFFFFF').setOrigin(0.5));
-        k.onTap = () => type(ch);
-        add(k);
       });
+      add(z);
     });
-    return s.name.length >= 2;
+
+    // Prévia: costas da camisa (arte detalhada em canvas) com o nome e o número
+    const college = COLLEGES.find((c) => c.id === s.college.id) ?? COLLEGES[0];
+    const jx = W / 2;
+    const jy = 318;
+    const jw = 270;
+    const jh = 288;
+    add(this.add.image(jx, jy, jerseyTexture(this, { primary: hexNum(college.colors[0]), secondary: hexNum(college.colors[1]), name: s.name, number: num, w: jw, h: jh })).setOrigin(0.5, 0).setDisplaySize(jw, jh));
+    add(label(this, W / 2, jy + jh + 18, 'TOQUE NUM CAMPO: ABRE O TECLADO DO CELULAR', 7, UI.muted).setOrigin(0.5));
+    return s.name.trim().length >= 2 && s.number >= 0 && s.number <= 99;
   }
 
   // ---- 2. faculdade
@@ -232,7 +346,7 @@ export class CareerCreate extends Phaser.Scene {
     card.strokeRoundedRect(20, 90, W - 40, 560, 18);
     add(card);
     add(label(this, W / 2, 112, 'ROOKIE', 9, UI.yellow).setOrigin(0.5));
-    add(new PlayerBody(this, W / 2, 390, { look: s.look, kit, face: this.faceLook(), number: 12 }, 0.95));
+    add(new PlayerBody(this, W / 2, 390, { look: s.look, kit, face: this.faceLook(), number: Math.max(0, s.number) }, 0.95));
     add(title(this, W / 2, 412, `${s.firstName ? s.firstName + ' ' : ''}${s.name}`, 15, '#FFFFFF').setOrigin(0.5));
     add(label(this, W / 2, 438, `${s.name} #${s.number} · ${collegeName}`, 8, UI.muted).setOrigin(0.5));
     add(title(this, W / 2, 478, `OVR ${s.ovr}`, 20, UI.yellow).setOrigin(0.5));

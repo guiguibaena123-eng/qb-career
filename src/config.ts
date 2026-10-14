@@ -23,7 +23,7 @@ export const CAMERA = {
 };
 
 /** Duração de cada período (s) e quanto o relógio anda mais rápido que o tempo real da jogada. */
-export const QUARTER_SECONDS = 5 * 60;
+export const QUARTER_SECONDS = 3 * 60;
 export const CLOCK_RATE = 2;
 
 /** Dimensões do campo em jardas. y=0 é a nossa linha de gol, y=100 a do adversário. */
@@ -83,6 +83,17 @@ try {
 } catch {
   /* sem armazenamento: usa o padrão */
 }
+
+/** Estádio da partida (carreira: jogo fora = estádio do adversário). null = estádio do TEAMS.home. */
+export const venue: { id: string | null } = { id: null };
+
+/** Transmissão de horário nobre (carreira): placar e abertura especiais. null = jogo comum. */
+export const broadcast: { prime: { name: string; short: string; color: number; glow: number } | null } = { prime: null };
+
+/** Time dono do estádio (end zones e logo do meio-campo): o adversário nos jogos fora de casa. */
+export const hostTeam = () => (venue.id && venue.id === TEAMS.away.id ? TEAMS.away : TEAMS.home);
+/** Time visitante no estádio (o seu, nos jogos fora de casa). */
+export const guestTeam = () => (hostTeam() === TEAMS.away ? TEAMS.home : TEAMS.away);
 
 export function saveMatchConfig() {
   try {

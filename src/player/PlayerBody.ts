@@ -121,11 +121,12 @@ function composite(scene: Phaser.Scene, layers: Layer[], digits?: number): strin
   cv.height = BODY_H;
   const ctx = cv.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
+  const seen: Record<string, number> = {};
   for (const [name, tint, alpha] of layers) {
     // Números ficam nas posições de arte: dois dígitos x=[37,49], um dígito x=43, y=58 (a 2×)
     const m = /^(nf|no)_(\d)$/.exec(name);
     if (m && digits !== undefined) {
-      const idx = layers.filter(([n]) => n.startsWith(m[1] + '_')).findIndex(([n]) => n === name);
+      const idx = (seen[m[1]] = (seen[m[1]] ?? -1) + 1); // ordem de aparição (funciona com dígitos repetidos: 11, 22...)
       const x = digits === 1 ? 43 : [37, 49][idx];
       stamp(scene, ctx, name, tint, x * 2, 58 * 2, alpha);
     } else stamp(scene, ctx, name, tint, 0, 0, alpha);
