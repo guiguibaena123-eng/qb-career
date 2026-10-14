@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS, broadcast, finalGame, matchConfig, playoffLogo, venue } from '../config';
+import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS, broadcast, finalGame, logoKey, matchConfig, playoffLogo, venue } from '../config';
 import {
   FORMATION_NAME,
   HOT_ROUTE_CYCLE,
@@ -45,6 +45,7 @@ import { KickUi } from '../ui/KickUi';
 import { DefenseScreen } from '../ui/DefenseScreen';
 import { Menu } from '../ui/Menu';
 import { Intro } from '../ui/Intro';
+import { gradCard } from '../ui/gradcard';
 import { careerMatch, finishCareerMatch, leaveCareerMatch } from '../integration/MatchBridge';
 import { ROUND_INFO } from '../career/playoffs';
 import { TeamRepository } from '../data/TeamRepository';
@@ -103,7 +104,7 @@ export class MatchScene extends Phaser.Scene {
   private fps?: Phaser.GameObjects.Text;
 
   // ---- lance ao vivo
-  private phase: 'pre' | 'live' | 'post' | 'card' | 'replay' | 'kick' | 'defense' | 'intro' | 'kickoff' = 'pre';
+  private phase: 'pre' | 'live' | 'post' | 'card' | 'replay' | 'kick' | 'defense' | 'intro' | 'kickoff' | 'celebrate' = 'pre';
   private intro!: Intro;
   private koFree = new URLSearchParams(location.search).has('kofree');
   private ko: {
@@ -792,6 +793,8 @@ export class MatchScene extends Phaser.Scene {
       this.updateKickoff(dt);
     } else if (this.phase === 'kick') {
       this.updateKick(dt);
+    } else if (this.phase === 'celebrate') {
+      this.updateCelebrate(dt);
     } else if (this.phase !== 'card' && this.phase !== 'defense') {
       this.updateLive(dt);
       if (this.phase === 'live' || this.phase === 'post') this.replay.record(dt, this.ball, this.world.targetY);
@@ -806,6 +809,8 @@ export class MatchScene extends Phaser.Scene {
     if (this.phase === 'pre') {
       this.drawGround();
       this.placeTags();
+    } else if (this.phase === 'celebrate') {
+      this.drawTrophy();
     } else {
       this.drawLive();
     }
@@ -2414,6 +2419,217 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
+  // ------------------------------------------------------------ campeão do QFL Bowl
+
+  private champ: { team: 'home' | 'away'; t: number; players: Player[]; holder: Player; banner: Phaser.GameObjects.Container | null; confetti: Phaser.GameObjects.Particles.ParticleEmitter | null; done: () => void } | null = null;
+  private champShown = false;
+  private trophyG: Phaser.GameObjects.Graphics | null = null;
+
+  /**
+   * Final: o time campeão se reúne no meio do campo, o capitão levanta a taça, todos pulam, caem
+   * confetes nas cores do time e depois aparece o banner do campeão. Tocar na tela pula.
+   */
+  private championCelebration(team: 'home' | 'away', done: () => void) {
+    this.phase = 'celebrate';
+    this.card.hide();
+    this.menu.hide();
+    this.kickUi.show(false);
+    this.liveUi.show('none');
+    this.hud.setBar('none');
+    this.weather.setPillVisible(false);
+    this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
+    this.hint.setVisible(false);
+    for (const t of [this.pressureTag, this.holeTag, this.dangerTag, this.meTag, this.aimTag, this.qbTag, this.windowTag]) t.setVisible(false);
+    this.tags.forEach((t) => t.setVisible(false));
+    this.statusTags.forEach((t) => t.setVisible(false));
+    this.ball.hide();
+    this.live = null;
+    this.ctl = null;
+    // Linhas de scrimmage/first down fora da vista
+    this.world.field.scrimmageY = -60;
+    this.world.field.firstDownY = -60;
+    const winners = team === 'home' ? this.offense : this.defense;
+    const losers = team === 'home' ? this.defense : this.offense;
+    // Perdedores saem de cena; campeões em roda no meio-campo, o capitão no centro
+    for (const p of losers) {
+      p.x = -30;
+      p.y = -40;
+      p.sync();
+    }
+    const holder = team === 'home' ? this.qb : winners[0];
+    const cx = FIELD.width / 2;
+    const cy = 50;
+    const ring = winners.filter((p) => p !== holder);
+    ring.forEach((p, i) => {
+      // roda atrás do capitão (meia-lua), mais espaçada
+      const ang = Math.PI * (0.05 + 0.9 * (i / Math.max(1, ring.length - 1)));
+      p.x = cx + Math.cos(ang) * 6;
+      p.y = cy + 0.5 + Math.sin(ang) * 3.4 + (i % 2) * 1.2;
+      p.vx = p.vy = 0;
+      p.pose = i % 3 === 0 ? 'catch' : null;
+      p.state = 'idle';
+    });
+    holder.x = cx;
+    holder.y = cy - 2.6; // capitão à frente, com a taça
+    holder.vx = holder.vy = 0;
+    holder.pose = 'catch';
+    this.world.targetY = Phaser.Math.Clamp(cy + 14, CAMERA.minY, CAMERA.maxY); // grupo grande, perto do centro da tela
+    this.world.stand.cheer(1);
+    this.ui.burst(120);
+    this.hud.refresh();
+    this.trophyG = this.add.graphics().setDepth(58);
+    // Confete nas cores do time campeão
+    const T = TEAMS[team];
+    if (!this.textures.exists('confetti')) {
+      const g = this.make.graphics({}, false);
+      g.fillStyle(0xffffff, 1);
+      g.fillRect(0, 0, 8, 4);
+      g.generateTexture('confetti', 8, 4);
+      g.destroy();
+    }
+    const cols = [T.color, parseInt(T.uniform.trim.slice(1), 16), 0xffffff, parseInt(T.uniform.jersey.slice(1), 16), 0xffd23f];
+    const confetti = this.add.particles(0, -20, 'confetti', {
+      x: { min: 0, max: GAME_W },
+      speedY: { min: 90, max: 200 },
+      speedX: { min: -50, max: 50 },
+      gravityY: 40,
+      rotate: { start: 0, end: 720 },
+      scaleX: { min: 0.6, max: 1.3 },
+      scaleY: { min: 0.6, max: 1.2 },
+      lifespan: 5200,
+      quantity: 4,
+      frequency: 40,
+      tint: cols,
+    });
+    confetti.setDepth(140);
+    this.champ = { team, t: 0, players: winners, holder, banner: null, confetti, done };
+    // Tocar pula (depois de um instante)
+    this.time.delayedCall(900, () => this.input.once('pointerdown', () => this.endChampion()));
+  }
+
+  private updateCelebrate(dt: number) {
+    const c = this.champ;
+    if (!c) return;
+    c.t += dt;
+    c.players.forEach((p, i) => {
+      p.sx = p.sy = 1.3; // um pouco maiores na festa
+      if (p === c.holder) {
+        p.hop = Math.abs(Math.sin(c.t * 4)) * 0.35;
+        p.angle = Math.sin(c.t * 5) * 4;
+        return;
+      }
+      p.hop = Math.abs(Math.sin(c.t * 7 + i * 0.9)) * 0.7;
+      p.angle = Math.sin(c.t * 9 + i) * 10;
+    });
+    if (c.t > 3.6 && !c.banner) this.championBanner();
+    if (c.t > 7.8) this.endChampion();
+  }
+
+  /** Taça erguida pelo capitão (desenhada no mundo, acompanha a câmera e o pulo). */
+  private drawTrophy() {
+    const c = this.champ;
+    if (!c) return;
+    const lift = 0.35 + Math.abs(Math.sin(c.t * 2.2)) * 0.5 + c.holder.hop;
+    const p = this.world.proj.project(c.holder.x, c.holder.y, 2.9 + lift);
+    const u = p.s * 10 * 1.25; // taça grande, bem visível
+    const g = this.trophyG;
+    if (!g) return;
+    g.clear();
+    const x = p.x;
+    const y = p.y;
+    // brilho
+    g.fillStyle(0xffe27a, 0.18 + 0.1 * Math.sin(c.t * 6));
+    g.fillCircle(x, y - 2.2 * u, 3.2 * u);
+    // base
+    g.fillStyle(0x0d0d12, 1);
+    g.fillRect(x - 1.5 * u - 1, y - 0.1 * u - 1, 3 * u + 2, 0.9 * u + 2);
+    g.fillStyle(0x8a6a1f, 1);
+    g.fillRect(x - 1.5 * u, y - 0.1 * u, 3 * u, 0.9 * u);
+    g.fillStyle(0xf4f1e8, 1);
+    g.fillRect(x - 0.8 * u, y + 0.15 * u, 1.6 * u, 0.35 * u);
+    // haste
+    g.fillStyle(0xd9b13b, 1);
+    g.fillRect(x - 0.3 * u, y - 1.6 * u, 0.6 * u, 1.6 * u);
+    g.fillStyle(0xfff0a8, 1);
+    g.fillRect(x - 0.3 * u, y - 1.6 * u, 0.2 * u, 1.6 * u);
+    // braços em Y
+    g.lineStyle(0.55 * u, 0xd9b13b, 1);
+    g.beginPath();
+    g.moveTo(x - 1.6 * u, y - 3.3 * u);
+    g.lineTo(x - 1.6 * u, y - 2.3 * u);
+    g.lineTo(x, y - 1.6 * u);
+    g.lineTo(x + 1.6 * u, y - 2.3 * u);
+    g.lineTo(x + 1.6 * u, y - 3.3 * u);
+    g.strokePath();
+    // bola em cima
+    g.fillStyle(0x0d0d12, 1);
+    g.fillEllipse(x, y - 3.4 * u, 1.5 * u + 2, 2.3 * u + 2);
+    g.fillStyle(0xb8742f, 1);
+    g.fillEllipse(x, y - 3.4 * u, 1.5 * u, 2.3 * u);
+    g.fillStyle(0xffffff, 1);
+    g.fillRect(x - 0.08 * u, y - 4.1 * u, 0.16 * u, 1.4 * u);
+    for (let k = 0; k < 3; k++) g.fillRect(x - 0.3 * u, y - 3.9 * u + k * 0.45 * u, 0.6 * u, 0.12 * u);
+    // brilhinhos
+    g.fillStyle(0xffffff, 0.9);
+    const tw = (Math.sin(c.t * 8) + 1) / 2;
+    g.fillRect(x + 2.2 * u, y - 3.8 * u, 0.25 * u * tw + 1, 0.9 * u * tw + 1);
+    g.fillRect(x + 1.85 * u, y - 3.45 * u, 0.9 * u * tw + 1, 0.25 * u * tw + 1);
+  }
+
+  /** Banner do campeão no meio da tela. */
+  private championBanner() {
+    const c = this.champ!;
+    const T = TEAMS[c.team];
+    const W = GAME_W;
+    const box = this.add.container(W / 2, 400).setDepth(160).setScale(0.3).setAlpha(0);
+    const bw = W - 40;
+    const bh = 300;
+    box.add(gradCard(this, -bw / 2, -bh / 2, bw, bh, { from: T.color, fromAlpha: 1, mid: 0x161a33, midAlpha: 0.95, to: T.color, toAlpha: 0.9, radius: 22, glow: true, stroke: 0xffd23f, strokeAlpha: 1, strokeWidth: 3, sheen: 0.2 }));
+    // fitas laterais
+    const rib = this.add.graphics();
+    rib.fillStyle(0xffd23f, 1);
+    rib.fillRect(-bw / 2, -bh / 2 + 54, bw, 4);
+    rib.fillRect(-bw / 2, bh / 2 - 58, bw, 4);
+    box.add(rib);
+    box.add(this.add.image(-bw / 2 + 52, -bh / 2 + 30, 'logoQflBowlS').setDisplaySize(44, 44));
+    box.add(this.add.image(bw / 2 - 52, -bh / 2 + 30, 'logoQflBowlS').setDisplaySize(44, 44));
+    box.add(title(this, 0, -bh / 2 + 30, 'QFL BOWL', 12, '#FFD23F').setOrigin(0.5));
+    box.add(this.add.image(0, -14, logoKey(T.id, 'l')).setDisplaySize(124, 124));
+    box.add(
+      this.add
+        .text(0, 74, 'CAMPEÕES!', { fontFamily: FONT_TITLE, fontSize: '24px', color: '#FFD23F', stroke: '#0D0D12', strokeThickness: 7, shadow: { offsetX: 3, offsetY: 4, color: '#0D0D12', fill: true, stroke: true } })
+        .setOrigin(0.5),
+    );
+    const nm = title(this, 0, bh / 2 - 30, T.name, 12, '#FFFFFF').setOrigin(0.5);
+    if (nm.width > bw - 40) nm.setScale((bw - 40) / nm.width);
+    box.add(nm);
+    const s = this.state;
+    box.add(label(this, 0, bh / 2 - 12, `${TEAMS.home.abbr} ${s.score.home} x ${s.score.away} ${TEAMS.away.abbr}`, 8, '#E8EAF2').setOrigin(0.5));
+    this.tweens.add({ targets: box, scale: 1, alpha: 1, duration: 520, ease: 'Back.Out' });
+    this.tweens.add({ targets: box, angle: { from: -1.5, to: 1.5 }, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.InOut', delay: 520 });
+    this.ui.burst(80);
+    this.world.stand.cheer(1);
+    c.banner = box;
+  }
+
+  private endChampion() {
+    const c = this.champ;
+    if (!c) return;
+    this.champ = null;
+    c.banner?.destroy();
+    this.trophyG?.destroy();
+    this.trophyG = null;
+    c.confetti?.stop();
+    if (c.confetti) this.time.delayedCall(5500, () => c.confetti?.destroy());
+    for (const p of c.players) {
+      p.hop = 0;
+      p.angle = 0;
+      p.sx = p.sy = 1;
+    }
+    this.phase = 'post';
+    c.done();
+  }
+
   /** Fim de jogo: placar final, estatísticas e novo jogo. */
   private showFinal() {
     const s = this.state;
@@ -2428,6 +2644,10 @@ export class MatchScene extends Phaser.Scene {
     this.gainXp(win ? 150 : 50);
     const st = s.stats;
     if (this.career) finishCareerMatch({ us: h, them: a, stats: { ...st }, xp: s.xp, confidence: s.confidence });
+    if (finalGame.on && h !== a && !this.champShown) {
+      this.champShown = true;
+      return this.championCelebration(h > a ? 'home' : 'away', () => this.showFinal());
+    }
     this.hud.setBar('result');
     this.hud.refresh();
     this.showCard({
@@ -2462,6 +2682,7 @@ export class MatchScene extends Phaser.Scene {
     s.distance = 10;
     s.los = 25;
     this.gameOver = false;
+    this.champShown = false;
     this.card.hide();
     this.defenseScreen.close();
     if (this.practice) {

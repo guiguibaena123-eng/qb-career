@@ -1,13 +1,13 @@
 # Graph Report - qb-career  (2026-10-13)
 
 ## Corpus Check
-- 101 files · ~198,068 words
+- 101 files · ~197,821 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 2 file(s) not represented in the graph (top: (none) 1, .webmanifest 1)
 
 ## Summary
 - 1254 nodes · 4220 edges · 58 communities (44 shown, 14 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 96 edges (avg confidence: 0.84)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 97 edges (avg confidence: 0.84)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness

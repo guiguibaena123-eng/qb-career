@@ -2295,7 +2295,7 @@
       "file_type": "code",
       "norm_label": ".launch()",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L760"
+      "source_location": "L706"
     },
     {
       "id": "src_scenes_mainmenu_mainmenu_picker",
@@ -2307,7 +2307,7 @@
       "file_type": "code",
       "norm_label": ".picker()",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L619"
+      "source_location": "L565"
     },
     {
       "id": "src_scenes_mainmenu_mainmenu_practicemenu",
@@ -2319,7 +2319,7 @@
       "file_type": "code",
       "norm_label": ".practicemenu()",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L734"
+      "source_location": "L680"
     },
     {
       "id": "src_scenes_mainmenu_mainmenu_setup",
@@ -2367,7 +2367,7 @@
       "file_type": "code",
       "norm_label": ".timeicon()",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L701"
+      "source_location": "L647"
     },
     {
       "id": "src_scenes_mainmenu_mainmenu_uniformrow",
@@ -2403,7 +2403,7 @@
       "file_type": "code",
       "norm_label": ".weathericon()",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L668"
+      "source_location": "L614"
     },
     {
       "id": "src_ui_intro_intro_add",
@@ -23877,42 +23877,6 @@
     },
     {
       "source": "src_scenes_mainmenu_mainmenu_details",
-      "target": "src_ui_widgets_glassbutton",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L395",
-      "weight": 1.0
-    },
-    {
-      "source": "src_scenes_mainmenu_mainmenu_details",
-      "target": "src_scenes_mainmenu_mainmenu_weathericon",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L397",
-      "weight": 1.0
-    },
-    {
-      "source": "src_scenes_mainmenu_mainmenu_details",
-      "target": "src_scenes_mainmenu_mainmenu_timeicon",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L429",
-      "weight": 1.0
-    },
-    {
-      "source": "src_scenes_mainmenu_mainmenu_details",
       "target": "src_data_teams_teambyid",
       "relation": "calls",
       "_origin": "ast",
@@ -23920,7 +23884,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L466",
+      "source_location": "L379",
       "weight": 1.0
     },
     {
@@ -23932,55 +23896,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L466",
-      "weight": 1.0
-    },
-    {
-      "source": "src_scenes_mainmenu_mainmenu_details",
-      "target": "src_data_stadiums_stadiumof",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L468",
-      "weight": 1.0
-    },
-    {
-      "source": "src_scenes_mainmenu_mainmenu_details",
-      "target": "src_data_teams_uicolor",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L472",
-      "weight": 1.0
-    },
-    {
-      "source": "src_scenes_mainmenu_mainmenu_details",
-      "target": "src_systems_standthumb_makestandthumb",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L508",
-      "weight": 1.0
-    },
-    {
-      "source": "src_scenes_mainmenu_mainmenu_details",
-      "target": "src_ui_pixelphoto_pixelphoto",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L508",
+      "source_location": "L379",
       "weight": 1.0
     },
     {
@@ -23992,7 +23908,67 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L513",
+      "source_location": "L380",
+      "weight": 1.0
+    },
+    {
+      "source": "src_scenes_mainmenu_mainmenu_details",
+      "target": "src_ui_widgets_glassbutton",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/scenes/MainMenu.ts",
+      "source_location": "L399",
+      "weight": 1.0
+    },
+    {
+      "source": "src_scenes_mainmenu_mainmenu_details",
+      "target": "src_scenes_mainmenu_mainmenu_weathericon",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/scenes/MainMenu.ts",
+      "source_location": "L401",
+      "weight": 1.0
+    },
+    {
+      "source": "src_scenes_mainmenu_mainmenu_details",
+      "target": "src_scenes_mainmenu_mainmenu_timeicon",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/scenes/MainMenu.ts",
+      "source_location": "L435",
+      "weight": 1.0
+    },
+    {
+      "source": "src_scenes_mainmenu_mainmenu_details",
+      "target": "src_data_stadiums_stadiumof",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/scenes/MainMenu.ts",
+      "source_location": "L473",
+      "weight": 1.0
+    },
+    {
+      "source": "src_scenes_mainmenu_mainmenu_details",
+      "target": "src_ui_pixelphoto_pixelphoto",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/scenes/MainMenu.ts",
+      "source_location": "L488",
       "weight": 1.0
     },
     {
@@ -24004,7 +23980,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L524",
+      "source_location": "L504",
       "weight": 1.0
     },
     {
@@ -24016,7 +23992,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L539",
+      "source_location": "L520",
       "weight": 1.0
     },
     {
@@ -24028,7 +24004,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L545",
+      "source_location": "L526",
       "weight": 1.0
     },
     {
@@ -24040,7 +24016,19 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L599",
+      "source_location": "L546",
+      "weight": 1.0
+    },
+    {
+      "source": "src_scenes_mainmenu_mainmenu_details",
+      "target": "src_data_teams_uicolor",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/scenes/MainMenu.ts",
+      "source_location": "L547",
       "weight": 1.0
     },
     {
@@ -24052,7 +24040,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L603",
+      "source_location": "L550",
       "weight": 1.0
     },
     {
@@ -24064,7 +24052,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L606",
+      "source_location": "L553",
       "weight": 1.0
     },
     {
@@ -24076,7 +24064,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L607",
+      "source_location": "L554",
       "weight": 1.0
     },
     {
@@ -24088,7 +24076,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L608",
+      "source_location": "L555",
       "weight": 1.0
     },
     {
@@ -24208,7 +24196,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L762",
+      "source_location": "L708",
       "weight": 1.0
     },
     {
@@ -24220,7 +24208,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L769",
+      "source_location": "L717",
       "weight": 1.0
     },
     {
@@ -24232,7 +24220,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L622",
+      "source_location": "L568",
       "weight": 1.0
     },
     {
@@ -24244,7 +24232,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L624",
+      "source_location": "L570",
       "weight": 1.0
     },
     {
@@ -24256,7 +24244,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L625",
+      "source_location": "L571",
       "weight": 1.0
     },
     {
@@ -24268,7 +24256,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L626",
+      "source_location": "L572",
       "weight": 1.0
     },
     {
@@ -24280,7 +24268,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L635",
+      "source_location": "L581",
       "weight": 1.0
     },
     {
@@ -24292,7 +24280,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L637",
+      "source_location": "L583",
       "weight": 1.0
     },
     {
@@ -24304,7 +24292,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L638",
+      "source_location": "L584",
       "weight": 1.0
     },
     {
@@ -24316,7 +24304,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L657",
+      "source_location": "L603",
       "weight": 1.0
     },
     {
@@ -24328,7 +24316,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L737",
+      "source_location": "L683",
       "weight": 1.0
     },
     {
@@ -24340,7 +24328,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L738",
+      "source_location": "L684",
       "weight": 1.0
     },
     {
@@ -24352,7 +24340,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L739",
+      "source_location": "L685",
       "weight": 1.0
     },
     {
@@ -24364,7 +24352,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L740",
+      "source_location": "L686",
       "weight": 1.0
     },
     {
@@ -24376,7 +24364,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L740",
+      "source_location": "L686",
       "weight": 1.0
     },
     {
@@ -24388,7 +24376,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L743",
+      "source_location": "L689",
       "weight": 1.0
     },
     {
@@ -24400,7 +24388,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L747",
+      "source_location": "L693",
       "weight": 1.0
     },
     {
@@ -24412,7 +24400,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L748",
+      "source_location": "L694",
       "weight": 1.0
     },
     {
@@ -49835,7 +49823,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L701",
+      "source_location": "L647",
       "weight": 1.0
     },
     {
@@ -49847,7 +49835,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L668",
+      "source_location": "L614",
       "weight": 1.0
     },
     {
@@ -60175,7 +60163,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L619",
+      "source_location": "L565",
       "weight": 1.0
     },
     {
@@ -60186,7 +60174,29 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L668",
+      "source_location": "L614",
+      "weight": 1.0
+    },
+    {
+      "source": "src_scenes_mainmenu_mainmenu",
+      "target": "src_scenes_mainmenu_mainmenu_timeicon",
+      "relation": "method",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/scenes/MainMenu.ts",
+      "source_location": "L647",
+      "weight": 1.0
+    },
+    {
+      "source": "src_scenes_mainmenu_mainmenu",
+      "target": "src_scenes_mainmenu_mainmenu_practicemenu",
+      "relation": "method",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/scenes/MainMenu.ts",
+      "source_location": "L680",
       "weight": 1.0
     },
     {
@@ -60202,35 +60212,13 @@
     },
     {
       "source": "src_scenes_mainmenu_mainmenu",
-      "target": "src_scenes_mainmenu_mainmenu_timeicon",
-      "relation": "method",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L701",
-      "weight": 1.0
-    },
-    {
-      "source": "src_scenes_mainmenu_mainmenu",
-      "target": "src_scenes_mainmenu_mainmenu_practicemenu",
-      "relation": "method",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L734",
-      "weight": 1.0
-    },
-    {
-      "source": "src_scenes_mainmenu_mainmenu",
       "target": "src_scenes_mainmenu_mainmenu_launch",
       "relation": "method",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L760",
+      "source_location": "L706",
       "weight": 1.0
     },
     {
@@ -63376,6 +63364,18 @@
     },
     {
       "source": "src_scenes_mainmenu_mainmenu_details",
+      "target": "src_ui_widgets_glassbutton_setenabled",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "context": "call",
+      "source_file": "src/scenes/MainMenu.ts",
+      "source_location": "L411",
+      "weight": 1.0
+    },
+    {
+      "source": "src_scenes_mainmenu_mainmenu_details",
       "target": "src_ui_widgets_glassbutton_setfill",
       "relation": "calls",
       "_origin": "ast",
@@ -63383,7 +63383,7 @@
       "confidence_score": 0.8,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L535",
+      "source_location": "L516",
       "weight": 1.0
     },
     {
@@ -63395,7 +63395,7 @@
       "confidence_score": 0.8,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L536",
+      "source_location": "L517",
       "weight": 1.0
     },
     {
@@ -63407,7 +63407,7 @@
       "confidence_score": 0.8,
       "context": "call",
       "source_file": "src/scenes/MainMenu.ts",
-      "source_location": "L641",
+      "source_location": "L587",
       "weight": 1.0
     },
     {
