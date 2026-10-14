@@ -103,7 +103,7 @@ export interface League {
 }
 
 /** Placar simulado (o time mais forte vence mais vezes, com azar possível). */
-function simScore(r: () => number, a: CareerTeam, b: CareerTeam, homeEdge: number): [number, number] {
+export function simScore(r: () => number, a: CareerTeam, b: CareerTeam, homeEdge: number): [number, number] {
   const drive = () => [0, 0, 3, 3, 7, 7, 7][Math.floor(r() * 7)];
   const pts = (t: CareerTeam) => Array.from({ length: 4 + Math.floor((t.ovr - 70) / 8) + Math.floor(r() * 3) }, drive).reduce((x, y) => x + y, 0);
   let sa = pts(a);

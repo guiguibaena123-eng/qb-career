@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { careerTeam, coachOf, ensureSeason, mi, newsFeed, nextGame, passerRating, PRIME, passLeaders, roster, schedule, SEASON_YEAR, seasonStats, standings, type Game } from '../career/season';
+import { careerTeam, coachOf, ensureSeason, finalInfo, mi, newsFeed, nextGame, passerRating, PRIME, passLeaders, roster, schedule, SEASON_YEAR, seasonStats, standings, type Game } from '../career/season';
 import { Pane } from '../career/pane';
 import { GAME_H, GAME_W } from '../config';
 import { TeamRepository, type CareerTeam } from '../data/TeamRepository';
@@ -9,6 +9,7 @@ import { PlayerBody } from '../player/PlayerBody';
 import { BEARD_COUNT, HAIR_COLORS, PlayerFace, SKINS, type FaceLook } from '../player/PlayerFace';
 import { conferenceSeeds, CONFS, divisionOf, divisionTable, DIVS, league, pct, PLAYOFF_SPOTS, teamRank, type LeaguePlayer, type StatLine, type TeamSeason } from '../career/league';
 import { teamById } from '../data/teams';
+import { bracket, ROUND_INFO, ROUNDS, type PGame } from '../career/playoffs';
 import { DEFAULT_LOOK, getSave, updateSave, type LookOptions } from '../player/PlayerSave';
 import { setupHiRes } from '../systems/hires';
 import { gradCard } from '../ui/gradcard';
@@ -398,7 +399,20 @@ export class CarreiraMenu extends Phaser.Scene {
       g.fillRect(0, GAME_H - 120 + i * 3, GAME_W, 3);
     }
     const n = nextGame();
-    const text = n ? `JOGAR SEMANA ${n.week}` : 'TEMPORADA ENCERRADA';
+    const fi = finalInfo();
+    const text = n
+      ? n.round
+        ? `JOGAR ${ROUND_INFO[n.round].name}`
+        : `JOGAR SEMANA ${n.week}`
+      : fi.status === 'won'
+        ? 'CAMPEÃO DO QFL BOWL!'
+        : fi.status === 'lost'
+          ? fi.round === 'final'
+            ? 'VICE-CAMPEÃO DO QFL BOWL'
+            : `ELIMINADO NO ${ROUND_INFO[fi.round ?? 'wc'].name}`
+          : fi.status === 'out'
+            ? 'FORA DOS PLAYOFFS'
+            : 'TEMPORADA ENCERRADA';
     const b = new GlassButton(this, GAME_W / 2, GAME_H - 26 - 29, { w: GAME_W - 32, h: 58, radius: 18, fill: OR, fillAlpha: 1, borderAlpha: 0.35, primary: true }).setDepth(31);
     const t = title(this, -8, 0, text, 12, '#0D0D12').setOrigin(0.5);
     const a = this.add.graphics();
@@ -411,7 +425,7 @@ export class CarreiraMenu extends Phaser.Scene {
     b.add([t, a]);
     // Antes da partida: tela de pré-jogo (detalhes do confronto e escolha do uniforme)
     b.onTap = () => {
-      if (!n) return this.toast('TEMPORADA ENCERRADA');
+      if (!n) return this.toast(text);
       this.time.delayedCall(30, () => this.scene.start('PreJogo'));
     };
     this.add.existing(b);
@@ -1449,11 +1463,171 @@ export class CarreiraMenu extends Phaser.Scene {
     return y + h;
   }
 
+  // ---- PLAYOFFS (chaveamento)
+  private playoffs(y: number) {
+    const W = GAME_W - 32;
+    const b = bracket();
+    const lg = league();
+    const meId = this.team.id;
+    const rec = (id: string) => {
+      const x = lg.teams.get(id);
+      return x ? `${x.w}-${x.l}` : '';
+    };
+    // Cabeçalho: projeção ou playoffs em andamento, e a sua situação
+    const m = b.me;
+    const sit =
+      m.status === 'season'
+        ? 'PROJEÇÃO: SE A TEMPORADA ACABASSE HOJE'
+        : m.status === 'out'
+          ? 'SEU TIME FICOU FORA DOS PLAYOFFS'
+          : m.status === 'champion'
+            ? 'SEU TIME É CAMPEÃO DO QFL BOWL!'
+            : m.status === 'eliminated'
+              ? `ELIMINADO NO ${ROUND_INFO[m.round ?? 'wc'].name}`
+              : `VOCÊ: ${m.seed}º SEED DA ${['QAC', 'QNC'][m.conf]} · ${ROUND_INFO[m.round ?? 'wc'].name}`;
+    this.body.add(gradCard(this, 16, y, W, 64, { from: 0xc8102e, fromAlpha: 0.75, mid: 0x161a33, midAlpha: 0.9, to: 0x5b2a9e, toAlpha: 0.85, radius: 16, glow: true, stroke: 0xffd23f, strokeAlpha: 0.7, strokeWidth: 2 }));
+    this.body.add(this.add.image(46, y + 32, 'logoQflBowlS').setDisplaySize(50, 50));
+    this.T(80, y + 22, `PLAYOFFS ${SEASON_YEAR}`, 11, '#FFFFFF', 'title').setOrigin(0, 0.5);
+    this.T(80, y + 44, sit, 8, m.status === 'champion' ? hex(YE) : '#E8EAF2').setOrigin(0, 0.5);
+    y += 76;
+
+    // Seeds das duas conferências
+    const cw = (W - 10) / 2;
+    [0, 1].forEach((c) => {
+      const x = 16 + c * (cw + 10);
+      this.card(x, y, cw, 30 + 7 * 26);
+      this.T(x + cw / 2, y + 15, ['QAC', 'QNC'][c], 9, hex(YE), 'title').setOrigin(0.5);
+      b.seeds[c].forEach((id, i) => {
+        const yy = y + 30 + i * 26;
+        const t = TeamRepository.get(id);
+        const mine = id === meId;
+        const g = this.add.graphics();
+        if (mine) {
+          g.fillStyle(OR, 0.25);
+          g.fillRect(x + 1, yy, cw - 2, 26);
+        }
+        g.fillStyle(i === 0 ? YE : i < 4 ? 0xffffff : GR, i === 0 ? 1 : i < 4 ? 0.18 : 0.9);
+        g.fillRoundedRect(x + 8, yy + 5, 18, 16, 5);
+        this.body.add(g);
+        this.T(x + 17, yy + 13, String(i + 1), 8, i === 0 || i >= 4 ? '#0D0D12' : '#FFFFFF', 'title').setOrigin(0.5);
+        this.body.add(this.add.image(x + 40, yy + 13, t.logo.small).setDisplaySize(18, 18));
+        this.T(x + 54, yy + 13, t.abbr, 9, mine ? hex(YE) : '#FFFFFF', 'title').setOrigin(0, 0.5);
+        this.T(x + cw - 8, yy + 13, i === 0 ? `${rec(id)} · FOLGA` : rec(id), 8, '#9AA3C0').setOrigin(1, 0.5);
+        this.body.hit(x, yy, cw, 26, () => this.openTeam(id));
+      });
+    });
+    y += 30 + 7 * 26 + 8;
+    this.T(GAME_W / 2, y + 4, 'AMARELO = 1º (FOLGA NO ROUND ONE) · VERDE = WILD CARD', 7, '#6E7593').setOrigin(0.5);
+    y += 22;
+
+    // Confronto (cartão com os dois times; mandante embaixo, como na TV)
+    const matchCard = (x: number, yy: number, w: number, g: PGame) => {
+      const mine = g.mine;
+      const h = 62;
+      if (mine) this.body.add(gradCard(this, x, yy, w, h, { from: OR, fromAlpha: 0.45, to: CARD, toAlpha: 0.9, radius: 12, glow: true, stroke: OR, strokeAlpha: 1, strokeWidth: 2 }));
+      else this.card(x, yy, w, h, CARD, 0.75, 0xffffff, 0.14, 12);
+      const row = (id: string, seed: number, pts: number | undefined, ry: number, home: boolean) => {
+        const won = g.status === 'done' && g.winner === id;
+        const lost = g.status === 'done' && g.winner !== id;
+        if (!id) {
+          this.T(x + 10, ry, '?', 9, '#6E7593', 'title').setOrigin(0, 0.5);
+          this.T(x + 30, ry, 'A DEFINIR', 8, '#6E7593').setOrigin(0, 0.5);
+          return;
+        }
+        const t = TeamRepository.get(id);
+        if (seed && seed < 99) this.T(x + 10, ry, String(seed), 8, '#9AA3C0').setOrigin(0, 0.5);
+        const img = this.add.image(x + 32, ry, t.logo.small).setDisplaySize(18, 18).setAlpha(lost ? 0.45 : 1);
+        this.body.add(img);
+        const nm = this.T(x + 46, ry, t.abbr, 9, id === meId ? hex(YE) : lost ? '#6E7593' : '#FFFFFF', 'title').setOrigin(0, 0.5);
+        if (home && g.round !== 'final') {
+          // casinha = mandante
+          const hg = this.add.graphics();
+          hg.fillStyle(0x9aa3c0, 1);
+          const hx = x + 50 + nm.width + 4;
+          hg.fillTriangle(hx, ry, hx + 8, ry, hx + 4, ry - 4);
+          hg.fillRect(hx + 1, ry, 6, 4);
+          this.body.add(hg);
+        }
+        this.T(x + w - 10, ry, pts === undefined ? '' : String(pts), 11, won ? hex(YE) : '#6E7593', 'title').setOrigin(1, 0.5);
+      };
+      row(g.away, g.seedA, g.as, yy + 18, false);
+      row(g.home, g.seedH, g.hs, yy + 44, true);
+      const sep = this.add.graphics();
+      sep.fillStyle(0xffffff, 0.08);
+      sep.fillRect(x + 8, yy + 31, w - 16, 1);
+      this.body.add(sep);
+      if (g.status !== 'done') this.T(x + w - 10, yy + 31, g.status === 'pending' ? (b.projected ? '' : 'A JOGAR') : '', 7, hex(OR)).setOrigin(1, 0.5);
+      if (g.home && g.away) this.body.hit(x, yy, w, h, () => this.openTeam(g.home === meId ? g.away : g.home));
+      return h;
+    };
+
+    // Fases
+    for (const r of ROUNDS) {
+      const info = ROUND_INFO[r];
+      const gs = b.games[r];
+      // cabeçalho da fase com a logo
+      const hg = this.add.graphics();
+      hg.fillStyle(info.color, 0.25);
+      hg.fillRoundedRect(16, y, W, 50, 14);
+      hg.lineStyle(1, info.glow, 0.6);
+      hg.strokeRoundedRect(16, y, W, 50, 14);
+      this.body.add(hg);
+      this.body.add(this.add.image(46, y + 25, info.logoS).setDisplaySize(44, 44));
+      this.T(78, y + 17, info.name, 10, '#FFFFFF', 'title').setOrigin(0, 0.5);
+      this.T(78, y + 35, `${info.sub} · ${r === 'final' ? 'CAMPO NEUTRO' : 'MELHOR SEED JOGA EM CASA'}`, 7, '#C9CEE0').setOrigin(0, 0.5);
+      y += 58;
+      if (r === 'final') {
+        const g = gs[0];
+        const fw = W * 0.72;
+        const fx = 16 + (W - fw) / 2;
+        this.body.add(this.add.image(GAME_W / 2, y + 60, 'logoQflBowl').setDisplaySize(110, 110).setAlpha(g.status === 'done' ? 0.5 : 1));
+        y += 120;
+        y += matchCard(fx, y, fw, g) + 8;
+        if (g.status === 'done' && g.winner) {
+          const champ = TeamRepository.get(g.winner);
+          this.body.add(gradCard(this, 16, y, W, 54, { from: 0xffd23f, fromAlpha: 0.55, to: CARD, toAlpha: 0.9, radius: 14, glow: true, stroke: 0xffd23f, strokeAlpha: 1, strokeWidth: 2 }));
+          this.body.add(this.add.image(46, y + 27, champ.logo.small).setDisplaySize(32, 32));
+          this.T(72, y + 18, 'CAMPEÃO', 8, hex(YE)).setOrigin(0, 0.5);
+          this.T(72, y + 36, champ.name, 10, '#FFFFFF', 'title').setOrigin(0, 0.5);
+          y += 64;
+        }
+        continue;
+      }
+      // duas colunas: QAC | QNC
+      const left = gs.filter((g) => g.conf === 0);
+      const right = gs.filter((g) => g.conf === 1);
+      const rows = Math.max(left.length, right.length) + (r === 'wc' ? 1 : 0);
+      for (let i = 0; i < rows; i++) {
+        [left, right].forEach((col, c) => {
+          const x = 16 + c * (cw + 10);
+          const yy = y + i * 70;
+          if (r === 'wc' && i === 0) {
+            // o 1º de cada conferência folga
+            const id = b.seeds[c][0];
+            if (!id) return;
+            const t = TeamRepository.get(id);
+            this.card(x, yy, cw, 62, CARD, 0.45, YE, 0.6, 12);
+            this.T(x + 10, yy + 18, '1', 8, '#9AA3C0').setOrigin(0, 0.5);
+            this.body.add(this.add.image(x + 32, yy + 18, t.logo.small).setDisplaySize(18, 18));
+            this.T(x + 46, yy + 18, t.abbr, 9, id === meId ? hex(YE) : '#FFFFFF', 'title').setOrigin(0, 0.5);
+            this.T(x + 10, yy + 44, 'FOLGA · DIRETO NO ROUND TWO', 7, hex(YE)).setOrigin(0, 0.5);
+            return;
+          }
+          const g = col[r === 'wc' ? i - 1 : i];
+          if (g) matchCard(x, yy, cw, g);
+        });
+      }
+      y += rows * 70 + 10;
+    }
+    return y;
+  }
+
   // ---- TABELA
   private tabela() {
     const W = GAME_W - 32;
     let y = 4;
-    y += this.chips(y, ['DIVISÕES', 'QAC', 'QNC', 'GERAL'], this.div, (i) => ((this.div = i), this.show('tabela')), true) + 14;
+    y += this.chips(y, ['DIVISÕES', 'QAC', 'QNC', 'GERAL', 'PLAYOFFS'], this.div, (i) => ((this.div = i), this.show('tabela')), true) + 14;
+    if (this.div === 4) return this.playoffs(y);
     if (this.div === 0) {
       // As 8 divisões, a do seu time primeiro
       const mine = divisionOf(this.team).div;
@@ -1668,7 +1842,8 @@ export class CarreiraMenu extends Phaser.Scene {
         this.body.add(rb);
       } else this.card(16, y, W, h, first ? OR : CARD, first ? 0.2 : 0.6, first ? OR : 0xffffff, first ? 1 : 0.1, 12);
       const cy = y + h / 2 + (pr ? 6 : 0);
-      this.T(28, cy, `S${g.week}`, 9, '#9AA3C0').setOrigin(0, 0.5);
+      if (g.round) this.body.add(this.add.image(36, cy, ROUND_INFO[g.round].logoS).setDisplaySize(30, 30));
+      else this.T(28, cy, `S${g.week}`, 9, '#9AA3C0').setOrigin(0, 0.5);
       if (g.opp) this.body.add(this.add.image(70, cy, g.opp.logo.small).setDisplaySize(30, 30));
       else {
         const bg = this.add.graphics();

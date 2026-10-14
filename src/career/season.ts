@@ -1,9 +1,11 @@
 import { rng } from '../combine/scoring';
+import { isDome } from '../data/stadiums';
 import { TeamRepository, type CareerTeam } from '../data/TeamRepository';
 import { currentDraft } from '../draft/logic';
 import { getSave, updateSave, type GameLine, type PlayerSave } from '../player/PlayerSave';
 import { BEARD_COUNT, FACE_COUNT, HAIR_COLORS, HAIR_COUNT, SKINS, type FaceLook } from '../player/PlayerFace';
 import { divisionOf, league, rankTeams } from './league';
+import { bracket, ROUND_INFO, ROUNDS, type Round } from './playoffs';
 
 /*
  * Temporada da carreira (dados de clube e liga, sem backend): calendário, elenco do time, tabela,
@@ -18,7 +20,7 @@ const BYE_WEEK = 6;
 /** Horário de cada semana; os jogos às 20h+ são de horário nobre (QUI/DOM/SEG à noite). */
 const KICKOFFS = ['DOM 13:00', 'QUI 20:15', 'DOM 16:25', 'SEG 20:15', 'DOM 13:00', '', 'DOM 16:05', 'DOM 20:20', 'DOM 13:00', 'SEG 20:15'];
 
-export type Prime = 'TNF' | 'SNF' | 'MNF';
+export type Prime = 'TNF' | 'SNF' | 'MNF' | 'WC' | 'DIV' | 'CONF' | 'QFL';
 export type Weather = 'clear' | 'rain' | 'snow';
 export type Tod = 'day' | 'dusk' | 'night';
 /** Apresentação dos jogos de horário nobre: nome e cor da transmissão. */
@@ -26,6 +28,10 @@ export const PRIME: Record<Prime, { name: string; short: string; color: number; 
   TNF: { name: 'THURSDAY NIGHT GAME', short: 'THURSDAY NIGHT', color: 0x7b4dd6, glow: 0xb48cff },
   SNF: { name: 'SUNDAY NIGHT GAME', short: 'SUNDAY NIGHT', color: 0x1f5fe0, glow: 0xffd23f },
   MNF: { name: 'MONDAY NIGHT GAME', short: 'MONDAY NIGHT', color: 0xd63a3a, glow: 0xffb02e },
+  WC: { name: 'ROUND ONE WILD CARD', short: 'WILD CARD', color: 0x1f7a44, glow: 0xe8a33d },
+  DIV: { name: 'ROUND TWO DIVISIONAL', short: 'DIVISIONAL', color: 0x1f5f8b, glow: 0xffc93c },
+  CONF: { name: 'SEMI BOWL FINAL DE CONFERÊNCIA', short: 'SEMI BOWL', color: 0x5b2a9e, glow: 0xe8b84a },
+  QFL: { name: 'QFL BOWL', short: 'QFL BOWL', color: 0xc8102e, glow: 0xffd23f },
 };
 
 function primeOf(when: string): Prime | null {
@@ -47,11 +53,11 @@ function seasonWeather(games: { week: number; venue: string }[], seed: string) {
   const n = games.length;
   // 20% neve: só em estádios frios, nas últimas semanas (fim do ano nos EUA)
   const snowN = Math.round(n * 0.2);
-  const cold = games.filter((g) => !WARM.has(g.venue) && g.week >= WEEKS - 4).sort((a, b) => b.week - a.week + (r() - 0.5) * 3);
+  const cold = games.filter((g) => !WARM.has(g.venue) && !isDome(g.venue) && g.week >= WEEKS - 4).sort((a, b) => b.week - a.week + (r() - 0.5) * 3);
   cold.slice(0, snowN).forEach((g) => out.set(g.week, 'snow'));
   // 20% chuva: mais provável nos estádios quentes
   let rainN = Math.round(n * 0.2);
-  const pool = games.filter((g) => out.get(g.week) === 'clear');
+  const pool = games.filter((g) => out.get(g.week) === 'clear' && !isDome(g.venue));
   while (rainN-- > 0 && pool.length) {
     const wts = pool.map((g) => (WARM.has(g.venue) ? 3 : 1));
     let x = r() * wts.reduce((a, b) => a + b, 0);
@@ -142,6 +148,10 @@ export interface Game {
   temp: number;
   result?: { us: number; them: number };
   stats?: GameLine;
+  /** QFL Bowl (a final, depois da temporada regular). */
+  final?: boolean;
+  /** Fase dos playoffs (jogos depois da temporada regular). */
+  round?: Round;
 }
 
 export function schedule(): Game[] {
@@ -152,7 +162,7 @@ export function schedule(): Game[] {
     s.career.schedule.filter((g) => g.opp).map((g) => ({ week: g.week, venue: g.home ? team.id : g.opp })),
     seed,
   );
-  return s.career.schedule.map((g) => {
+  const games: Game[] = s.career.schedule.map((g) => {
     const opp = g.opp ? TeamRepository.get(g.opp) : null;
     const when = KICKOFFS[(g.week - 1) % KICKOFFS.length];
     const venue = opp ? (g.home ? team.id : opp.id) : team.id;
@@ -173,6 +183,47 @@ export function schedule(): Game[] {
       stats: g.stats,
     };
   });
+  // Playoffs: os seus jogos de cada fase entram no calendário (jogados e o próximo)
+  const b = bracket();
+  const post = s.career.post ?? {};
+  for (const r of ROUNDS) {
+    const g = b.games[r].find((x) => x.mine && x.status !== 'tbd');
+    if (!g) continue;
+    const info = ROUND_INFO[r];
+    const meHome = g.home === team.id;
+    const opp = TeamRepository.get(meHome ? g.away : g.home);
+    const venue = r === 'final' ? team.id : g.home;
+    const wr = rng(`powx-${seed}-${r}`)();
+    const weather: Weather = r === 'final' || isDome(venue) ? 'clear' : !WARM.has(venue) && wr < 0.45 ? 'snow' : wr > (WARM.has(venue) ? 0.75 : 0.88) ? 'rain' : 'clear';
+    games.push({
+      week: info.week,
+      bye: false,
+      opp,
+      home: r === 'final' ? true : meHome,
+      when: info.when,
+      where: r === 'final' ? 'QFL BOWL · CAMPO NEUTRO' : TeamRepository.get(g.home).stadium.name,
+      venue,
+      prime: ({ wc: 'WC', div: 'DIV', conf: 'CONF', final: 'QFL' } as const)[r],
+      tod: r === 'div' ? 'dusk' : 'night',
+      weather,
+      temp: r === 'final' ? 21 : tempOf(venue, info.week, weather, seed),
+      result: post[r]?.result,
+      stats: post[r]?.stats,
+      final: r === 'final',
+      round: r,
+    });
+  }
+  return games;
+}
+
+/** Semana da final. */
+export const FINAL_WEEK = ROUND_INFO.final.week;
+
+/** Situação da temporada para o botão do menu (a partir do chaveamento). */
+export function finalInfo(): { status: 'season' | 'qualified' | 'out' | 'won' | 'lost'; round?: Round } {
+  const m = bracket().me;
+  const status = m.status === 'season' ? 'season' : m.status === 'out' ? 'out' : m.status === 'champion' ? 'won' : m.status === 'eliminated' ? 'lost' : 'qualified';
+  return { status, round: m.round };
 }
 
 /** Próxima semana com jogo (ou a última). */

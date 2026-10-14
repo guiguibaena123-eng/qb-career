@@ -1,9 +1,14 @@
 import Phaser from 'phaser';
-import { STAND_IDS, STAND_NAMES, stadiumOf, type StandChoice } from '../data/stadiums';
+import { isDome, STAND_IDS, STAND_NAMES, stadiumOf, type StandChoice } from '../data/stadiums';
+import { pixelPhoto } from '../ui/pixelPhoto';
 import { type SkyWeather, type TimeChoice, type TimeOfDay } from '../systems/daytime';
 import { makeStandThumb, THUMB_H, THUMB_W } from '../systems/standThumb';
-import { FONT_TITLE, GAME_H, GAME_W, applyMatchup, logoKey, matchConfig, saveMatchConfig, type WeatherChoice } from '../config';
-import { TEAM_LIST, autoUniform, fgOn, teamById, uiColor, uniformsOf, type TeamDef } from '../data/teams';
+import { FONT_TITLE, GAME_H, GAME_W, applyMatchup, broadcast, finalGame, logoKey, playoffLogo, matchConfig, saveMatchConfig, venue, type WeatherChoice } from '../config';
+import { PRIME } from '../career/season';
+import { TeamRepository, type KitDef } from '../data/TeamRepository';
+import { PlayerBody } from '../player/PlayerBody';
+import { DEFAULT_LOOK } from '../player/PlayerSave';
+import { TEAM_LIST, autoUniform, fgOn, teamById, uiColor, uniformsOf, type TeamDef, type Uniform } from '../data/teams';
 import { difficulty, LEVELS, type Level } from '../systems/difficulty';
 import { setupHiRes } from '../systems/hires';
 import { GlassButton, label, title, UI } from '../ui/widgets';
@@ -190,20 +195,19 @@ export class MainMenu extends Phaser.Scene {
   private teamCard(v: Phaser.GameObjects.Container, side: 'home' | 'away', x: number, cy: number, w: number) {
     const t = teamById(side === 'home' ? matchConfig.home : matchConfig.away);
     const c = uiColor(t);
-    const card = new GlassButton(this, x, cy, { w, h: 262, radius: 16, fill: c, fillAlpha: 0.22, border: c, borderAlpha: 0.9 });
-    card.add(label(this, 0, -118, side === 'home' ? 'SEU TIME' : 'ADVERSÁRIO', 9, side === 'home' ? UI.yellow : '#C9CEE0').setOrigin(0.5));
-    card.add(this.add.image(0, -58, logoKey(t.id, 'l')).setDisplaySize(104, 104));
-    card.add(title(this, 0, 10, t.name, t.name.length > 11 ? 8 : 10, '#FFFFFF').setOrigin(0.5));
-    // Overall
+    const card = new GlassButton(this, x, cy, { w, h: 232, radius: 16, fill: c, fillAlpha: 0.22, border: c, borderAlpha: 0.9 });
+    card.add(label(this, 0, -102, side === 'home' ? 'SEU TIME' : 'ADVERSÁRIO', 9, side === 'home' ? UI.yellow : '#C9CEE0').setOrigin(0.5));
+    card.add(this.add.image(0, -50, logoKey(t.id, 'l')).setDisplaySize(88, 88));
+    card.add(title(this, 0, 8, t.name, t.name.length > 11 ? 8 : 10, '#FFFFFF').setOrigin(0.5));
     const g = this.add.graphics();
     g.fillStyle(UI.dark, 1);
-    g.fillRoundedRect(-46, 26, 92, 26, 6);
+    g.fillRoundedRect(-46, 21, 92, 24, 6);
     g.fillStyle(t.ovr >= 88 ? 0x3ccb5a : t.ovr >= 80 ? 0xffd23f : 0xffb02e, 1);
-    g.fillRoundedRect(-44, 28, 88, 22, 5);
+    g.fillRoundedRect(-44, 23, 88, 20, 5);
     card.add(g);
-    card.add(title(this, 0, 39, `OVR ${t.ovr}`, 9, '#0D0D12').setOrigin(0.5));
+    card.add(title(this, 0, 33, `OVR ${t.ovr}`, 9, '#0D0D12').setOrigin(0.5));
     [['ATQ', t.atk], ['DEF', t.def], ['ESP', t.esp]].forEach(([n, val], k) => {
-      const yy = 66 + k * 17;
+      const yy = 58 + k * 16;
       card.add(label(this, -w / 2 + 12, yy, n as string, 8, '#C9CEE0').setOrigin(0, 0.5));
       const bx = -w / 2 + 40;
       const bwid = w - 40 - 40;
@@ -217,131 +221,200 @@ export class MainMenu extends Phaser.Scene {
       card.add(bar);
       card.add(title(this, bx + bwid + 5, yy, String(val), 7, '#FFFFFF').setOrigin(0, 0.5));
     });
-    card.add(label(this, 0, 118, 'TOQUE PARA TROCAR', 7, UI.muted).setOrigin(0.5));
+    card.add(label(this, 0, 104, 'TOQUE PARA TROCAR', 7, UI.muted).setOrigin(0.5));
     card.onTap = () => this.time.delayedCall(30, () => this.picker(side));
     v.add(card);
   }
 
-  /** Ícone de uniforme (camisa + calça) com as cores reais. */
-  private uniformIcon(g: Phaser.GameObjects.Graphics, u: ReturnType<typeof uniformsOf>[number]) {
+  /** Kit e visual do corpo (PlayerBody) a partir de um uniforme da Partida Rápida. */
+  private bodyCfg(u: Uniform, number: number) {
     const j = hexOf(u.jersey);
-    const p = hexOf(u.pants);
     const tr = hexOf(u.trim);
-    g.fillStyle(UI.dark, 1);
-    g.fillRect(-13, -13, 26, 18);
-    g.fillRect(-18, -12, 36, 8);
-    g.fillRect(-9, 4, 18, 13);
-    g.fillStyle(j, 1);
-    g.fillRect(-11, -11, 22, 14);
-    g.fillRect(-16, -10, 7, 6);
-    g.fillRect(9, -10, 7, 6);
-    g.fillStyle(tr, 1);
-    g.fillRect(-16, -6, 7, 2);
-    g.fillRect(9, -6, 7, 2);
-    g.fillRect(-4, -11, 8, 2);
-    g.fillStyle(p, 1);
-    g.fillRect(-7, 5, 14, 10);
-    g.fillStyle(tr, 1);
-    g.fillRect(-7, 5, 14, 2);
-    g.fillStyle(hexOf(u.num), 1);
-    g.fillRect(-3, -6, 6, 5);
+    const kit: KitDef = { helmet: hexOf(u.helmet), jersey: j, number: hexOf(u.num), pants: hexOf(u.pants), stripe: tr, pstripe: 'side2' };
+    const look = { ...DEFAULT_LOOK, sockC: hexOf(u.sock), sstripeC: tr, underC: j, gloveC: tr, caccC: tr, mouthC: tr, maskC: 0xc9ceda };
+    return { look, kit, face: { face: 6, skin: 4, hair: -1, hairColor: 0, beard: -1 }, number };
   }
 
-  private uniformRow(v: Phaser.GameObjects.Container, side: 'home' | 'away', x: number, cy: number, w: number) {
+  /** Fileira com os 3 uniformes de um time, cada um vestido num corpo de jogador. */
+  private uniformRow(v: Phaser.GameObjects.Container, side: 'home' | 'away', y: number) {
+    const W = GAME_W;
     const t = teamById(side === 'home' ? matchConfig.home : matchConfig.away);
     const ups = uniformsOf(t);
-    const bw = (w - 12) / 3;
-    const chips: GlassButton[] = [];
     const homeJersey = hexOf(uniformsOf(teamById(matchConfig.home))[matchConfig.homeUni].jersey);
+    const auto = side === 'away' && matchConfig.awayUni === null;
     const sel = side === 'home' ? matchConfig.homeUni : (matchConfig.awayUni ?? autoUniform(t, homeJersey));
+    v.add(this.add.image(28, y, logoKey(t.id, 's')).setDisplaySize(18, 18));
+    v.add(label(this, 42, y, side === 'home' ? `SEU TIME · ${t.name}` : `ADVERSÁRIO · ${t.name}`, 8, side === 'home' ? UI.yellow : '#C9CEE0').setOrigin(0, 0.5));
+    if (side === 'away') {
+      const at = label(this, W - 20, y, auto ? 'AUTOMÁTICO ✓' : 'VOLTAR AO AUTOMÁTICO', 8, auto ? '#3CCB5A' : '#9AA3C0').setOrigin(1, 0.5);
+      if (!auto) {
+        at.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+          matchConfig.awayUni = null;
+          this.time.delayedCall(30, () => this.setup());
+        });
+      }
+      v.add(at);
+    }
+    const bw = (W - 28 - 12) / 3;
+    const bh = 142;
     ups.forEach((u, i) => {
-      const b = new GlassButton(this, x - w / 2 + bw / 2 + i * (bw + 6), cy, { w: bw, h: 62, radius: 12 });
-      const ic = this.add.graphics();
-      this.uniformIcon(ic, u);
-      ic.setPosition(0, -8);
-      b.add(ic);
-      b.add(label(this, 0, 24, u.name === 'ALTERNATIVO' ? 'ALT' : u.name, 8, '#FFFFFF').setOrigin(0.5));
+      const on = i === sel;
+      const b = new GlassButton(this, 14 + bw / 2 + i * (bw + 6), y + 14 + bh / 2, { w: bw, h: bh, radius: 14 });
+      b.setFill(on ? 0xffd23f : 0x2a3156, on ? 0.22 : 0.6);
+      b.setBorder(on ? 0xffd23f : 0xffffff, on ? 1 : 0.16);
+      // chão e corpo vestido
+      const fl = this.add.graphics();
+      fl.fillStyle(0x000000, 0.35);
+      fl.fillEllipse(0, bh / 2 - 24, bw * 0.55, 8);
+      b.add(fl);
+      b.add(new PlayerBody(this, 0, bh / 2 - 24, this.bodyCfg(u, side === 'home' ? 12 : 21), 0.36));
+      b.add(label(this, 0, bh / 2 - 11, u.name, 8, on ? '#FFD23F' : '#FFFFFF').setOrigin(0.5));
       b.onTap = () => {
         if (side === 'home') matchConfig.homeUni = i;
         else matchConfig.awayUni = i;
         this.time.delayedCall(30, () => this.setup());
       };
-      const on = i === sel;
-      b.setFill(on ? 0xffd23f : 0x2a3156, on ? 0.28 : 0.7);
-      b.setBorder(0xffffff, on ? 1 : 0.16);
-      chips.push(b);
       v.add(b);
     });
   }
 
+  /** Estádio da partida: o do mandante (casa ou fora) ou o de outro time escolhido. */
+  private hostId() {
+    if (matchConfig.side === 'final') return matchConfig.standTeam ?? matchConfig.home;
+    return matchConfig.standTeam ?? (matchConfig.side === 'away' ? matchConfig.away : matchConfig.home);
+  }
+
+  // ---- Partida rápida, etapa 1: CONFRONTO (times, local e uniformes)
   private setup() {
     const W = GAME_W;
     const H = GAME_H;
     const v = this.fresh();
-    v.add(title(this, W / 2, 44, 'PARTIDA RÁPIDA', 15, UI.yellow).setOrigin(0.5));
-    v.add(label(this, W / 2, 70, 'TIMES, UNIFORMES, CLIMA E ESTÁDIO', 9, '#C9CEE0').setOrigin(0.5));
+    v.add(title(this, W / 2, 40, 'PARTIDA RÁPIDA', 15, UI.yellow).setOrigin(0.5));
+    v.add(label(this, W / 2, 64, '1 DE 2 · CONFRONTO, LOCAL E UNIFORMES', 8, '#C9CEE0').setOrigin(0.5));
 
     const cardW = (W - 28 - 10) / 2;
     const xL = 14 + cardW / 2;
     const xR = W - 14 - cardW / 2;
-    this.teamCard(v, 'home', xL, 222, cardW);
-    this.teamCard(v, 'away', xR, 222, cardW);
-    const vs = this.add.container(W / 2, 222);
+    this.teamCard(v, 'home', xL, 196, cardW);
+    this.teamCard(v, 'away', xR, 196, cardW);
+    const vs = this.add.container(W / 2, 196);
     const vg = this.add.graphics();
     vg.fillStyle(UI.dark, 1);
     vg.fillCircle(0, 0, 15);
     vg.fillStyle(0xffd23f, 1);
     vg.fillCircle(0, 0, 12);
-    vs.add([vg, title(this, 0, 0, 'VS', 8, '#0D0D12').setOrigin(0.5)]);
+    vs.add([vg, title(this, 0, 0, matchConfig.side === 'away' ? '@' : matchConfig.side === 'final' ? '★' : 'VS', 8, '#0D0D12').setOrigin(0.5)]);
     v.add(vs);
 
-    // ---- uniformes
-    const away = teamById(matchConfig.away);
-    const auto = matchConfig.awayUni === null;
-    v.add(label(this, 20, 372, 'UNIFORME', 9, UI.muted).setOrigin(0, 0.5));
-    v.add(label(this, W - 20, 372, auto ? 'ADVERSÁRIO: AUTOMÁTICO' : `ADVERSÁRIO: ${uniformsOf(away)[matchConfig.awayUni!].name}`, 8, UI.muted).setOrigin(1, 0.5));
-    this.uniformRow(v, 'home', xL, 412, cardW);
-    this.uniformRow(v, 'away', xR, 412, cardW);
+    // ---- local: em casa ou fora (antes dos outros detalhes)
+    v.add(label(this, 20, 328, 'LOCAL DA PARTIDA', 9, UI.muted).setOrigin(0, 0.5));
+    const lw = (W - 28 - 12) / 3;
+    (['home', 'away', 'final'] as const).forEach((sd, i) => {
+      const on = matchConfig.side === sd;
+      const host = teamById(sd === 'away' ? matchConfig.away : matchConfig.home);
+      const b = new GlassButton(this, 14 + lw / 2 + i * (lw + 6), 362, { w: lw, h: 50, radius: 14 });
+      const fc = sd === 'final' ? 0xc8102e : 0xffd23f;
+      b.setFill(on ? fc : 0x2a3156, on ? 0.3 : 0.6);
+      b.setBorder(on ? (sd === 'final' ? 0xffd23f : fc) : 0xffffff, on ? 1 : 0.16);
+      const ic = this.add.graphics();
+      if (sd === 'final') {
+        b.add(this.add.image(-lw / 2 + 22, 0, 'logoQflBowlS').setDisplaySize(34, 34));
+      } else if (sd === 'home') {
+        // casinha
+        ic.fillStyle(0xffffff, 1);
+        ic.fillTriangle(-9, 0, 9, 0, 0, -9);
+        ic.fillRect(-6, 0, 12, 9);
+      } else {
+        // aviãozinho
+        ic.fillStyle(0xffffff, 1);
+        ic.fillRect(-10, -1, 20, 3);
+        ic.fillTriangle(-2, -1, 4, -1, -4, -9);
+        ic.fillTriangle(-2, 2, 4, 2, -4, 10);
+        ic.fillTriangle(-10, -1, -10, 2, -13, -5);
+      }
+      ic.setPosition(-lw / 2 + 20, 0);
+      b.add(ic);
+      b.add(title(this, -lw / 2 + 38, -8, sd === 'home' ? 'CASA' : sd === 'away' ? 'FORA' : 'QFL BOWL', 8, on ? '#FFD23F' : '#FFFFFF').setOrigin(0, 0.5));
+      const sn = sd === 'final' ? 'A GRANDE FINAL' : TeamRepository.get(host.id).stadium.name;
+      const st = label(this, -lw / 2 + 38, 10, sn, 6, '#C9CEE0').setOrigin(0, 0.5);
+      if (st.width > lw - 44) st.setScale((lw - 44) / st.width, 1);
+      b.add(st);
+      b.onTap = () => {
+        matchConfig.side = sd;
+        matchConfig.standTeam = null;
+        this.time.delayedCall(30, () => this.setup());
+      };
+      v.add(b);
+    });
+
+    // ---- uniformes (corpo inteiro)
+    v.add(label(this, 20, 404, 'UNIFORMES', 9, UI.muted).setOrigin(0, 0.5));
+    this.uniformRow(v, 'home', 424);
+    this.uniformRow(v, 'away', 590);
+
+    // ---- botões
+    const back = new GlassButton(this, 14 + 55, H - 40, { w: 110, h: 52, radius: 16 });
+    back.add(title(this, 0, 0, 'VOLTAR', 10, '#FFFFFF').setOrigin(0.5));
+    back.onTap = () => this.time.delayedCall(30, () => this.home());
+    const pw = W - 28 - 110 - 10;
+    const next = new GlassButton(this, W - 14 - pw / 2, H - 40, { w: pw, h: 52, radius: 16, fill: 0xffd23f, fillAlpha: 1, borderAlpha: 0.35, primary: true });
+    next.add(title(this, 0, 0, 'PRÓXIMO ›', 13, '#0D0D12').setOrigin(0.5));
+    next.onTap = () => this.time.delayedCall(30, () => this.details());
+    v.add([back, next]);
+  }
+
+  // ---- Partida rápida, etapa 2: DETALHES (clima, horário, dificuldade e estádio)
+  private details() {
+    const W = GAME_W;
+    const H = GAME_H;
+    const v = this.fresh();
+    v.add(title(this, W / 2, 40, 'PARTIDA RÁPIDA', 15, UI.yellow).setOrigin(0.5));
+    v.add(label(this, W / 2, 64, '2 DE 2 · CLIMA, HORÁRIO, DIFICULDADE E ESTÁDIO', 8, '#C9CEE0').setOrigin(0.5));
 
     // Atualiza as miniaturas quando o horário ou o clima mudam (definida mais abaixo)
     let retouch: () => void = () => {};
+    const wW = (W - 28 - 18) / 4;
 
-    // ---- clima
-    v.add(label(this, 20, 468, 'CLIMA', 9, UI.muted).setOrigin(0, 0.5));
+    // ---- clima (estádio coberto e final: sempre limpo, sem escolha)
+    const host = teamById(this.hostId());
+    const lockWx = isDome(host.id) || matchConfig.side === 'final';
+    v.add(label(this, 20, 98, 'CLIMA', 9, UI.muted).setOrigin(0, 0.5));
+    if (lockWx) v.add(label(this, W - 20, 98, matchConfig.side === 'final' ? 'FINAL: SEMPRE LIMPO' : 'ESTÁDIO COBERTO: SEMPRE LIMPO', 8, '#FFD23F').setOrigin(1, 0.5));
     const opts: { key: WeatherChoice; name: string }[] = [
       { key: 'clear', name: 'LIMPO' },
       { key: 'rain', name: 'CHUVA' },
       { key: 'snow', name: 'NEVE' },
       { key: 'random', name: 'SORTEIO' },
     ];
-    const wW = (W - 28 - 18) / 4;
     const chips: Partial<Record<WeatherChoice, GlassButton>> = {};
     const paintWeather = () => {
       for (const o of opts) {
-        const on = o.key === matchConfig.weather;
+        const on = lockWx ? o.key === 'clear' : o.key === matchConfig.weather;
         chips[o.key]!.setFill(on ? 0x3fd0ff : 0x2a3156, on ? 0.28 : 0.7);
         chips[o.key]!.setBorder(0xffffff, on ? 1 : 0.16);
+        chips[o.key]!.setAlpha(lockWx && !on ? 0.3 : 1);
       }
     };
     opts.forEach((o, i) => {
-      const x = 14 + wW / 2 + i * (wW + 6);
-      const b = new GlassButton(this, x, 504, { w: wW, h: 52, radius: 14 });
+      const b = new GlassButton(this, 14 + wW / 2 + i * (wW + 6), 136, { w: wW, h: 54, radius: 14 });
       const ic = this.add.graphics();
       this.weatherIcon(ic, o.key);
       ic.setPosition(0, -8).setScale(0.62);
       b.add(ic);
       b.add(label(this, 0, 16, o.name, 8, '#FFFFFF').setOrigin(0.5));
       b.onTap = () => {
+        if (lockWx) return;
         matchConfig.weather = o.key;
         paintWeather();
         retouch();
       };
+      if (lockWx && o.key !== 'clear') b.setEnabled(false);
       chips[o.key] = b;
       v.add(b);
     });
 
-    // ---- horário (dia, tarde, noite)
-    v.add(label(this, 20, 548, 'HORÁRIO', 9, UI.muted).setOrigin(0, 0.5));
+    // ---- horário
+    v.add(label(this, 20, 184, 'HORÁRIO', 9, UI.muted).setOrigin(0, 0.5));
     const topts: { key: TimeChoice; name: string }[] = [
       { key: 'day', name: 'DIA' },
       { key: 'dusk', name: 'TARDE' },
@@ -357,8 +430,7 @@ export class MainMenu extends Phaser.Scene {
       }
     };
     topts.forEach((o, i) => {
-      const x = 14 + wW / 2 + i * (wW + 6);
-      const b = new GlassButton(this, x, 578, { w: wW, h: 40, radius: 12 });
+      const b = new GlassButton(this, 14 + wW / 2 + i * (wW + 6), 214, { w: wW, h: 40, radius: 12 });
       const ic = this.add.graphics();
       this.timeIcon(ic, o.key);
       ic.setPosition(-wW / 2 + 18, 0);
@@ -374,7 +446,7 @@ export class MainMenu extends Phaser.Scene {
     });
 
     // ---- dificuldade
-    v.add(label(this, 20, 620, 'DIFICULDADE', 9, UI.muted).setOrigin(0, 0.5));
+    v.add(label(this, 20, 256, 'DIFICULDADE', 9, UI.muted).setOrigin(0, 0.5));
     const levels: Level[] = ['easy', 'normal', 'hard'];
     const lW = (W - 28 - 12) / 3;
     const lchips: Partial<Record<Level, GlassButton>> = {};
@@ -386,8 +458,7 @@ export class MainMenu extends Phaser.Scene {
       }
     };
     levels.forEach((l, i) => {
-      const x = 14 + lW / 2 + i * (lW + 6);
-      const b = new GlassButton(this, x, 650, { w: lW, h: 36, radius: 12 });
+      const b = new GlassButton(this, 14 + lW / 2 + i * (lW + 6), 286, { w: lW, h: 38, radius: 12 });
       b.add(title(this, 0, 0, LEVELS[l].label, 9, l === 'easy' ? '#3CCB5A' : l === 'hard' ? '#FF7B80' : '#FFD23F').setOrigin(0.5));
       b.onTap = () => {
         this.level = l;
@@ -397,58 +468,82 @@ export class MainMenu extends Phaser.Scene {
       v.add(b);
     });
 
-    // ---- estádio (miniaturas: o do time da casa + os 5 modelos, com a cidade do time)
-    const homeT = teamById(matchConfig.home);
-    const st = stadiumOf(homeT.id);
-    const hc0 = uiColor(homeT);
-    const ac0 = uiColor(teamById(matchConfig.away));
-    v.add(label(this, 20, 686, 'ESTÁDIO', 9, UI.muted).setOrigin(0, 0.5));
-    v.add(label(this, W - 20, 686, matchConfig.stand === 'auto' ? `DO TIME: ${STAND_NAMES[st.model]}` : STAND_NAMES[matchConfig.stand], 8, UI.muted).setOrigin(1, 0.5));
-    const opts2: { key: StandChoice; name: string; model: (typeof STAND_IDS)[number] }[] = [
-      { key: 'auto', name: 'DO TIME', model: st.model },
-      ...STAND_IDS.map((id) => ({ key: id as StandChoice, name: STAND_NAMES[id], model: id })),
-    ];
-    const sW = (W - 28 - 5 * 5) / 6;
-    const sChips: Partial<Record<StandChoice, GlassButton>> = {};
-    const paintStand = () => {
-      for (const o of opts2) {
-        const on = o.key === matchConfig.stand;
-        sChips[o.key]!.setFill(on ? 0xffd23f : 0x2a3156, on ? 0.28 : 0.7);
-        sChips[o.key]!.setBorder(0xffffff, on ? 1 : 0.16);
-      }
-    };
-    const thumbs: { key: string; img: Phaser.GameObjects.Image; model: (typeof STAND_IDS)[number] }[] = [];
-    const wShown = (): SkyWeather => (matchConfig.weather === 'rain' || matchConfig.weather === 'snow' ? matchConfig.weather : 'clear');
+    // ---- estádio: foto pixelizada do selecionado + de quem é (a arquibancada é a do próprio estádio)
+    const hostTeamR = TeamRepository.get(host.id);
+    const st = stadiumOf(host.id);
+    const fin = matchConfig.side === 'final';
+    const wShown = (): SkyWeather => (lockWx ? 'clear' : matchConfig.weather === 'rain' || matchConfig.weather === 'snow' ? matchConfig.weather : 'clear');
     const todShown = (): TimeOfDay => (matchConfig.time === 'random' ? 'dusk' : matchConfig.time);
-    retouch = () => {
-      for (const t of thumbs) {
-        makeStandThumb(this, t.key, t.model, homeT.id, hc0, ac0, todShown(), wShown());
-        t.img.setTexture(t.key);
-      }
+    v.add(label(this, 20, 330, 'ESTÁDIO', 9, UI.muted).setOrigin(0, 0.5));
+    const pv = this.add.graphics();
+    pv.fillStyle(0x000000, 0.35);
+    pv.fillRoundedRect(14, 348, 178, 196, 16);
+    pv.fillStyle(0x1c2142, 1);
+    pv.fillRoundedRect(14, 344, 178, 196, 16);
+    pv.lineStyle(2, fin ? 0xffd23f : 0xffd23f, 0.9);
+    pv.strokeRoundedRect(14, 344, 178, 196, 16);
+    v.add(pv);
+    // Foto do estádio pixelizada, com o horário e o clima por cima
+    const photo = hostTeamR.stadium.image;
+    if (photo && this.textures.exists(photo)) v.add(this.add.image(103, 442, pixelPhoto(this, photo, 168, 186, 60)).setDisplaySize(168, 186));
+    const mood = this.add.rectangle(103, 442, 168, 186, 0x000000, 0);
+    v.add(mood);
+    const paintMood = () => {
+      const w = wShown();
+      const t = todShown();
+      const col = t === 'night' ? 0x0a1030 : t === 'dusk' ? 0xff7a30 : w === 'snow' ? 0xffffff : w === 'rain' ? 0x3a4560 : 0x000000;
+      const a = t === 'night' ? 0.3 : t === 'dusk' ? 0.16 : w === 'snow' ? 0.25 : w === 'rain' ? 0.3 : 0;
+      mood.setFillStyle(col, a);
     };
-    opts2.forEach((o, i) => {
-      const key = `thumb_${o.key}`;
-      makeStandThumb(this, key, o.model, homeT.id, hc0, ac0, todShown(), wShown());
-      const x = 14 + sW / 2 + i * (sW + 5);
-      const b = new GlassButton(this, x, 732, { w: sW, h: 80, radius: 12 });
-      const sc = (sW - 6) / THUMB_W;
-      const img = this.add.image(0, -8, key).setScale(sc);
-      thumbs.push({ key, img, model: o.model });
-      b.add(img);
-      b.add(label(this, 0, 29, o.name, 7, o.key === 'auto' ? UI.yellow : '#FFFFFF').setOrigin(0.5));
-      void THUMB_H;
-      b.onTap = () => {
-        matchConfig.stand = o.key;
-        paintStand();
-      };
-      sChips[o.key] = b;
-      v.add(b);
-    });
+    paintMood();
+    retouch = paintMood;
+    if (isDome(host.id)) v.add(label(this, 103, 528, 'COBERTO · SEMPRE LIMPO', 7, '#FFD23F').setOrigin(0.5));
+    if (fin) v.add(this.add.image(170, 364, 'logoQflBowlS').setDisplaySize(34, 34));
+    // Informações e escolha do dono do estádio
+    const ix = 206;
+    v.add(this.add.image(ix + 12, 362, logoKey(host.id, 's')).setDisplaySize(24, 24));
+    const nm = title(this, ix + 30, 362, hostTeamR.stadium.name, 7, '#FFFFFF').setOrigin(0, 0.5);
+    if (nm.width > W - 14 - ix - 34) nm.setScale((W - 14 - ix - 34) / nm.width);
+    v.add(nm);
+    const who = fin ? 'FINAL · CAMPO NEUTRO' : matchConfig.standTeam ? 'CAMPO NEUTRO' : matchConfig.side === 'away' ? 'CASA DO ADVERSÁRIO' : 'SUA CASA';
+    v.add(label(this, ix, 384, who, 8, fin || matchConfig.standTeam ? '#3FD0FF' : UI.yellow).setOrigin(0, 0.5));
+    v.add(label(this, ix, 400, `${hostTeamR.stadium.capacity.toLocaleString('pt-BR')} LUGARES`, 8, '#9AA3C0').setOrigin(0, 0.5));
+    v.add(label(this, ix, 416, `ARQUIBANCADA ${STAND_NAMES[st.model]}`, 8, '#9AA3C0').setOrigin(0, 0.5));
+    const bw2 = W - 14 - ix;
+    const mand = new GlassButton(this, ix + bw2 / 2, 452, { w: bw2, h: 40, radius: 12 });
+    mand.add(label(this, 0, 0, fin ? 'SEU ESTÁDIO' : 'DO MANDANTE', 8, '#FFFFFF').setOrigin(0.5));
+    const on1 = !matchConfig.standTeam;
+    mand.setFill(on1 ? 0xffd23f : 0x2a3156, on1 ? 0.25 : 0.6);
+    mand.setBorder(on1 ? 0xffd23f : 0xffffff, on1 ? 1 : 0.16);
+    mand.onTap = () => {
+      matchConfig.standTeam = null;
+      this.time.delayedCall(30, () => this.details());
+    };
+    const other = new GlassButton(this, ix + bw2 / 2, 500, { w: bw2, h: 40, radius: 12 });
+    other.add(label(this, 0, 0, fin ? 'ESCOLHER ESTÁDIO ›' : 'DE OUTRO TIME ›', 8, '#FFFFFF').setOrigin(0.5));
+    other.setFill(!on1 ? 0x3fd0ff : 0x2a3156, !on1 ? 0.25 : 0.6);
+    other.setBorder(!on1 ? 0x3fd0ff : 0xffffff, !on1 ? 1 : 0.16);
+    other.onTap = () => this.time.delayedCall(30, () => this.picker('stand'));
+    v.add([mand, other]);
+    // Na final: as regras do campo e da torcida continuam (qualquer estádio)
+    if (fin) {
+      const fg = this.add.graphics();
+      fg.fillStyle(0xc8102e, 0.22);
+      fg.fillRoundedRect(14, 556, W - 28, 92, 16);
+      fg.lineStyle(2, 0xffd23f, 0.8);
+      fg.strokeRoundedRect(14, 556, W - 28, 92, 16);
+      v.add(fg);
+      v.add(this.add.image(52, 602, 'logoQflBowlS').setDisplaySize(64, 64));
+      v.add(title(this, 92, 580, 'A GRANDE FINAL', 9, '#FFD23F').setOrigin(0, 0.5));
+      v.add(label(this, 92, 600, 'LOGO DA LIGA NO MEIO · QFL BOWL NAS 30', 7, '#E8EAF2').setOrigin(0, 0.5));
+      v.add(label(this, 92, 616, 'END ZONES DOS DOIS TIMES', 7, '#E8EAF2').setOrigin(0, 0.5));
+      v.add(label(this, 92, 632, 'TORCIDA DE TODAS AS CORES · CLIMA LIMPO', 7, '#E8EAF2').setOrigin(0, 0.5));
+    }
 
     // ---- botões
     const back = new GlassButton(this, 14 + 55, H - 40, { w: 110, h: 52, radius: 16 });
-    back.add(title(this, 0, 0, 'VOLTAR', 10, '#FFFFFF').setOrigin(0.5));
-    back.onTap = () => this.time.delayedCall(30, () => this.home());
+    back.add(title(this, 0, 0, '‹ VOLTAR', 10, '#FFFFFF').setOrigin(0.5));
+    back.onTap = () => this.time.delayedCall(30, () => this.setup());
     const hc = uiColor(teamById(matchConfig.home));
     const pw = W - 28 - 110 - 10;
     const play = new GlassButton(this, W - 14 - pw / 2, H - 40, { w: pw, h: 52, radius: 16, fill: hc, fillAlpha: 1, borderAlpha: 0.35, primary: true });
@@ -463,18 +558,17 @@ export class MainMenu extends Phaser.Scene {
     paintWeather();
     paintLevel();
     paintTime();
-    paintStand();
   }
 
   // ------------------------------------------------------------ escolher time (grade com os 32 logos)
 
-  private picker(side: 'home' | 'away') {
+  private picker(side: 'home' | 'away' | 'stand') {
     const W = GAME_W;
     const H = GAME_H;
     const v = this.fresh();
-    const other = side === 'home' ? matchConfig.away : matchConfig.home;
-    const cur = side === 'home' ? matchConfig.home : matchConfig.away;
-    v.add(title(this, W / 2, 34, side === 'home' ? 'ESCOLHA O SEU TIME' : 'ESCOLHA O ADVERSÁRIO', 12, UI.yellow).setOrigin(0.5));
+    const other = side === 'home' ? matchConfig.away : side === 'away' ? matchConfig.home : '';
+    const cur = side === 'home' ? matchConfig.home : side === 'away' ? matchConfig.away : this.hostId();
+    v.add(title(this, W / 2, 34, side === 'home' ? 'ESCOLHA O SEU TIME' : side === 'away' ? 'ESCOLHA O ADVERSÁRIO' : 'ESTÁDIO DE QUAL TIME?', 12, UI.yellow).setOrigin(0.5));
     v.add(label(this, W / 2, 58, 'TOQUE NO LOGO · NOTA GERAL (OVR) EMBAIXO', 8, '#C9CEE0').setOrigin(0.5));
     const cols = 4;
     const cw = (W - 16) / cols;
@@ -494,9 +588,17 @@ export class MainMenu extends Phaser.Scene {
         b.setAlpha(0.3);
       }
       b.onTap = () => {
+        if (side === 'stand') {
+          // estádio de outro time = campo neutro (o mandante volta a ser o padrão escolhendo um dos dois)
+          const local = matchConfig.side === 'away' ? matchConfig.away : matchConfig.home;
+          matchConfig.standTeam = t.id === local ? null : t.id;
+          this.time.delayedCall(30, () => this.details());
+          return;
+        }
         if (side === 'home') matchConfig.home = t.id;
         else matchConfig.away = t.id;
         matchConfig.awayUni = null;
+        matchConfig.standTeam = null;
         if (side === 'home') matchConfig.homeUni = 0;
         this.time.delayedCall(30, () => this.setup());
       };
@@ -504,7 +606,7 @@ export class MainMenu extends Phaser.Scene {
     });
     const back = new GlassButton(this, W / 2, H - 38, { w: W - 28, h: 50, radius: 14 });
     back.add(title(this, 0, 0, 'CANCELAR', 10, '#FFFFFF').setOrigin(0.5));
-    back.onTap = () => this.time.delayedCall(30, () => this.setup());
+    back.onTap = () => this.time.delayedCall(30, () => (side === 'stand' ? this.details() : this.setup()));
     v.add(back);
   }
 
@@ -602,6 +704,15 @@ export class MainMenu extends Phaser.Scene {
   }
 
   private launch(practice: 'qb' | 'rb' | null = null) {
+    // Estádio: o do mandante (fora = do adversário) ou o de outro time escolhido; treino = o seu
+    venue.id = practice ? null : this.hostId() === matchConfig.home ? null : this.hostId();
+    // Arquibancada: sempre a do estádio escolhido
+    matchConfig.stand = 'auto';
+    // QFL Bowl (a final): campo e estádio especiais e a apresentação da final
+    const fin = !practice && matchConfig.side === 'final';
+    finalGame.on = fin;
+    playoffLogo.key = fin ? 'logoQflBowl' : null;
+    broadcast.prime = fin ? PRIME.QFL : null;
     const key = `Match${++matchCounter}`;
     this.game.scene.add(key, new MatchScene(key, practice), false);
     this.scene.start(key);

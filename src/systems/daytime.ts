@@ -139,27 +139,7 @@ export class Daylight {
     scene.add.image(0, 0, shade).setOrigin(0).setDisplaySize(w, h).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
     // Fachos e brilho (soma)
     const glow = mk('night_glow', (ctx) => {
-      // Facho difuso: várias camadas cada vez mais largas e fracas (sem filtro de blur, que o Safari não tem)
-      const beam = (x0: number, x1: number) => {
-        for (let i = 0; i < 7; i++) {
-          const spread = w * (0.1 + i * 0.045);
-          const g = ctx.createLinearGradient(x0, 0, x1, h * 0.75);
-          g.addColorStop(0, `rgba(255,246,220,${0.036 - i * 0.003})`);
-          g.addColorStop(1, 'rgba(255,246,220,0)');
-          ctx.fillStyle = g;
-          ctx.beginPath();
-          ctx.moveTo(x0 - 4 - i * 3, 0);
-          ctx.lineTo(x0 + 4 + i * 3, 0);
-          ctx.lineTo(x1 + spread, h * 0.8);
-          ctx.lineTo(x1 - spread, h * 0.8);
-          ctx.closePath();
-          ctx.fill();
-        }
-      };
-      beam(w * 0.04, w * 0.42);
-      beam(w * 0.96, w * 0.58);
-      beam(w * 0.3, w * 0.48);
-      beam(w * 0.7, w * 0.52);
+      // Sem fachos dos refletores: só o gramado bem iluminado
       // poça de luz sobre o gramado
       const p = ctx.createRadialGradient(w / 2, h * 0.48, 0, w / 2, h * 0.48, w * 0.75);
       p.addColorStop(0, 'rgba(255,250,235,0.1)');

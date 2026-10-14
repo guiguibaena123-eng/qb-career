@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { FONT_TITLE, MATCH_SEED, TEAMS, guestTeam, hostTeam, matchConfig, venue } from '../config';
-import { stadiumOf, type StandModelId } from '../data/stadiums';
+import { FONT_TITLE, MATCH_SEED, TEAMS, finalGame, guestTeam, hostTeam, matchConfig, venue } from '../config';
+import { isDome, stadiumOf, type StandModelId } from '../data/stadiums';
 import { wallQuad } from './ground';
 import { hex, shade } from './pixelart';
 import type { Projection, ScreenPoint } from './projection';
@@ -81,7 +81,7 @@ export function pickStandModel(): StandModel {
   const byNum = q && /^\d+$/.test(q) ? MODELS[Number(q) - 1] : undefined;
   const byId = q ? MODELS.find((m) => m.id === q) : undefined;
   if (byNum ?? byId) return (byNum ?? byId)!;
-  const id = matchConfig.stand === 'auto' ? stadiumOf(venue.id ?? TEAMS.home.id).model : matchConfig.stand;
+  const id = isDome(venue.id ?? TEAMS.home.id) ? 'classica' : matchConfig.stand === 'auto' ? stadiumOf(venue.id ?? TEAMS.home.id).model : matchConfig.stand;
   return MODELS.find((m) => m.id === id) ?? MODELS[0];
 }
 
@@ -168,8 +168,10 @@ function makeRowTexture(scene: Phaser.Scene, key: string, spec: RowSpec, m: Stan
   const tex = scene.textures.createCanvas(key, W, H)!;
   const ctx = tex.getContext();
   const tx = (u: number) => Math.round(u * TPY);
-  const home = [hex(hostTeam().color), shade(hostTeam().color, 0.25), shade(hostTeam().color, -0.2)];
-  const away = [hex(guestTeam().color), shade(guestTeam().color, 0.3), shade(guestTeam().color, -0.25)];
+  // Final: torcida de todas as cores, bem viva (mais as cores dos dois finalistas)
+  const VIVID = ['#ff2d55', '#ffd23f', '#3fd0ff', '#3ccb5a', '#b14cff', '#ff8a1f', '#ff4fd8', '#18e0c0', '#4d7cff', '#fff35c', hex(TEAMS.home.color), hex(TEAMS.away.color)];
+  const home = finalGame.on ? VIVID : [hex(hostTeam().color), shade(hostTeam().color, 0.25), shade(hostTeam().color, -0.2)];
+  const away = finalGame.on ? VIVID : [hex(guestTeam().color), shade(guestTeam().color, 0.3), shade(guestTeam().color, -0.25)];
   const stairs = stairsU(r);
   const awayRow = row >= m.awayRows[0] && row <= m.awayRows[1];
   const awayA = stairs[3] + STAIR_W / 2;
@@ -503,11 +505,8 @@ export class Grandstand {
       proj.project(x, y, ht + 1.75, pa);
       panel.setTexture(lit ? 'flood_on' : 'flood_off').setVisible(pa.y > -80).setPosition(pa.x, pa.y).setDisplaySize(pw, ph);
       // Brilho: mais fraco que antes (a luz do campo já vem da camada da noite)
-      const k = lvl * 0.42 * (0.94 + 0.06 * Math.sin(this.time * 3 + i));
-      img.setVisible(k > 0.02 && pa.y > -80)
-        .setPosition(pa.x, pa.y)
-        .setScale((pa.s * 10 * 20) / 256)
-        .setAlpha(k);
+      // Sem brilho em volta dos refletores (a luz fica só no campo)
+      img.setVisible(false);
     });
   }
 

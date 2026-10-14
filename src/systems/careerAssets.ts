@@ -16,6 +16,14 @@ const GROUPS: Record<string, { dir: string; prefix: string }> = {
 /** Chama no preload: lê o manifesto e enfileira todas as imagens. */
 export function queueCareerAssets(scene: Phaser.Scene, base: string) {
   scene.load.image('logoLeague', `${base}assets/league_logo.png`);
+  // QFL Bowl (a final): logo grande (campo) e pequena (listas)
+  scene.load.image('logoQflBowl', `${base}assets/qfl_bowl.png`);
+  scene.load.image('logoQflBowlS', `${base}assets/qfl_bowl_s.png`);
+  // Fases dos playoffs: Round One (Wild Card), Round Two (Divisional), Semi Bowl (final de conferência)
+  for (const [k, f] of [['logoPoR1', 'po_r1'], ['logoPoR2', 'po_r2'], ['logoPoSemi', 'po_semi']]) {
+    scene.load.image(k, `${base}assets/${f}.png`);
+    scene.load.image(`${k}S`, `${base}assets/${f}_s.png`);
+  }
   scene.load.json('career-manifest', `${base}assets/manifest.json`);
   scene.load.once('filecomplete-json-career-manifest', (_k: string, _t: string, data: Record<string, string[]>) => {
     for (const [g, names] of Object.entries(data)) {

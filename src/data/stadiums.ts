@@ -75,4 +75,11 @@ export const STADIUMS: Record<string, Stadium> = {
   sea: S('anel', ['mountains', 'towers', 'needle'], 0.7, '#6ac3ff'),
 };
 
-export const stadiumOf = (teamId: string): Stadium => STADIUMS[teamId] ?? STADIUMS.kc;
+/** Estádios cobertos (teto nas fotos): sempre arquibancada alta e sem chuva nem neve. */
+export const DOMES = new Set(['atl', 'dal', 'det', 'hou', 'ind', 'lv', 'lar', 'lac', 'min', 'no', 'ari']);
+export const isDome = (teamId: string) => DOMES.has(teamId);
+
+export const stadiumOf = (teamId: string): Stadium => {
+  const s = STADIUMS[teamId] ?? STADIUMS.kc;
+  return isDome(teamId) ? { ...s, model: 'classica' } : s;
+};

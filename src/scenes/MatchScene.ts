@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS, matchConfig, venue } from '../config';
+import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS, broadcast, finalGame, matchConfig, playoffLogo, venue } from '../config';
 import {
   FORMATION_NAME,
   HOT_ROUTE_CYCLE,
@@ -46,6 +46,7 @@ import { DefenseScreen } from '../ui/DefenseScreen';
 import { Menu } from '../ui/Menu';
 import { Intro } from '../ui/Intro';
 import { careerMatch, finishCareerMatch, leaveCareerMatch } from '../integration/MatchBridge';
+import { ROUND_INFO } from '../career/playoffs';
 import { TeamRepository } from '../data/TeamRepository';
 import { getSave } from '../player/PlayerSave';
 import { bottomGradient, GlassButton, label, Tag, title, UI } from '../ui/widgets';
@@ -285,7 +286,8 @@ export class MatchScene extends Phaser.Scene {
     this.menu = new Menu(this);
     this.intro = new Intro(this, this.rng);
     if (this.career) this.careerIntro();
-    else this.intro.info.arena = TeamRepository.get(venue.id ?? TEAMS.home.id).stadium.name;
+    else if (finalGame.on) Object.assign(this.intro.info, { mode: 'PARTIDA RÁPIDA · A GRANDE FINAL', arena: 'QFL BOWL · CAMPO NEUTRO', homeHosts: true });
+    else Object.assign(this.intro.info, { arena: TeamRepository.get(venue.id ?? TEAMS.home.id).stadium.name, homeHosts: venue.id !== TEAMS.away.id });
     // ?chute=fg|punt|pat abre direto no chute; ?defesa abre a campanha deles
     const kq = q.get('chute');
     if (kq === 'fg' || kq === 'punt' || kq === 'pat') this.time.delayedCall(300, () => this.startKick(kq));
@@ -462,7 +464,7 @@ export class MatchScene extends Phaser.Scene {
       .map((t) => t[1])
       .join(' · ');
     const host = TeamRepository.get(cm.home ? TEAMS.home.id : cm.opp);
-    Object.assign(this.intro.info, { mode: `CARREIRA · SEMANA ${cm.week}`, qb: `#${sv.number} · ${sv.name}`, ovr: sv.ovr, traits, arena: host.stadium.name, homeHosts: cm.home });
+    Object.assign(this.intro.info, { mode: cm.round ? `CARREIRA · ${ROUND_INFO[cm.round].sub}` : `CARREIRA · SEMANA ${cm.week}`, qb: `#${sv.number} · ${sv.name}`, ovr: sv.ovr, traits, arena: cm.final ? 'QFL BOWL · CAMPO NEUTRO' : host.stadium.name, homeHosts: cm.home });
   }
 
   /** Volta ao menu principal e descarta esta partida. */
@@ -472,6 +474,12 @@ export class MatchScene extends Phaser.Scene {
     this.tweens.resumeAll();
     // Carreira: volta ao menu da carreira (sair no meio do jogo não conta resultado)
     if (this.career) leaveCareerMatch();
+    else {
+      venue.id = null;
+      finalGame.on = false;
+      broadcast.prime = null;
+      playoffLogo.key = null;
+    }
     this.scene.start(this.career ? 'CarreiraMenu' : 'MainMenu');
     this.game.scene.remove(key);
   }

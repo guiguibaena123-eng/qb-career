@@ -82,7 +82,7 @@ export class Intro {
         .setScale(0.6)
         .setAlpha(0),
     );
-    const sub = this.add(title(sc, W / 2, 92, words.slice(2).join(' ') || 'GAME', 11, glowHex).setOrigin(0.5).setAlpha(0));
+    const sub = this.add(title(sc, W / 2, 92, words.slice(2).join(' ') || (pr.name.includes('BOWL') ? 'A GRANDE FINAL' : 'GAME'), 11, glowHex).setOrigin(0.5).setAlpha(0));
     sc.tweens.add({ targets: big, scale: 1, alpha: 1, duration: 420, ease: 'Back.Out' });
     sc.tweens.add({ targets: sub, alpha: 1, duration: 300, delay: 250 });
     sc.tweens.add({ targets: big, scale: 1.04, duration: 900, yoyo: true, repeat: -1, delay: 500, ease: 'Sine.InOut' });

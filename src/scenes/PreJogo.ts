@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { divisionOf, league } from '../career/league';
+import { ROUND_INFO } from '../career/playoffs';
 import { KIT_IDS, kitAccents, type KitId } from '../career/kits';
 import { careerTeam, coachOf, nextGame, PRIME } from '../career/season';
 import { GAME_H, GAME_W } from '../config';
@@ -52,7 +53,7 @@ export class PreJogo extends Phaser.Scene {
     back.on('pointerdown', () => this.scene.start('CarreiraMenu'));
     title(this, 22, 36, '‹', 16, '#FFFFFF').setOrigin(0, 0.5);
     title(this, 52, 28, 'PRÉ-JOGO', 12, '#FFFFFF');
-    label(this, 52, 46, `SEMANA ${g.week} · ${g.when} · ${g.home ? 'EM CASA' : 'FORA'}`, 9, '#C9CEE0');
+    label(this, 52, 46, g.final ? `A GRANDE FINAL · ${g.when} · CAMPO NEUTRO` : g.round ? `${ROUND_INFO[g.round].sub} · ${g.when} · ${g.home ? 'EM CASA' : 'FORA'}` : `SEMANA ${g.week} · ${g.when} · ${g.home ? 'EM CASA' : 'FORA'}`, 9, '#C9CEE0');
 
     // Confronto (horário nobre: degradê e faixa da transmissão)
     const lg = league();
@@ -107,7 +108,12 @@ export class PreJogo extends Phaser.Scene {
     this.card(16, y1, W - 32, 78);
     const tw = 112;
     const th = 62;
-    if (host.stadium.image && this.textures.exists(host.stadium.image)) {
+    if (g.final) {
+      const tg = this.add.graphics();
+      tg.fillStyle(0x10163a, 1);
+      tg.fillRect(24, y1 + 8, tw, th);
+      this.add.image(24 + tw / 2, y1 + 8 + th / 2, 'logoQflBowl').setDisplaySize(th - 4, th - 4);
+    } else if (host.stadium.image && this.textures.exists(host.stadium.image)) {
       this.add.image(24, y1 + 8, host.stadium.image).setOrigin(0).setDisplaySize(tw, th);
     } else {
       const tg = this.add.graphics();
@@ -122,9 +128,9 @@ export class PreJogo extends Phaser.Scene {
     fr.lineStyle(2, 0xffffff, 0.35);
     fr.strokeRoundedRect(24, y1 + 8, tw, th, 6);
     const tx = 24 + tw + 12;
-    const sn = title(this, tx, y1 + 18, host.stadium.name, 7, '#FFFFFF').setOrigin(0, 0.5);
+    const sn = title(this, tx, y1 + 18, g.final ? 'QFL BOWL' : host.stadium.name, 7, g.final ? '#FFD23F' : '#FFFFFF').setOrigin(0, 0.5);
     if (sn.width > W - 16 - tx - 8) sn.setFontSize(6);
-    label(this, tx, y1 + 34, `${host.stadium.capacity.toLocaleString('pt-BR')} LUGARES · ${g.tod === 'night' ? 'NOITE' : g.tod === 'dusk' ? 'FIM DE TARDE' : 'DIA'}`, 8, '#9AA3C0').setOrigin(0, 0.5);
+    label(this, tx, y1 + 34, g.final ? 'CAMPO NEUTRO · ARQUIBANCADA ALTA · ' + (g.tod === 'night' ? 'NOITE' : 'DIA') : `${host.stadium.capacity.toLocaleString('pt-BR')} LUGARES · ${g.tod === 'night' ? 'NOITE' : g.tod === 'dusk' ? 'FIM DE TARDE' : 'DIA'}`, 8, '#9AA3C0').setOrigin(0, 0.5);
     weatherIcon(this, tx + 14, y1 + 58, g.weather, 26, g.tod === 'night');
     title(this, tx + 34, y1 + 53, WX_NAME[g.weather], 8, g.weather === 'snow' ? '#E8F1FF' : g.weather === 'rain' ? '#7FBFFF' : hex(YE)).setOrigin(0, 0.5);
     label(this, tx + 34, y1 + 68, `${g.temp}°C${g.weather === 'snow' ? ' · CAMPO PESADO' : g.weather === 'rain' ? ' · BOLA MOLHADA' : ''}`, 8, '#C9CEE0').setOrigin(0, 0.5);

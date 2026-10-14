@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { FONT_LABEL, FONT_TITLE, GAME_H, GAME_W, matchConfig } from '../config';
+import { FONT_LABEL, FONT_TITLE, GAME_H, GAME_W, matchConfig, finalGame, TEAMS, venue } from '../config';
+import { isDome } from '../data/stadiums';
 import type { Projection, ScreenPoint } from './projection';
 import type { Rng } from './rng';
 
@@ -203,6 +204,8 @@ export function pickWeather(rng: Rng): WeatherKind {
   if (q === 'chuva') return 'rain';
   if (q === 'neve') return 'snow';
   if (q === 'limpo') return 'clear';
+  // A final (QFL Bowl) e os estádios cobertos: sempre tempo limpo
+  if (finalGame.on || isDome(venue.id ?? TEAMS.home.id)) return 'clear';
   if (matchConfig.weather === 'clear') return 'clear';
   if (matchConfig.weather === 'rain') return 'rain';
   if (matchConfig.weather === 'snow') return 'snow';

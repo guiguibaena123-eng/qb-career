@@ -6,9 +6,9 @@
     "semantic_hash": ""
   },
   "src/config.ts": {
-    "mtime": 1791938258.5368507,
-    "seen": 1791938283.328776,
-    "ast_hash": "9f91cae9f28c753370fb008628a31ca1",
+    "mtime": 1791942077.1677642,
+    "seen": 1791942282.7318935,
+    "ast_hash": "9c610252659057e2b009fa168fd829b2",
     "semantic_hash": ""
   },
   "src/data/plays.ts": {
@@ -54,9 +54,9 @@
     "semantic_hash": ""
   },
   "src/scenes/MatchScene.ts": {
-    "mtime": 1791939185.945273,
-    "seen": 1791939348.5817657,
-    "ast_hash": "c649c487ace27bc7ee3352290c2bf816",
+    "mtime": 1791942077.2075305,
+    "seen": 1791942282.7320297,
+    "ast_hash": "170b66ecfba22b02dbe9236ac114c00a",
     "semantic_hash": ""
   },
   "src/state/GameState.ts": {
@@ -90,15 +90,15 @@
     "semantic_hash": "846a98a9c891398908e51fbc9b605ae5"
   },
   "src/systems/field.ts": {
-    "mtime": 1791936939.9353712,
-    "seen": 1791937352.7646601,
-    "ast_hash": "1d32a234007a7b5bb2f16440aece6a27",
+    "mtime": 1791942314.8392272,
+    "seen": 1791942418.0416055,
+    "ast_hash": "bb1b45d248ff930364c21a6a79f52b50",
     "semantic_hash": ""
   },
   "src/systems/grandstand.ts": {
-    "mtime": 1791937703.9458003,
-    "seen": 1791937798.952336,
-    "ast_hash": "1be09cad95c08feef842caa63a8bfaee",
+    "mtime": 1791942619.910223,
+    "seen": 1791942838.7390847,
+    "ast_hash": "a64aaa6242e59c2cdb71d1a0594f7e87",
     "semantic_hash": ""
   },
   "src/systems/ground.ts": {
@@ -192,9 +192,9 @@
     "semantic_hash": "71f4c026c5880560bb02c9e438a92a7e"
   },
   "src/systems/weather.ts": {
-    "mtime": 1791937523.8146122,
-    "seen": 1791937601.0638146,
-    "ast_hash": "ec99b94f0c9571d18eaf7945d8399fb0",
+    "mtime": 1791942619.9122987,
+    "seen": 1791942838.7391205,
+    "ast_hash": "003658c9d3513769cc9b0cf92c3d3f16",
     "semantic_hash": ""
   },
   "src/systems/world.ts": {
@@ -222,9 +222,9 @@
     "semantic_hash": ""
   },
   "src/ui/Intro.ts": {
-    "mtime": 1791936490.2245636,
-    "seen": 1791936878.57711,
-    "ast_hash": "a1e8b9edf58932e38d7b7d175c7b29a5",
+    "mtime": 1791941835.3300617,
+    "seen": 1791941857.4539566,
+    "ast_hash": "3119274267bfc2be3e1fc57e708034ed",
     "semantic_hash": ""
   },
   "src/ui/Joystick.ts": {
@@ -270,9 +270,9 @@
     "semantic_hash": "2debfbc7ab17b2bdeacbd9296aaa959d"
   },
   "src/scenes/MainMenu.ts": {
-    "mtime": 1791938831.1937075,
-    "seen": 1791938855.6837182,
-    "ast_hash": "a3f54ae0309e62c975619221e6f23f5c",
+    "mtime": 1791942750.5969694,
+    "seen": 1791942838.7390494,
+    "ast_hash": "62d9eb30ef3685bebbd6be5f85d79166",
     "semantic_hash": ""
   },
   "index.html": {
@@ -876,9 +876,9 @@
     "semantic_hash": ""
   },
   "src/data/stadiums.ts": {
-    "mtime": 1791412054.3501136,
-    "seen": 1791412085.9822125,
-    "ast_hash": "bfdbd6f63bfaeb5c7ad2a29e5865327f",
+    "mtime": 1791942619.908241,
+    "seen": 1791942838.7389894,
+    "ast_hash": "03a383a8828dedf4a6a63bbe2f856490",
     "semantic_hash": ""
   },
   "src/systems/skyline.ts": {
@@ -894,15 +894,15 @@
     "semantic_hash": ""
   },
   "src/systems/daytime.ts": {
-    "mtime": 1791937726.3893876,
-    "seen": 1791937798.9523282,
-    "ast_hash": "e68c6dc3cb55ab00b4c1d0e3ef866500",
+    "mtime": 1791942436.3013158,
+    "seen": 1791942521.992249,
+    "ast_hash": "885ca46daa416ffc5b24efc5c9089076",
     "semantic_hash": ""
   },
   "public/sw.js": {
-    "mtime": 1791420250.0541847,
-    "seen": 1791734615.6311212,
-    "ast_hash": "87bdfcd98582bc839fd9a0f8bf326f19",
+    "mtime": 1791940472.1939797,
+    "seen": 1791940883.817194,
+    "ast_hash": "3b37b16a2b6eb233d8aa5c91acde2cbc",
     "semantic_hash": ""
   },
   "public/icons/icon-180.png": {
@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "src/player/PlayerSave.ts": {
-    "mtime": 1791939177.1007557,
-    "seen": 1791939348.5817149,
-    "ast_hash": "5ccdf1582661ef4e7e9948c5be5a529e",
+    "mtime": 1791942077.1585493,
+    "seen": 1791942282.7319636,
+    "ast_hash": "b08db736842a5b120bfd2d1ed9aa635d",
     "semantic_hash": ""
   },
   "src/scenes/CareerTest.ts": {
@@ -960,9 +960,9 @@
     "semantic_hash": ""
   },
   "src/systems/careerAssets.ts": {
-    "mtime": 1791417668.5181842,
-    "seen": 1791417827.0189648,
-    "ast_hash": "c1a26342dc3f81c778e73f1fbb7a131d",
+    "mtime": 1791942077.1635506,
+    "seen": 1791942282.7320502,
+    "ast_hash": "9920839f2ee786d5619264ad0e8d70bf",
     "semantic_hash": ""
   },
   "docs/carreira/ordem-de-execucao-claude-code.md": {
@@ -1752,75 +1752,75 @@
     "semantic_hash": ""
   },
   "public/assets/layers/sock_high.png": {
-    "mtime": 1791412636.3824437,
-    "seen": 1791413018.7391875,
-    "ast_hash": "e0c632f3823e8ead60b6cf3e584a8099",
+    "mtime": 1791940188.2306178,
+    "seen": 1791940883.8175962,
+    "ast_hash": "5205b37123d7c6a50a48bfcf2ed5dd72",
     "semantic_hash": ""
   },
   "public/assets/layers/sock_low.png": {
-    "mtime": 1791412636.1555011,
-    "seen": 1791413018.7391899,
-    "ast_hash": "3ae105d54cecb6b041bb2f928b407ca2",
+    "mtime": 1791940189.7732217,
+    "seen": 1791940883.8175976,
+    "ast_hash": "f15e04d196c0ca26d21c0074b6d2dc0e",
     "semantic_hash": ""
   },
   "public/assets/layers/sock_mid.png": {
-    "mtime": 1791412636.6193411,
-    "seen": 1791413018.7391918,
-    "ast_hash": "f89de10657c74ce5d19879ae398ef45f",
+    "mtime": 1791940189.1130767,
+    "seen": 1791940883.8175993,
+    "ast_hash": "3c462180c79f732792b6ebad64da2ac5",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_band_high.png": {
-    "mtime": 1791412636.1368194,
-    "seen": 1791413018.7391949,
-    "ast_hash": "a1ab24cfbea699cdffcc200e883e4275",
+    "mtime": 1791940188.4433367,
+    "seen": 1791940883.817601,
+    "ast_hash": "26af4f597756dbdd4937a5ab951604fc",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_band_low.png": {
-    "mtime": 1791412636.4987223,
-    "seen": 1791413018.739197,
-    "ast_hash": "8eba50588e1d8f334880d7bb7a9c0d85",
+    "mtime": 1791940189.8648624,
+    "seen": 1791940883.8176024,
+    "ast_hash": "b5b2b9c27aaaba7cec0dbf390a9f2f42",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_band_mid.png": {
-    "mtime": 1791412636.5855486,
-    "seen": 1791413018.7392004,
-    "ast_hash": "00723f7206e515e14413896b32ec4b69",
+    "mtime": 1791940189.3192997,
+    "seen": 1791940883.8176038,
+    "ast_hash": "372177c11aacffd7648b458c464781c3",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_hoops_high.png": {
-    "mtime": 1791412636.1857119,
-    "seen": 1791413018.7392032,
-    "ast_hash": "f828f98167825e5373d4a1408fd9e561",
+    "mtime": 1791940188.6617055,
+    "seen": 1791940883.8176053,
+    "ast_hash": "d82223b9ad54674a7402a95b303542c5",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_hoops_low.png": {
-    "mtime": 1791412636.461991,
-    "seen": 1791413018.739206,
-    "ast_hash": "cd677f8c626cd64b1e72870635e36484",
+    "mtime": 1791940189.9648876,
+    "seen": 1791940883.8176067,
+    "ast_hash": "ca63ff58c1a3b3c5705180e723611441",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_hoops_mid.png": {
-    "mtime": 1791412636.5739675,
-    "seen": 1791413018.7392087,
-    "ast_hash": "d9743044f38f0e7a83d55728f25a9b83",
+    "mtime": 1791940189.5193987,
+    "seen": 1791940883.817608,
+    "ast_hash": "fab98913a25d4c2fb74a897f5df684eb",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_wide_high.png": {
-    "mtime": 1791412636.6309624,
-    "seen": 1791413018.7392116,
-    "ast_hash": "69821bba831490346662ef145e6bbe08",
+    "mtime": 1791940188.872439,
+    "seen": 1791940883.8176098,
+    "ast_hash": "896d28152dae0376de05abe16de369e0",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_wide_low.png": {
-    "mtime": 1791412636.290387,
-    "seen": 1791413018.7392137,
-    "ast_hash": "5e686031b3a7919c25173d84fba0f9ed",
+    "mtime": 1791940190.0520139,
+    "seen": 1791940883.817611,
+    "ast_hash": "4dd37243c5bde9e00fc1ebd55d6fd377",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_wide_mid.png": {
-    "mtime": 1791412636.020475,
-    "seen": 1791413018.7392163,
-    "ast_hash": "e0979148a9040acc7ebe32981ef49471",
+    "mtime": 1791940189.6707828,
+    "seen": 1791940883.8176122,
+    "ast_hash": "8beb07bf6b803e245ccb0375622918f4",
     "semantic_hash": ""
   },
   "public/assets/layers/towel_F.png": {
@@ -2244,15 +2244,15 @@
     "semantic_hash": ""
   },
   "src/career/season.ts": {
-    "mtime": 1791939177.1112986,
-    "seen": 1791939348.5816653,
-    "ast_hash": "65fb1baee5e9adffe040189080988d29",
+    "mtime": 1791942619.9178324,
+    "seen": 1791942838.7389667,
+    "ast_hash": "a2d2ec8fedeb139cf3a4a04e49d821ac",
     "semantic_hash": ""
   },
   "src/scenes/CarreiraMenu.ts": {
-    "mtime": 1791939177.123822,
-    "seen": 1791939348.5817397,
-    "ast_hash": "9173e8bd53cdc92607c83f043bed090d",
+    "mtime": 1791942144.7432277,
+    "seen": 1791942282.731985,
+    "ast_hash": "18b860eee97e7119e3d2b3891e3eb29c",
     "semantic_hash": ""
   },
   "src/career/kits.ts": {
@@ -2262,21 +2262,21 @@
     "semantic_hash": ""
   },
   "src/integration/MatchBridge.ts": {
-    "mtime": 1791936454.479002,
-    "seen": 1791936878.5770125,
-    "ast_hash": "ef1744589ae3842122a15a3bb42aeea1",
+    "mtime": 1791942077.1783247,
+    "seen": 1791942282.7319489,
+    "ast_hash": "586556e908699c377fe05d8c01cdd033",
     "semantic_hash": ""
   },
   "src/career/league.ts": {
-    "mtime": 1791934985.222119,
-    "seen": 1791935584.0364175,
-    "ast_hash": "74fcf3867f1a2ba7ca5b94d02713b975",
+    "mtime": 1791942076.0438583,
+    "seen": 1791942282.7318537,
+    "ast_hash": "a9ef353e2ca1826f027efdef5ba93f3a",
     "semantic_hash": ""
   },
   "src/scenes/PreJogo.ts": {
-    "mtime": 1791937258.1058788,
-    "seen": 1791937352.7646472,
-    "ast_hash": "b15972b14db72a590f14a166439c67bb",
+    "mtime": 1791942144.7478132,
+    "seen": 1791942282.732036,
+    "ast_hash": "988aa4cdaf0400f7db8573cbea98b0c2",
     "semantic_hash": ""
   },
   "src/ui/gradcard.ts": {
@@ -2298,15 +2298,75 @@
     "semantic_hash": ""
   },
   "src/scenes/CareerSlots.ts": {
-    "mtime": 1791939543.3873806,
-    "seen": 1791939668.193486,
-    "ast_hash": "4f68c37de0c136cd000367e73d40384a",
+    "mtime": 1791939873.08704,
+    "seen": 1791939987.8108177,
+    "ast_hash": "5482bd100fff0c391ca9716848aede23",
     "semantic_hash": ""
   },
   "src/ui/jerseyArt.ts": {
-    "mtime": 1791939603.8239057,
-    "seen": 1791939668.1937587,
-    "ast_hash": "9206f8fda77f696fc93b723a02c1c656",
+    "mtime": 1791939930.2426603,
+    "seen": 1791939987.8117447,
+    "ast_hash": "ae60b903ccb1416261a434fcda2cc4b2",
+    "semantic_hash": ""
+  },
+  "public/assets/qfl_bowl.png": {
+    "mtime": 1791941518.2768881,
+    "seen": 1791941857.4542472,
+    "ast_hash": "b43d0be26be488e9ca38325027360a13",
+    "semantic_hash": ""
+  },
+  "public/assets/qfl_bowl_s.png": {
+    "mtime": 1791941518.307988,
+    "seen": 1791941857.4542487,
+    "ast_hash": "b0546170f0509178d314401afe9f3bdb",
+    "semantic_hash": ""
+  },
+  "src/career/playoffs.ts": {
+    "mtime": 1791942077.1539924,
+    "seen": 1791942282.7318637,
+    "ast_hash": "45df36a68e845d624697044f63781dfe",
+    "semantic_hash": ""
+  },
+  "public/assets/po_r1.png": {
+    "mtime": 1791941968.795501,
+    "seen": 1791942282.7328067,
+    "ast_hash": "551c80af148664d703d0559f0cedf8c7",
+    "semantic_hash": ""
+  },
+  "public/assets/po_r1_s.png": {
+    "mtime": 1791941968.8447912,
+    "seen": 1791942282.7328105,
+    "ast_hash": "946a294e3b75b8fa6f27c00fb9255699",
+    "semantic_hash": ""
+  },
+  "public/assets/po_r2.png": {
+    "mtime": 1791941968.8998845,
+    "seen": 1791942282.732814,
+    "ast_hash": "e4ffa1d6c8513020f4d4739215c4b6e6",
+    "semantic_hash": ""
+  },
+  "public/assets/po_r2_s.png": {
+    "mtime": 1791941968.928526,
+    "seen": 1791942282.7328172,
+    "ast_hash": "fb1c2679abad377e646352457d5217cd",
+    "semantic_hash": ""
+  },
+  "public/assets/po_semi.png": {
+    "mtime": 1791941968.9616597,
+    "seen": 1791942282.73282,
+    "ast_hash": "62be911ebcad82a8d956faffa0b7ce5d",
+    "semantic_hash": ""
+  },
+  "public/assets/po_semi_s.png": {
+    "mtime": 1791941968.9836802,
+    "seen": 1791942282.732823,
+    "ast_hash": "ee95cf34473d268f8991e42e12db9f92",
+    "semantic_hash": ""
+  },
+  "src/ui/pixelPhoto.ts": {
+    "mtime": 1791942640.5555835,
+    "seen": 1791942838.7391427,
+    "ast_hash": "e650b1b01d8d261333ca89f5b9263856",
     "semantic_hash": ""
   }
 }

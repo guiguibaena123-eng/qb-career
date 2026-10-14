@@ -65,7 +65,7 @@ export interface TeamConfig {
 export type WeatherChoice = 'clear' | 'rain' | 'snow' | 'random';
 
 /** Escolhas do menu (Partida rápida). `awayUni` = null deixa o uniforme do adversário automático (o que mais contrasta). */
-export const matchConfig: { home: string; away: string; homeUni: number; awayUni: number | null; weather: WeatherChoice; stand: StandChoice; time: TimeChoice } = {
+export const matchConfig: { home: string; away: string; homeUni: number; awayUni: number | null; weather: WeatherChoice; stand: StandChoice; time: TimeChoice; side: 'home' | 'away' | 'final'; standTeam: string | null } = {
   home: 'kc',
   away: 'buf',
   homeUni: 0,
@@ -73,6 +73,9 @@ export const matchConfig: { home: string; away: string; homeUni: number; awayUni
   weather: 'random',
   stand: 'auto',
   time: 'random',
+  /** Partida Rápida: jogar em casa ou fora, e o estádio de outro time (campo neutro). */
+  side: 'home',
+  standTeam: null,
 };
 
 try {
@@ -86,6 +89,12 @@ try {
 
 /** Estádio da partida (carreira: jogo fora = estádio do adversário). null = estádio do TEAMS.home. */
 export const venue: { id: string | null } = { id: null };
+
+/** Final (QFL Bowl): campo, estádio e torcida especiais. */
+export const finalGame = { on: false };
+
+/** Playoffs: logo da fase (chave da textura) pintada nas linhas de 40 jardas. null = jogo comum. */
+export const playoffLogo: { key: string | null } = { key: null };
 
 /** Transmissão de horário nobre (carreira): placar e abertura especiais. null = jogo comum. */
 export const broadcast: { prime: { name: string; short: string; color: number; glow: number } | null } = { prime: null };

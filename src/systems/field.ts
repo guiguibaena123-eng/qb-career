@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, FIELD, FONT_TITLE, hostTeam, logoKey } from '../config';
+import { COLORS, FIELD, FONT_TITLE, TEAMS, finalGame, hostTeam, logoKey, playoffLogo } from '../config';
 import { drawGoalPost, drawPylon } from '../entities/GoalPost';
 import { fillQuad } from './ground';
 import type { ShadowLight } from './daytime';
@@ -57,14 +57,16 @@ export class FieldRenderer {
         this.numbers.push({ t, x, y: yd });
       }
     }
-    // Nome do mandante nas duas end zones (o estádio é do time da casa)
+    // Nome do mandante nas duas end zones (o estádio é do time da casa); na final, cada end zone é de um time
+    const fin = finalGame.on && !fieldOptions.combine;
     const ez = [
-      { name: fieldOptions.combine ? 'QBL COMBINE' : hostTeam().name, y: -5 },
-      { name: fieldOptions.combine ? 'QBL COMBINE' : hostTeam().name, y: 105 },
+      { name: fieldOptions.combine ? 'QBL COMBINE' : fin ? TEAMS.home.name : hostTeam().name, fg: fin ? TEAMS.home.fg : hostTeam().fg, y: -5 },
+      { name: fieldOptions.combine ? 'QBL COMBINE' : fin ? TEAMS.away.name : hostTeam().name, fg: fin ? TEAMS.away.fg : hostTeam().fg, y: 105 },
     ];
+    if (playoffLogo.key && !fieldOptions.combine) this.buildBowlLogos(scene, playoffLogo.key);
     for (const e of ez) {
       const t = scene.add
-        .text(0, 0, e.name, { fontFamily: FONT_TITLE, fontSize: fieldOptions.combine ? '52px' : '64px', color: fieldOptions.combine ? '#FFFFFF' : hostTeam().fg })
+        .text(0, 0, e.name, { fontFamily: FONT_TITLE, fontSize: fieldOptions.combine ? '52px' : '64px', color: fieldOptions.combine ? '#FFFFFF' : e.fg })
         .setOrigin(0.5, 0.5)
         .setAlpha(0.85)
         .setDepth(1);
@@ -101,9 +103,10 @@ export class FieldRenderer {
       this.quad(0, y, W, y + 5, (y / 5) % 2 === 0 ? this.grass[0] : this.grass[1]);
     }
     // As duas end zones nas cores do mandante
+    const fin = finalGame.on && !fieldOptions.combine;
     const ezColor = fieldOptions.combine ? COMBINE_BLUE : hostTeam().color;
-    this.quad(0, -10, W, 0, ezColor);
-    this.quad(0, 100, W, 110, ezColor);
+    this.quad(0, -10, W, 0, fin ? TEAMS.home.color : ezColor);
+    this.quad(0, 100, W, 110, fin ? TEAMS.away.color : ezColor);
 
     // Linhas de jarda a cada 5 (gol mais grossa)
     for (let y = 0; y <= 100; y += 5) {
@@ -129,6 +132,7 @@ export class FieldRenderer {
 
     this.updateTexts();
     this.layMidLogo();
+    this.layBowlLogos();
 
     // Objetos em pé: do mais distante para o mais perto
     const pg = this.props;
@@ -147,7 +151,8 @@ export class FieldRenderer {
 
   /** Logo do mandante no meio (50 jardas): rotacionada 90° para a esquerda, com a tinta "gasta" para parecer pintada no gramado. */
   private buildMidLogo(scene: Phaser.Scene) {
-    const src = scene.textures.get(fieldOptions.combine ? 'logoLeague' : logoKey(hostTeam().id, 'l')).getSourceImage() as HTMLImageElement;
+    // Combine e final: logo da liga no meio do campo; senão, a do mandante
+    const src = scene.textures.get(fieldOptions.combine || finalGame.on ? 'logoLeague' : logoKey(hostTeam().id, 'l')).getSourceImage() as HTMLImageElement;
     const N = 384;
     if (scene.textures.exists('midlogo')) scene.textures.remove('midlogo');
     const tex = scene.textures.createCanvas('midlogo', N, N)!;
@@ -169,12 +174,50 @@ export class FieldRenderer {
     this.midLogo = scene.add.image(0, 0, 'midlogo').setOrigin(0.5).setAlpha(0.9).setDepth(0.1).setVisible(false);
   }
 
+  /** Playoffs e final: logo da fase (menor) pintada nas duas linhas de 30 jardas. */
+  private bowl: Phaser.GameObjects.Image[] = [];
+  private buildBowlLogos(scene: Phaser.Scene, key: string) {
+    const src = scene.textures.get(key).getSourceImage() as HTMLImageElement;
+    const N = 256;
+    if (scene.textures.exists('bowllogo')) scene.textures.remove('bowllogo');
+    const tex = scene.textures.createCanvas('bowllogo', N, N)!;
+    const ctx = tex.getContext();
+    ctx.save();
+    ctx.translate(0, N);
+    ctx.rotate(-Math.PI / 2);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(src, 0, 0, N, N);
+    ctx.restore();
+    ctx.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 1400; i++) {
+      ctx.fillStyle = `rgba(0,0,0,${0.1 + Math.random() * 0.2})`;
+      ctx.fillRect(Math.random() * N, Math.random() * N, 1 + Math.random() * 2, 1 + Math.random() * 2);
+    }
+    tex.refresh();
+    for (let i = 0; i < 2; i++) this.bowl.push(scene.add.image(0, 0, 'bowllogo').setOrigin(0.5).setAlpha(0.92).setDepth(0.1).setVisible(false));
+  }
+
+  private layBowlLogos() {
+    [30, 70].forEach((y, i) => {
+      const img = this.bowl[i];
+      if (!img) return;
+      const half = 3.2; // ~6 jardas: bem menor que a logo do meio
+      if (y + half < this.proj.nearY || y - half > this.proj.camY + 150) {
+        img.setVisible(false);
+        return;
+      }
+      const p = this.proj.project(FIELD.width / 2, y, 0, a);
+      const sx = (p.s * 10 * (half * 2)) / img.width;
+      img.setVisible(true).setPosition(p.x, p.y).setScale(sx, sx * this.proj.flattenAt(y));
+    });
+  }
+
   /** Posiciona a logo deitada no gramado (escala + achatamento da perspectiva). */
   private layMidLogo() {
     const img = this.midLogo;
     if (!img) return;
     const y = 50;
-    const half = 8.5; // a logo ocupa ~17 jardas
+    const half = 8.5; // a logo ocupa ~17 jardas (na final, menor: as logos do QFL Bowl ficam nas 40)
     if (y + half < this.proj.nearY || y - half > this.proj.camY + 150) {
       img.setVisible(false);
       return;

@@ -123,6 +123,8 @@ export interface CareerState {
   /** XP somado nas partidas da carreira e confiança no fim do último jogo (0-5). */
   xp?: number;
   confidence?: number;
+  /** Playoffs da temporada: seu jogo em cada fase (wc, div, conf, final). */
+  post?: Partial<Record<'wc' | 'div' | 'conf' | 'final', { opp: string; result?: { us: number; them: number }; stats?: GameLine }>>;
 }
 
 /** Linha do QB numa partida da carreira. */

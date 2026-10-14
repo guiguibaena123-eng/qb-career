@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import { careerTeam, nextGame, PRIME } from '../career/season';
-import { applyMatchup, broadcast, matchConfig, venue } from '../config';
+import { ROUND_INFO, type Round } from '../career/playoffs';
+import { applyMatchup, broadcast, finalGame, matchConfig, playoffLogo, venue } from '../config';
 import { TeamRepository } from '../data/TeamRepository';
 import { getSave, updateSave } from '../player/PlayerSave';
 import type { QbStats } from '../state/GameState';
@@ -26,6 +27,9 @@ interface Current {
   week: number;
   opp: string;
   home: boolean;
+  final: boolean;
+  /** Fase dos playoffs (null = temporada regular). */
+  round: Round | null;
   done: boolean;
   /** Escolhas da Partida Rápida, devolvidas ao sair. */
   prev: typeof matchConfig;
@@ -45,9 +49,12 @@ export function startCareerMatch(scene: Phaser.Scene): boolean {
   if (!g?.opp) return false;
   const team = careerTeam();
   const s = getSave();
-  current = { week: g.week, opp: g.opp.id, home: g.home, done: false, prev: { ...matchConfig } };
-  Object.assign(matchConfig, { home: team.id, away: g.opp.id, homeUni: KIT_UNI[s.look.kit], awayUni: null, weather: g.weather, stand: 'auto', time: g.tod });
-  venue.id = g.venue;
+  current = { week: g.week, opp: g.opp.id, home: g.home, final: !!g.final, round: g.round ?? null, done: false, prev: { ...matchConfig } };
+  // QFL Bowl: campo neutro com estádio, torcida e campo da final; playoffs: logo da fase nas 40
+  finalGame.on = !!g.final;
+  playoffLogo.key = g.round ? ROUND_INFO[g.round].logo : null;
+  Object.assign(matchConfig, { home: team.id, away: g.opp.id, homeUni: KIT_UNI[s.look.kit], awayUni: null, weather: g.weather, stand: g.final ? 'classica' : 'auto', time: g.tod });
+  venue.id = g.final ? null : g.venue;
   broadcast.prime = g.prime ? PRIME[g.prime] : null;
   applyMatchup();
   const key = `Career${++counter}`;
@@ -68,6 +75,31 @@ export function finishCareerMatch(r: CareerMatchResult) {
   const tie = r.us === r.them;
   const line = { comp: r.stats.comp, att: r.stats.att, yards: r.stats.yards, td: r.stats.td, int: r.stats.int, sacks: r.stats.sacks };
   const schedule = c.schedule.map((g) => (g.week === current!.week ? { ...g, result: { us: r.us, them: r.them }, stats: line } : g));
+  if (current.round) {
+    // Playoffs: empate = o mandante (melhor seed) avança
+    const rd = current.round;
+    const info = ROUND_INFO[rd];
+    const adv = r.us > r.them || (r.us === r.them && current.home);
+    const news =
+      rd === 'final'
+        ? adv
+          ? `${team.name} SÃO CAMPEÕES DO QFL BOWL! ${r.us} A ${r.them} SOBRE ${opp.name}`
+          : `${opp.name} VENCEM O QFL BOWL; ${team.name} FICAM COM O VICE (${r.us} A ${r.them})`
+        : adv
+          ? `${team.name} AVANÇAM NO ${info.name} (${info.sub}): ${r.us} A ${r.them} SOBRE ${opp.name}`
+          : `${team.name} ELIMINADOS NO ${info.name} (${info.sub}) PELOS ${opp.name}: ${r.us} A ${r.them}`;
+    updateSave({
+      career: {
+        ...c,
+        post: { ...(c.post ?? {}), [rd]: { opp: opp.id, result: { us: r.us, them: r.them }, stats: line } },
+        week: info.week + 1,
+        xp: (c.xp ?? 0) + r.xp,
+        confidence: r.confidence,
+        news: [...c.news, { week: info.week, text: news, body: `${s.name} completou ${line.comp} de ${line.att} passes para ${line.yards} jardas, com ${line.td} TD e ${line.int} INT (${info.sub}).` }],
+      },
+    });
+    return;
+  }
   const record = { w: c.record.w + (win ? 1 : 0), l: c.record.l + (!win && !tie ? 1 : 0) };
   const head = win
     ? `${team.name} VENCEM ${opp.name} POR ${r.us} A ${r.them}`
@@ -94,6 +126,8 @@ export function leaveCareerMatch() {
   Object.assign(matchConfig, current.prev);
   venue.id = null;
   broadcast.prime = null;
+  finalGame.on = false;
+  playoffLogo.key = null;
   applyMatchup();
   current = null;
 }
