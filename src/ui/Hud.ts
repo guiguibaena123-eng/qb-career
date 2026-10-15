@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { GAME_W, TEAMS, broadcast, logoKey } from '../config';
+import { GAME_W, TEAMS, broadcast, logoKey, matchRecords } from '../config';
 import type { GameState } from '../state/GameState';
+import { buildPrimeBoard } from './primeBoard';
 import { label, title, UI } from './widgets';
 
 /*
@@ -32,56 +33,53 @@ export class Hud {
     const h = 44;
     const mid = 96;
     const side = (R - L - mid) / 2;
-    // Horário nobre: moldura dupla na cor da transmissão, centro escuro e a faixa com o nome do jogo
     const pr = broadcast.prime;
-    if (pr) {
-      g.fillStyle(pr.glow, 1);
-      g.fillRect(L - 6, top - 6, R - L + 12, h + 12);
-      g.fillStyle(pr.color, 1);
-      g.fillRect(L - 4, top - 4, R - L + 8, h + 8);
-    }
-    g.fillStyle(UI.dark, 1);
-    g.fillRect(L - 3, top - 3, R - L + 6, h + 6);
-    g.fillStyle(TEAMS.home.color, 1);
-    g.fillRect(L, top, side, h);
-    g.fillStyle(pr ? 0x0d0f1f : 0xf3f0e6, 1);
-    g.fillRect(L + side, top, mid, h);
-    if (pr) {
-      // brilho no centro e filetes na cor da transmissão
-      g.fillStyle(pr.color, 0.35);
-      g.fillRect(L + side, top, mid, h / 2);
-      g.fillStyle(pr.glow, 1);
-      g.fillRect(L + side, top, 2, h);
-      g.fillRect(L + side + mid - 2, top, 2, h);
-    }
-    g.fillStyle(TEAMS.away.color, 1);
-    g.fillRect(L + side + mid, top, side, h);
-
     const t = (k: string, o: Phaser.GameObjects.Text) => (this.texts[k] = o);
-    // Logos dos times
-    const logoH = scene.add.image(L + 5, top + 4, logoKey(TEAMS.home.id)).setOrigin(0).setDisplaySize(36, 36);
-    const logoA = scene.add.image(R - 5 - 36, top + 4, logoKey(TEAMS.away.id)).setOrigin(0).setDisplaySize(36, 36);
-    t('homeAbbr', title(scene, L + 46, top + h / 2, TEAMS.home.abbr, 11, TEAMS.home.fg).setOrigin(0, 0.5));
-    t('homeScore', title(scene, L + side - 10, top + h / 2, '', 18, TEAMS.home.fg).setOrigin(1, 0.5));
-    t('quarter', label(scene, L + side + mid / 2, top + 13, '', 11, pr ? '#' + pr.glow.toString(16).padStart(6, '0') : '#0D0D12').setOrigin(0.5));
-    t('clock', title(scene, L + side + mid / 2, top + 31, '', 12, pr ? '#FFFFFF' : '#0D0D12').setOrigin(0.5));
-    // Faixa "SUNDAY NIGHT" em cima do placar
+    // Retrospecto (carreira): a sigla sobe um pouco e o "7-2" fica embaixo
+    const rec = !!(matchRecords.home || matchRecords.away);
     const ribbon: Phaser.GameObjects.GameObject[] = [];
+    let logoH: Phaser.GameObjects.Image;
+    let logoA: Phaser.GameObjects.Image;
     if (pr) {
-      const rt = title(scene, L + side + mid / 2, top - 9, pr.short, 7, '#FFFFFF').setOrigin(0.5);
-      const rw = Math.max(mid + 30, rt.width + 24);
-      const rg = scene.add.graphics();
-      rg.fillStyle(UI.dark, 1);
-      rg.fillRect(L + side + mid / 2 - rw / 2 - 3, top - 19, rw + 6, 18);
-      rg.fillStyle(pr.color, 1);
-      rg.fillRect(L + side + mid / 2 - rw / 2, top - 17, rw, 14);
-      rg.fillStyle(pr.glow, 1);
-      rg.fillRect(L + side + mid / 2 - rw / 2, top - 17, 3, 14);
-      rg.fillRect(L + side + mid / 2 + rw / 2 - 3, top - 17, 3, 14);
-      ribbon.push(rg, rt);
+      // Horário nobre e playoffs: cada transmissão tem o seu placar (ui/primeBoard.ts)
+      const pb = buildPrimeBoard(scene, pr, rec);
+      ribbon.push(...pb.layers);
+      logoH = scene.add.image(pb.logoH.x, pb.logoH.y, logoKey(TEAMS.home.id)).setOrigin(0).setDisplaySize(pb.logoH.s, pb.logoH.s);
+      logoA = scene.add.image(pb.logoA.x, pb.logoA.y, logoKey(TEAMS.away.id)).setOrigin(0).setDisplaySize(pb.logoA.s, pb.logoA.s);
+      const put = (k: string, s: { x: number; y: number; ox: number }, o: Phaser.GameObjects.Text) => t(k, o.setOrigin(s.ox, 0.5).setPosition(s.x, s.y));
+      put('homeAbbr', pb.homeAbbr, title(scene, 0, 0, TEAMS.home.abbr, pb.size.abbr, pb.colors.home));
+      put('awayAbbr', pb.awayAbbr, title(scene, 0, 0, TEAMS.away.abbr, pb.size.abbr, pb.colors.away));
+      if (rec) {
+        put('homeRec', pb.homeRec, label(scene, 0, 0, matchRecords.home, 9, pb.colors.home).setAlpha(0.9));
+        put('awayRec', pb.awayRec, label(scene, 0, 0, matchRecords.away, 9, pb.colors.away).setAlpha(0.9));
+      }
+      put('homeScore', pb.homeScore, title(scene, 0, 0, '', pb.size.score, pb.colors.homeScore));
+      put('awayScore', pb.awayScore, title(scene, 0, 0, '', pb.size.score, pb.colors.awayScore));
+      put('quarter', pb.quarter, label(scene, 0, 0, '', pb.size.quarter, pb.colors.quarter));
+      put('clock', pb.clock, title(scene, 0, 0, '', pb.size.clock, pb.colors.clock));
+    } else {
+      g.fillStyle(UI.dark, 1);
+      g.fillRect(L - 3, top - 3, R - L + 6, h + 6);
+      g.fillStyle(TEAMS.home.color, 1);
+      g.fillRect(L, top, side, h);
+      g.fillStyle(0xf3f0e6, 1);
+      g.fillRect(L + side, top, mid, h);
+      g.fillStyle(TEAMS.away.color, 1);
+      g.fillRect(L + side + mid, top, side, h);
+      logoH = scene.add.image(L + 5, top + 4, logoKey(TEAMS.home.id)).setOrigin(0).setDisplaySize(36, 36);
+      logoA = scene.add.image(R - 5 - 36, top + 4, logoKey(TEAMS.away.id)).setOrigin(0).setDisplaySize(36, 36);
+      const abbrY = rec ? top + 15 : top + h / 2;
+      t('homeAbbr', title(scene, L + 46, abbrY, TEAMS.home.abbr, 11, TEAMS.home.fg).setOrigin(0, 0.5));
+      if (rec) {
+        t('homeRec', label(scene, L + 46, top + 33, matchRecords.home, 9, TEAMS.home.fg).setOrigin(0, 0.5).setAlpha(0.9));
+        t('awayRec', label(scene, R - 46, top + 33, matchRecords.away, 9, TEAMS.away.fg).setOrigin(1, 0.5).setAlpha(0.9));
+      }
+      t('homeScore', title(scene, L + side - 10, top + h / 2, '', 18, TEAMS.home.fg).setOrigin(1, 0.5));
+      t('quarter', label(scene, L + side + mid / 2, top + 13, '', 11, '#0D0D12').setOrigin(0.5));
+      t('clock', title(scene, L + side + mid / 2, top + 31, '', 12, '#0D0D12').setOrigin(0.5));
+      t('awayScore', title(scene, L + side + mid + 10, top + h / 2, '', 18, TEAMS.away.fg).setOrigin(0, 0.5));
+      t('awayAbbr', title(scene, R - 46, abbrY, TEAMS.away.abbr, 11, TEAMS.away.fg).setOrigin(1, 0.5));
     }
-    t('awayScore', title(scene, L + side + mid + 10, top + h / 2, '', 18, TEAMS.away.fg).setOrigin(0, 0.5));
-    t('awayAbbr', title(scene, R - 46, top + h / 2, TEAMS.away.abbr, 11, TEAMS.away.fg).setOrigin(1, 0.5));
 
     // Barra de descida / posição / play clock
     this.downBar = scene.add.container(0, 0);
@@ -138,7 +136,7 @@ export class Hud {
     this.confY = cy + 29;
 
     // Tudo num container só (escalado): placar, barra de descida e card do QB
-    const top6 = ['homeAbbr', 'homeScore', 'quarter', 'clock', 'awayScore', 'awayAbbr'].map((k) => this.texts[k]);
+    const top6 = ['homeAbbr', 'homeRec', 'homeScore', 'quarter', 'clock', 'awayScore', 'awayAbbr', 'awayRec'].filter((k) => this.texts[k]).map((k) => this.texts[k]);
     this.root.add([g, ...ribbon, logoH, logoA, ...top6, this.downBar, this.card]);
 
     this.refresh();

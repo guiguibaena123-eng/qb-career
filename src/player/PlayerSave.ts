@@ -125,6 +125,54 @@ export interface CareerState {
   confidence?: number;
   /** Playoffs da temporada: seu jogo em cada fase (wc, div, conf, final). */
   post?: Partial<Record<'wc' | 'div' | 'conf' | 'final', { opp: string; result?: { us: number; them: number }; stats?: GameLine }>>;
+  /** XP já "gasto" em temporadas anteriores (o ganho da temporada = xp - xpBase). */
+  xpBase?: number;
+  /** Contrato atual (renovado de tempos em tempos); sem ele vale o do Draft. */
+  contract?: { years: number; value: number; from: number };
+  /** Resumo de cada temporada concluída. */
+  history?: SeasonRecap[];
+  /** A temporada já foi simulada/encerrada (o botão passa a oferecer a próxima). */
+  seasonDone?: boolean;
+  /** Produção de cada jogador na temporada anterior (id → pontos), base do prêmio Retorno do Ano. */
+  prod?: Record<string, number>;
+}
+
+/** Prêmio de uma temporada concluída (guardado no resumo). */
+export interface SeasonAward {
+  id: string;
+  name: string;
+  winner: string;
+  team: string;
+  /** Foi você. */
+  me: boolean;
+  /** Foi alguém do seu time (ou o seu técnico). */
+  mine: boolean;
+}
+
+/** Resumo de uma temporada da carreira. */
+export interface SeasonRecap {
+  season: number;
+  year: number;
+  team: string;
+  record: { w: number; l: number };
+  /** "CAMPEÃO DO QFL BOWL", "ELIMINADO NO ROUND TWO"... */
+  result: string;
+  stats: GameLine;
+  ovrFrom: number;
+  ovrTo: number;
+  awards?: SeasonAward[];
+  /** Id do seu time e do campeão do QFL Bowl na temporada. */
+  teamId?: string;
+  champion?: string;
+  /** Conquistas coletivas da temporada. */
+  titles?: { qfl: boolean; conf: boolean; div: boolean; playoffs: boolean };
+}
+
+/** Semente das simulações da temporada: a 1ª usa só o nome (saves antigos não mudam). */
+export function seasonTag(): string {
+  const s = getSave();
+  const n = s.career.season || 1;
+  return n > 1 ? `${s.name}~${n}` : s.name;
 }
 
 /** Linha do QB numa partida da carreira. */

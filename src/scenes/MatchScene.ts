@@ -161,6 +161,8 @@ export class MatchScene extends Phaser.Scene {
   }
   private playXp = 0;
   private gameOver = false;
+  /** Prorrogação (null = tempo regulamentar): posses encerradas e se a bola está com você. */
+  private ot: { poss: number; onUs: boolean } | null = null;
   private preUi: Phaser.GameObjects.GameObject[] = [];
   private fxTop!: Phaser.GameObjects.Graphics;
   private ui!: Fx;
@@ -1731,6 +1733,12 @@ export class MatchScene extends Phaser.Scene {
   /** Depois do TD: chutar o ponto extra ou tentar a conversão de 2. */
   private extraPointChoice() {
     const s = this.state;
+    // Prorrogação: TD encerra o jogo, sem ponto extra
+    if (this.ot) {
+      this.card.hide();
+      this.hud.refresh();
+      return this.showFinal();
+    }
     this.card.show({
       big: 'PONTO EXTRA',
       bigColor: UI.yellow,
@@ -2091,6 +2099,21 @@ export class MatchScene extends Phaser.Scene {
 
   private opponentDrive(at: number, kick: boolean) {
     const s = this.state;
+    // Tempo esgotado (ex.: TD no último lance): o jogo acaba aqui, sem campanha extra deles
+    if (this.gameOver) {
+      this.phase = 'post';
+      return this.backToPreSnap();
+    }
+    if (this.ot?.onUs) {
+      // Prorrogação: sua posse acabou sem TD (TD já encerra o jogo na hora)
+      this.ot.poss++;
+      this.ot.onUs = false;
+      if (this.otDecided()) {
+        this.phase = 'post';
+        this.hud.refresh();
+        return this.showFinal();
+      }
+    }
     this.card.hide();
     this.menuHide();
     this.kickUi.show(false);
@@ -2115,6 +2138,10 @@ export class MatchScene extends Phaser.Scene {
         s.score.away += drive.points;
         if (drive.points) this.world.stand.cheer(0.3);
         this.tickClock(drive.seconds);
+        if (this.ot) {
+          this.ot.poss++;
+          this.ot.onUs = true;
+        }
         s.los = los;
         s.down = 1;
         s.distance = Math.min(10, 100 - los);
@@ -2122,9 +2149,64 @@ export class MatchScene extends Phaser.Scene {
       },
       onEnter: () => {
         this.phase = 'post';
+        if (this.otDecided(drive.points >= 7)) {
+          this.hud.refresh();
+          return this.showFinal();
+        }
         this.backToPreSnap();
       },
     });
+  }
+
+  // ------------------------------------------------------------ prorrogação
+
+  /** Mata-mata (playoffs da carreira e a Grande Final) não aceita empate. */
+  private knockout() {
+    const cm = this.career ? careerMatch() : null;
+    return finalGame.on || !!(cm && (cm.round || cm.final));
+  }
+
+  /** Empate quando o relógio zera: toda partida tem 1 prorrogação; no mata-mata, quantas precisar. */
+  private overtimeNeeded() {
+    const s = this.state;
+    if (this.practice || s.score.home !== s.score.away) return false;
+    return !this.ot || this.knockout();
+  }
+
+  /**
+   * Regra da NFL: TD na 1ª posse vence na hora; depois que os dois times tiveram a bola, quem
+   * estiver à frente vence (morte súbita). `td` = o time que acabou de jogar fez touchdown.
+   */
+  private otDecided(td = false) {
+    const ot = this.ot;
+    const s = this.state;
+    if (!ot || s.score.home === s.score.away) return false;
+    return td || ot.poss >= 2;
+  }
+
+  /** Nova prorrogação: cara ou coroa e kickoff. A partir da 2ª, morte súbita. */
+  private startOvertime() {
+    const s = this.state;
+    s.quarter++;
+    s.clock = QUARTER_SECONDS;
+    this.gameOver = false;
+    this.ot = { poss: this.ot ? 2 : 0, onUs: false };
+    this.phase = 'intro';
+    this.card.hide();
+    this.menu.hide();
+    this.kickUi.show(false);
+    this.defenseScreen.close();
+    this.preUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
+    this.windowTag.setVisible(false);
+    this.liveUi.show('none');
+    this.hud.setBar('none');
+    this.hud.refresh();
+    this.world.targetY = 50;
+    const receive = this.rng.range(0, 1) < 0.5;
+    const nth = s.quarter - 4;
+    this.ui.caption(nth === 1 ? 'EMPATE · PRORROGAÇÃO!' : `AINDA EMPATADO · ${nth}ª PRORROGAÇÃO`, 300, 1500, '#0D0D12', 0xffd23f);
+    this.time.delayedCall(900, () => this.ui.caption(receive ? 'MOEDA: VOCÊ RECEBE' : `MOEDA: ${TEAMS.away.name} RECEBEM`, 340, 1200, '#FFFFFF', 0x2a2f4a));
+    this.time.delayedCall(2400, () => this.startKickoff(receive));
   }
 
   // ------------------------------------------------------------ abertura e kickoff
@@ -2395,6 +2477,11 @@ export class MatchScene extends Phaser.Scene {
         this.hud.setResult(`RETORNO DE TD · ${TEAMS.away.name}`, '', 0, ['TD', TEAMS.away.color, TEAMS.away.fg]);
         this.hud.refresh();
         this.afterPost = () => {
+          if (this.ot) {
+            // Prorrogação: o TD deles encerra o jogo
+            this.hud.refresh();
+            return this.showFinal();
+          }
           s.los = 25;
           s.down = 1;
           s.distance = 10;
@@ -2409,6 +2496,7 @@ export class MatchScene extends Phaser.Scene {
       s.los = Phaser.Math.Clamp(y, 12, 45);
       s.down = 1;
       s.distance = 10;
+      if (this.ot) this.ot.onUs = true;
       this.phase = 'post';
       this.backToPreSnap();
       this.time.delayedCall(250, () => this.ui.caption(`SUA BOLA ${s.spotText}`, 250, 1500, '#0D0D12', 0xffd23f));
@@ -2469,6 +2557,8 @@ export class MatchScene extends Phaser.Scene {
       p.pose = i % 3 === 0 ? 'catch' : null;
       p.state = 'idle';
     });
+    // Todos de frente para a câmera (o ataque é desenhado de costas no jogo)
+    for (const p of winners) p.faceFront(this, true);
     holder.x = cx;
     holder.y = cy - 2.6; // capitão à frente, com a taça
     holder.vx = holder.vy = 0;
@@ -2529,9 +2619,11 @@ export class MatchScene extends Phaser.Scene {
   private drawTrophy() {
     const c = this.champ;
     if (!c) return;
-    const lift = 0.35 + Math.abs(Math.sin(c.t * 2.2)) * 0.5 + c.holder.hop;
-    const p = this.world.proj.project(c.holder.x, c.holder.y, 2.9 + lift);
-    const u = p.s * 10 * 1.25; // taça grande, bem visível
+    // Taça do tamanho de uma taça de verdade em relação ao corpo: ~40% da altura do capitão (o corpo
+    // tem ~4,3u com a escala da festa), erguida acima da cabeça, nas mãos
+    const lift = Math.abs(Math.sin(c.t * 2.2)) * 0.25 + c.holder.hop;
+    const p = this.world.proj.project(c.holder.x, c.holder.y, 3.7 + lift);
+    const u = p.s * 10 * 0.32;
     const g = this.trophyG;
     if (!g) return;
     g.clear();
@@ -2625,6 +2717,7 @@ export class MatchScene extends Phaser.Scene {
       p.hop = 0;
       p.angle = 0;
       p.sx = p.sy = 1;
+      p.faceFront(this, false);
     }
     this.phase = 'post';
     c.done();
@@ -2682,6 +2775,7 @@ export class MatchScene extends Phaser.Scene {
     s.distance = 10;
     s.los = 25;
     this.gameOver = false;
+    this.ot = null;
     this.champShown = false;
     this.card.hide();
     this.defenseScreen.close();
@@ -2706,7 +2800,7 @@ export class MatchScene extends Phaser.Scene {
   private backToPreSnap() {
     if (this.gameOver) {
       this.hud.refresh();
-      return this.showFinal();
+      return this.overtimeNeeded() ? this.startOvertime() : this.showFinal();
     }
     this.card.hide();
     this.menu.hide();

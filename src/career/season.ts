@@ -1,8 +1,10 @@
 import { rng } from '../combine/scoring';
+import { awardsRecap, productionSnapshot } from './awards';
+import { seasonTitles } from './trophies';
 import { isDome } from '../data/stadiums';
 import { TeamRepository, type CareerTeam } from '../data/TeamRepository';
 import { currentDraft } from '../draft/logic';
-import { getSave, updateSave, type GameLine, type PlayerSave } from '../player/PlayerSave';
+import { calcOvr, getSave, seasonTag, updateSave, type GameLine, type PlayerSave, type SeasonRecap } from '../player/PlayerSave';
 import { BEARD_COUNT, FACE_COUNT, HAIR_COLORS, HAIR_COUNT, SKINS, type FaceLook } from '../player/PlayerFace';
 import { divisionOf, league, rankTeams } from './league';
 import { bracket, ROUND_INFO, ROUNDS, type Round } from './playoffs';
@@ -15,6 +17,8 @@ import { bracket, ROUND_INFO, ROUNDS, type Round } from './playoffs';
  */
 
 export const SEASON_YEAR = 2026;
+/** Ano da temporada em andamento (a 1ª é SEASON_YEAR). */
+export const seasonYear = () => SEASON_YEAR + (getSave().career.season || 1) - 1;
 export const WEEKS = 10;
 const BYE_WEEK = 6;
 /** Horário de cada semana; os jogos às 20h+ são de horário nobre (QUI/DOM/SEG à noite). */
@@ -109,12 +113,13 @@ export function ensureSeason(): PlayerSave {
   const team = careerTeam();
   const c = getSave().career;
   if (c.schedule.length) return getSave();
-  const r = rng(`season-${s.name}-${team.id}`);
+  const season = c.season || 1;
+  const r = rng(`season-${seasonTag()}-${team.id}`);
   const all = TeamRepository.all().filter((t) => t.id !== team.id);
   const { div } = conferenceOf(team);
   const rivals = all.filter((t) => conferenceOf(t).div === div);
   const pool = all.filter((t) => !rivals.includes(t)).sort(() => r() - 0.5);
-  const opps = [rivals[0] ?? pool.shift()!, ...pool.slice(0, WEEKS - 2)];
+  const opps = [rivals[(season - 1) % Math.max(1, rivals.length)] ?? pool.shift()!, ...pool.slice(0, WEEKS - 2)];
   const schedule: PlayerSave['career']['schedule'] = [];
   let k = 0;
   for (let w = 1; w <= WEEKS; w++) {
@@ -126,11 +131,14 @@ export function ensureSeason(): PlayerSave {
     k++;
   }
   const d = getSave().draft!;
-  const news = [
-    { week: 0, text: `${s.name} ASSINA COM OS ${team.name}: ${d.contract.years} ANOS DE CONTRATO APÓS A ${d.pick}ª ESCOLHA DA ${d.round}ª RODADA` },
-    { week: 0, text: `${s.name} É O NOVO QB DOS ${team.name}` },
-  ];
-  return updateSave({ career: { ...c, teamId: team.id, season: 1, week: 1, record: { w: 0, l: 0 }, schedule, news } });
+  const news =
+    season === 1
+      ? [
+          { week: 0, text: `${s.name} ASSINA COM OS ${team.name}: ${d.contract.years} ANOS DE CONTRATO APÓS A ${d.pick}ª ESCOLHA DA ${d.round}ª RODADA` },
+          { week: 0, text: `${s.name} É O NOVO QB DOS ${team.name}` },
+        ]
+      : [...c.news, { week: 0, text: `COMEÇA A TEMPORADA ${seasonYear()}: ${s.name} (OVR ${s.ovr}) VOLTA AO CAMPO PELOS ${team.name}` }];
+  return updateSave({ career: { ...c, teamId: team.id, season, week: 1, record: { w: 0, l: 0 }, schedule, news } });
 }
 
 export interface Game {
@@ -157,7 +165,7 @@ export interface Game {
 export function schedule(): Game[] {
   const s = getSave();
   const team = careerTeam();
-  const seed = `${s.name}-${team.id}`;
+  const seed = `${seasonTag()}-${team.id}`;
   const wx = seasonWeather(
     s.career.schedule.filter((g) => g.opp).map((g) => ({ week: g.week, venue: g.home ? team.id : g.opp })),
     seed,
@@ -226,6 +234,88 @@ export function finalInfo(): { status: 'season' | 'qualified' | 'out' | 'won' | 
   return { status, round: m.round };
 }
 
+/** Seu contrato atual: o do Draft até ser renovado. `years` = duração total, `from` = temporada de início. */
+export function contractOf() {
+  const s = getSave();
+  const k = s.career.contract ?? { years: s.draft?.contract.years ?? 4, value: s.draft?.contract.value ?? 4, from: 1 };
+  return { ...k, until: SEASON_YEAR + k.from - 1 + k.years - 1 };
+}
+
+/** Temporada encerrada para você: campeão, vice, eliminado ou fora dos playoffs. */
+export const seasonOver = () => ['won', 'lost', 'out'].includes(finalInfo().status);
+
+/** Resultado da temporada em texto ("CAMPEÃO DO QFL BOWL", "ELIMINADO NO ROUND TWO"...). */
+export function seasonResult() {
+  const fi = finalInfo();
+  if (fi.status === 'won') return 'CAMPEÃO DO QFL BOWL';
+  if (fi.status === 'lost') return fi.round === 'final' ? 'VICE-CAMPEÃO DO QFL BOWL' : `ELIMINADO NO ${ROUND_INFO[fi.round ?? 'wc'].name}`;
+  return fi.status === 'out' ? 'FORA DOS PLAYOFFS' : 'TEMPORADA EM ANDAMENTO';
+}
+
+/**
+ * Encerra a temporada e começa a próxima (sem limite de temporadas): grava o resumo, o QB evolui com
+ * o XP ganho (1 a 5 pontos de atributo, sempre no mais baixo), renova o contrato quando acaba e
+ * monta novo calendário, tabela e playoffs.
+ */
+export function startNextSeason(): PlayerSave {
+  const s = getSave();
+  const c = s.career;
+  const team = careerTeam();
+  const season = c.season || 1;
+  const next = season + 1;
+  const recap: SeasonRecap = {
+    season,
+    year: seasonYear(),
+    team: team.name,
+    record: { ...c.record },
+    result: seasonResult(),
+    stats: seasonStats().total,
+    ovrFrom: s.ovr,
+    ovrTo: s.ovr,
+    awards: awardsRecap(),
+    teamId: team.id,
+    titles: seasonTitles(),
+  };
+  const champ = bracket().games.final[0];
+  if (champ?.status === 'done' && champ.winner) recap.champion = champ.winner;
+  const prod = productionSnapshot();
+  // Evolução do QB pelo XP da temporada
+  const pts = Math.max(1, Math.min(5, Math.round(Math.max(0, (c.xp ?? 0) - (c.xpBase ?? 0)) / 700)));
+  const attrs = { ...s.attrs };
+  const keys = ['arm', 'accuracy', 'reading', 'speed'] as const;
+  for (let i = 0; i < pts; i++) {
+    const k = keys.reduce((a, b) => (attrs[b] < attrs[a] ? b : a));
+    attrs[k] = Math.min(99, attrs[k] + 1);
+  }
+  recap.ovrTo = calcOvr(attrs);
+  // Contrato: renova quando o atual acaba
+  const k = contractOf();
+  const news: { week: number; text: string; body?: string }[] = [];
+  let contract = c.contract ?? { years: k.years, value: k.value, from: k.from };
+  if (SEASON_YEAR + next - 1 > k.until) {
+    contract = { years: 4, value: Math.round((k.value * 1.5 + (recap.ovrTo - 60) * 0.1 + 1) * 10) / 10, from: next };
+    news.push({ week: 0, text: `${s.name} RENOVA COM OS ${team.name}: 4 ANOS POR ${mi(contract.value)} AO ANO` });
+  }
+  updateSave({
+    attrs,
+    career: {
+      ...c,
+      season: next,
+      week: 1,
+      record: { w: 0, l: 0 },
+      schedule: [],
+      post: {},
+      news,
+      xpBase: c.xp ?? 0,
+      seasonDone: false,
+      prod,
+      contract,
+      history: [...(c.history ?? []), recap],
+    },
+  });
+  return ensureSeason();
+}
+
 /** Próxima semana com jogo (ou a última). */
 export function nextGame(): Game | null {
   const s = getSave();
@@ -276,19 +366,20 @@ const QB_NUMS = [1, 4, 7, 9, 10, 14, 15, 16, 17];
 export function roster(team: CareerTeam): RosterPlayer[] {
   const s = getSave();
   const r = rng(`roster-${team.id}`);
-  const until = SEASON_YEAR + (s.draft?.contract.years ?? 4) - 1;
+  const k = contractOf();
+  const year = seasonYear();
   const me: RosterPlayer = {
     id: 'me',
     face: { face: s.face, skin: s.skin, hair: s.hair, hairColor: s.hairColor, beard: s.beard },
     name: s.name,
     num: s.number,
     pos: 'QB',
-    age: 21,
+    age: 21 + (s.career.season || 1) - 1,
     ovr: s.ovr,
     tag: 'VOCÊ',
     me: true,
     attrs: [['PRECISÃO', s.attrs.accuracy], ['FORÇA DE BRAÇO', s.attrs.arm], ['VISÃO', s.attrs.reading], ['AGILIDADE', s.attrs.speed]],
-    contract: { until, value: s.draft?.contract.value ?? 4 },
+    contract: { until: k.until, value: k.value },
   };
   const used = new Set<string>();
   const count: Record<string, number> = {};
@@ -303,7 +394,7 @@ export function roster(team: CareerTeam): RosterPlayer[] {
     const attrs = POS_ATTRS[pos].map((n) => [n, Math.max(45, Math.min(99, Math.round(ovr + (r() - 0.5) * 16)))] as [string, number]);
     const value = Math.round(Math.max(1.2, (ovr - 60) * 0.6 + r() * 3) * 10) / 10;
     const id = `${team.id}-${pos}${(count[pos] = (count[pos] ?? 0) + 1)}`;
-    return { id, face: faceFor(id), name, num, pos, age, ovr, tag, attrs, contract: { until: SEASON_YEAR + 1 + Math.floor(r() * 3), value } };
+    return { id, face: faceFor(id), name, num, pos, age, ovr, tag, attrs, contract: { until: year + 1 + Math.floor(r() * 3), value } };
   });
   if (team.id === careerTeam().id) return [me, ...others];
   // Outros times: QB titular gerado (sorteio próprio, para não mudar os nomes do resto do elenco)
@@ -324,7 +415,7 @@ export function roster(team: CareerTeam): RosterPlayer[] {
     ovr,
     tag: ovr >= 88 ? 'ESTRELA' : age >= 32 ? 'VETERANO' : age <= 24 ? 'PROMESSA' : 'TITULAR',
     attrs: ['PRECISÃO', 'FORÇA DE BRAÇO', 'VISÃO', 'AGILIDADE'].map((n) => [n, Math.max(50, Math.min(99, Math.round(ovr + (q() - 0.5) * 14)))] as [string, number]),
-    contract: { until: SEASON_YEAR + 1 + Math.floor(q() * 4), value: Math.round((8 + (ovr - 64) * 1.3 + q() * 6) * 10) / 10 },
+    contract: { until: year + 1 + Math.floor(q() * 4), value: Math.round((8 + (ovr - 64) * 1.3 + q() * 6) * 10) / 10 },
   };
   return [qb, ...others];
 }

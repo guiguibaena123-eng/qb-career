@@ -1,6 +1,6 @@
 import { rng } from '../combine/scoring';
 import { TeamRepository } from '../data/TeamRepository';
-import { getSave } from '../player/PlayerSave';
+import { getSave, seasonTag } from '../player/PlayerSave';
 import { conferenceSeeds, PLAYOFF_SPOTS, simScore } from './league';
 import { careerTeam } from './season';
 
@@ -54,7 +54,7 @@ let memo: { key: string; b: Bracket } | null = null;
 export function bracket(): Bracket {
   const s = getSave();
   const me = careerTeam().id;
-  const key = JSON.stringify([s.name, me, s.career.week, s.career.schedule.map((g) => g.result), s.career.post]);
+  const key = JSON.stringify([s.name, s.career.season, me, s.career.week, s.career.schedule.map((g) => g.result), s.career.post]);
   if (memo?.key === key) return memo.b;
   const projected = !s.career.schedule.length || s.career.schedule.some((g) => g.opp && !g.result);
   const seeds = [0, 1].map((c) => conferenceSeeds(c).slice(0, PLAYOFF_SPOTS).map((r) => r.x.team.id)) as [string[], string[]];
@@ -84,7 +84,7 @@ export function bracket(): Bracket {
         g.status = 'done';
       }
     } else if (!blocked) {
-      const r = rng(`po-${s.name}-${me}-${round}-${h}-${w}`);
+      const r = rng(`po-${seasonTag()}-${me}-${round}-${h}-${w}`);
       [g.hs, g.as] = simScore(r, TeamRepository.get(h), TeamRepository.get(w), 1.5);
       g.status = 'done';
     }

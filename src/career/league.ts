@@ -1,6 +1,6 @@
 import { rng } from '../combine/scoring';
 import { TeamRepository, type CareerTeam } from '../data/TeamRepository';
-import { getSave } from '../player/PlayerSave';
+import { getSave, seasonTag } from '../player/PlayerSave';
 import { careerTeam, roster, type RosterPlayer } from './season';
 
 /*
@@ -228,7 +228,7 @@ let memo: { key: string; league: League } | null = null;
 export function league(): League {
   const s = getSave();
   const me = careerTeam();
-  const key = JSON.stringify([s.name, me.id, s.career.week, s.career.schedule.map((g) => g.result && [g.result.us, g.result.them, g.stats]), s.attrs, s.face, s.skin, s.hair, s.hairColor, s.beard]);
+  const key = JSON.stringify([s.name, s.career.season, me.id, s.career.week, s.career.schedule.map((g) => g.result && [g.result.us, g.result.them, g.stats]), s.attrs, s.face, s.skin, s.hair, s.hairColor, s.beard]);
   if (memo?.key === key) return memo.league;
 
   const all = TeamRepository.all();
@@ -255,7 +255,7 @@ export function league(): League {
   for (const g of s.career.schedule) {
     if (g.week >= s.career.week) continue;
     weeksPlayed = g.week;
-    const r = rng(`league-${s.name}-${me.id}-${g.week}`);
+    const r = rng(`league-${seasonTag()}-${me.id}-${g.week}`);
     const busy = new Set([me.id]);
     if (g.opp && g.result) {
       games.push(g.home ? { week: g.week, home: me.id, away: g.opp, hs: g.result.us, as: g.result.them, mine: true } : { week: g.week, home: g.opp, away: me.id, hs: g.result.them, as: g.result.us, mine: true });
@@ -269,7 +269,7 @@ export function league(): League {
   }
 
   for (const g of games) {
-    const r = rng(`box-${s.name}-${g.week}-${g.home}-${g.away}`);
+    const r = rng(`box-${seasonTag()}-${g.week}-${g.home}-${g.away}`);
     const H = TeamRepository.get(g.home);
     const A = TeamRepository.get(g.away);
     const mineLine = g.mine ? s.career.schedule.find((x) => x.week === g.week)?.stats : undefined;

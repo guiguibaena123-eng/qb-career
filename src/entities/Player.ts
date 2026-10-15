@@ -342,13 +342,16 @@ export function playerTextureKey(side: Side, num: number) {
 }
 
 /** Gera (uma vez) a textura de um jogador. */
-export function makePlayerTexture(scene: Phaser.Scene, side: Side, num: number, skinIndex: number) {
-  const key = playerTextureKey(side, num);
-  if (scene.textures.exists(key)) return key;
+export function makePlayerTexture(scene: Phaser.Scene, side: Side, num: number, skinIndex: number, front = false) {
   const off = side === 'off';
+  // O ataque é desenhado de costas (a câmera fica atrás dele); `front` gera a versão de frente
+  // (comemoração do título). A defesa já é de frente.
+  const asFront = !off || front;
+  const key = playerTextureKey(side, num) + (off && front ? '_f' : '');
+  if (scene.textures.exists(key)) return key;
   const team = off ? TEAMS.home : TEAMS.away;
   return makeLookTexture(scene, key, {
-    front: !off,
+    front: asFront,
     helmet: team.uniform.helmet,
     jersey: team.uniform.jersey,
     pants: team.uniform.pants,
@@ -420,8 +423,19 @@ export class Player {
     const sc = (v: number, k: number) => Math.max(5, Math.min(99, Math.round(v * (1 + q * k))));
     this.attrs = { speed: sc(b.speed, 0.0022), strength: sc(b.strength, 0.004), hands: sc(b.hands, 0.004), coverage: sc(b.coverage, 0.004), tackle: sc(b.tackle, 0.004) };
     const key = makePlayerTexture(scene, side, slot.num, skinIndex);
+    this.texKey = key;
+    this.skinIndex = skinIndex;
     this.bb = layer.add(key, this.x, this.y, { scale: PLAYER_SCALE, shadow: 2.2 });
     this.bb.img.setFrame('idle');
+  }
+
+  private texKey: string;
+  private skinIndex: number;
+
+  /** Vira o jogador de frente para a câmera (true) ou volta ao desenho normal (false). */
+  faceFront(scene: Phaser.Scene, front: boolean) {
+    const key = front ? makePlayerTexture(scene, this.side, this.slot.num, this.skinIndex, true) : this.texKey;
+    if (this.bb.img.texture.key !== key) this.bb.img.setTexture(key);
   }
 
   /** Velocidade máxima (jardas/s) a partir do atributo. */

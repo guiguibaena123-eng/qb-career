@@ -48,6 +48,7 @@ export class GameState {
   }
 
   get quarterText() {
+    if (this.quarter > 4) return this.quarter === 5 ? 'PRORROG.' : `${this.quarter - 4}ª PRORR.`;
     return `${this.quarter}º QUARTO`;
   }
 

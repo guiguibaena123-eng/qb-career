@@ -99,6 +99,9 @@ export const playoffLogo: { key: string | null } = { key: null };
 /** Transmissão de horário nobre (carreira): placar e abertura especiais. null = jogo comum. */
 export const broadcast: { prime: { name: string; short: string; color: number; glow: number } | null } = { prime: null };
 
+/** Retrospecto dos times no placar (carreira): "7-2" ou "7-2-1". Vazio = jogo comum, sem retrospecto. */
+export const matchRecords = { home: '', away: '' };
+
 /** Time dono do estádio (end zones e logo do meio-campo): o adversário nos jogos fora de casa. */
 export const hostTeam = () => (venue.id && venue.id === TEAMS.away.id ? TEAMS.away : TEAMS.home);
 /** Time visitante no estádio (o seu, nos jogos fora de casa). */

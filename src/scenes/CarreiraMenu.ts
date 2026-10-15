@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
-import { careerTeam, coachOf, ensureSeason, finalInfo, mi, newsFeed, nextGame, passerRating, PRIME, passLeaders, roster, schedule, SEASON_YEAR, seasonStats, standings, type Game } from '../career/season';
+import { careerTeam, coachOf, contractOf, ensureSeason, finalInfo, mi, newsFeed, nextGame, passerRating, PRIME, passLeaders, roster, schedule, seasonOver, seasonResult, seasonStats, seasonYear, standings, startNextSeason, type Game } from '../career/season';
 import { Pane } from '../career/pane';
+import { awardsReady, finalMvp, seasonAwards, type AwardWinner } from '../career/awards';
+import { teamTitles, trophyCase } from '../career/trophies';
 import { GAME_H, GAME_W } from '../config';
 import { TeamRepository, type CareerTeam } from '../data/TeamRepository';
 import { fgOn } from '../data/teams';
@@ -76,7 +78,7 @@ const CATS: [Cat, string][] = [
 const PV = { x: 16, y: 122, w: 168, h: 330 };
 const PX = PV.x + PV.w + 10;
 
-type Tab = 'clube' | 'pers' | 'elenco' | 'stats' | 'jogadores' | 'times' | 'tabela' | 'noticias' | 'contratos' | 'jogos';
+type Tab = 'clube' | 'pers' | 'elenco' | 'stats' | 'jogadores' | 'times' | 'tabela' | 'premios' | 'titulos' | 'noticias' | 'contratos' | 'jogos';
 const TABS: [Tab, string, number][] = [
   ['clube', 'CLUBE', 0],
   ['pers', 'PERSONALIZAR', 0],
@@ -85,6 +87,8 @@ const TABS: [Tab, string, number][] = [
   ['jogadores', 'JOGADORES', 0],
   ['times', 'TIMES', 0],
   ['tabela', 'TABELA', 0],
+  ['premios', 'PRÊMIOS', 0],
+  ['titulos', 'TÍTULOS', 0],
   ['noticias', 'NOTÍCIAS', 3],
   ['contratos', 'CONTRATOS', 0],
   ['jogos', 'JOGOS', 0],
@@ -358,7 +362,8 @@ export class CarreiraMenu extends Phaser.Scene {
     p.clear();
     let x = 16;
     let sel: [number, number] | null = null;
-    for (const [id, name, badge] of TABS) {
+    for (const [id, name, baseBadge] of TABS) {
+      const badge = id === 'premios' ? (awardsReady() ? 1 : 0) : baseBadge;
       const on = this.tab === id;
       const t = label(this, 0, 22, name, 10, on ? '#0D0D12' : '#FFFFFF').setOrigin(0, 0.5);
       const showBadge = badge > 0 && !on && !this.seen.has(id);
@@ -399,20 +404,23 @@ export class CarreiraMenu extends Phaser.Scene {
       g.fillRect(0, GAME_H - 120 + i * 3, GAME_W, 3);
     }
     const n = nextGame();
+    const over = !n && seasonOver();
+    const done = !!getSave().career.seasonDone;
     const fi = finalInfo();
+    const nextYear = seasonYear() + 1;
+    // Sem jogo a jogar e temporada encerrada: eliminado ou fora dos playoffs, o botão simula o resto da
+    // temporada (playoffs, campeão e prêmios); depois, avança para a próxima (sem limite de temporadas)
     const text = n
       ? n.round
         ? `JOGAR ${ROUND_INFO[n.round].name}`
         : `JOGAR SEMANA ${n.week}`
-      : fi.status === 'won'
-        ? 'CAMPEÃO DO QFL BOWL!'
-        : fi.status === 'lost'
-          ? fi.round === 'final'
-            ? 'VICE-CAMPEÃO DO QFL BOWL'
-            : `ELIMINADO NO ${ROUND_INFO[fi.round ?? 'wc'].name}`
-          : fi.status === 'out'
-            ? 'FORA DOS PLAYOFFS'
-            : 'TEMPORADA ENCERRADA';
+      : over
+        ? done
+          ? `PRÓXIMA TEMPORADA ${nextYear}`
+          : fi.status === 'won' || fi.round === 'final'
+            ? 'ENCERRAR TEMPORADA'
+            : 'SIMULAR ATÉ O FIM'
+        : 'TEMPORADA ENCERRADA';
     const b = new GlassButton(this, GAME_W / 2, GAME_H - 26 - 29, { w: GAME_W - 32, h: 58, radius: 18, fill: OR, fillAlpha: 1, borderAlpha: 0.35, primary: true }).setDepth(31);
     const t = title(this, -8, 0, text, 12, '#0D0D12').setOrigin(0.5);
     const a = this.add.graphics();
@@ -424,7 +432,25 @@ export class CarreiraMenu extends Phaser.Scene {
     a.strokePath();
     b.add([t, a]);
     // Antes da partida: tela de pré-jogo (detalhes do confronto e escolha do uniforme)
+    let armed = 0;
     b.onTap = () => {
+      if (over) {
+        if (!done) {
+          // Simula o restante da temporada e abre os PRÊMIOS (playoffs, campeão e MVP da final)
+          updateSave({ career: { ...getSave().career, seasonDone: true } });
+          lastTab = 'premios';
+          this.scene.restart();
+          return;
+        }
+        // Dois toques: o primeiro mostra o resultado da temporada, o segundo avança
+        if (this.time.now - armed < 4000) {
+          startNextSeason();
+          this.scene.restart();
+          return;
+        }
+        armed = this.time.now;
+        return this.toast(`${seasonResult()} · TOQUE DE NOVO PARA AVANÇAR`);
+      }
       if (!n) return this.toast(text);
       this.time.delayedCall(30, () => this.scene.start('PreJogo'));
     };
@@ -467,6 +493,8 @@ export class CarreiraMenu extends Phaser.Scene {
       elenco: () => this.elenco(),
       stats: () => this.stats(),
       tabela: () => this.tabela(),
+      premios: () => this.premios(),
+      titulos: () => this.titulos(),
       noticias: () => this.noticias(),
       contratos: () => this.contratos(),
       jogos: () => this.jogos(),
@@ -1197,7 +1225,7 @@ export class CarreiraMenu extends Phaser.Scene {
               : grp === 'K'
                 ? [[nf(s.fgm), 'FIELD GOALS', 0xffffff], [nf(s.fga), 'TENTATIVAS', 0xffffff], [pc(s.fgm, s.fga), 'APROVEIT.', YE], [nf(s.xpm), 'PONTOS EXTRAS', 0xffffff], [nf(s.fgm * 3 + s.xpm), 'PONTOS', GR], [nf(s.gp), 'JOGOS', 0xffffff]]
                 : [[nf(s.gp), 'JOGOS', 0xffffff], [nf(ts.rushYds), 'JD CORRIDA TIME', GR], [nf(ts.passYds), 'JD PASSE TIME', 0xffffff]];
-    y += this.section(y, `TEMPORADA ${SEASON_YEAR}`, s.gp ? `${s.gp} ${s.gp === 1 ? 'JOGO' : 'JOGOS'}` : 'SEM JOGOS AINDA');
+    y += this.section(y, `TEMPORADA ${seasonYear()}`, s.gp ? `${s.gp} ${s.gp === 1 ? 'JOGO' : 'JOGOS'}` : 'SEM JOGOS AINDA');
     const cw = (W - 16) / 3;
     tiles.forEach(([v, n, c], i) => {
       const x = 16 + (i % 3) * (cw + 8);
@@ -1282,6 +1310,8 @@ export class CarreiraMenu extends Phaser.Scene {
         if (nm.width > cw - 64) nm.setFontSize(6);
         this.T(cx + 58, cy + 42, `${x.w}-${x.l}${x.t ? `-${x.t}` : ''} · ${i + 1}º`, 10, '#E8EAF2').setOrigin(0, 0.5);
         this.T(cx + 58, cy + 60, `OVR ${x.team.ovr}`, 8, hex(ovc(x.team.ovr))).setOrigin(0, 0.5);
+        const ts = teamTitles(x.team.id).qflTotal;
+        if (ts) this.T(cx + cw - 10, cy + 60, `★ ${ts}`, 9, hex(YE), 'title').setOrigin(1, 0.5);
         this.body.hit(cx, cy, cw, 78, () => this.openTeam(x.team.id));
       });
       y += 2 * 86 + 10;
@@ -1321,6 +1351,38 @@ export class CarreiraMenu extends Phaser.Scene {
     this.T(30, y + hh - 16, `${t.stadium.name} · ${t.stadium.capacity.toLocaleString('pt-BR')}`, 8, '#E8EAF2').setOrigin(0, 0.5);
     this.T(16 + W - 14, y + hh - 16, `TÉC. ${coachOf(t).name}`, 8, '#E8EAF2').setOrigin(1, 0.5);
     y += hh + 14;
+    // Títulos: os reais da NFL (mesma franquia/cidade) e os conquistados no jogo, com os anos
+    const tt = teamTitles(id);
+    y += this.section(y, 'TÍTULOS', `${tt.qflTotal + tt.nfl.length + tt.afl.length} NO TOTAL`);
+    const tw = (W - 16) / 3;
+    ([['QFL BOWL', tt.qflTotal], ['NFL ANTIGOS', tt.nfl.length], ['AFL', tt.afl.length]] as [string, number][]).forEach(([n, v], i) => {
+      const cx = 16 + i * (tw + 8);
+      this.card(cx, y, tw, 62, v ? OR : CARD, 0.4, v ? YE : 0xffffff, v ? 0.6 : 0.14, 12);
+      this.T(cx + tw / 2, y + 24, String(v), 16, v ? hex(YE) : '#6E7593', 'title').setOrigin(0.5);
+      this.T(cx + tw / 2, y + 47, n, 8, '#C9CEE0').setOrigin(0.5);
+    });
+    y += 70;
+    const lines: [string, string, string][] = [];
+    if (tt.sb.length) lines.push(['QFL BOWL (HISTÓRICO REAL)', tt.sb.join(' · '), '#C9CEE0']);
+    if (tt.game.length) lines.push(['QFL BOWL NO JOGO', tt.game.join(' · '), hex(YE)]);
+    if (tt.nfl.length) lines.push(['NFL ANTES DO SUPER BOWL', tt.nfl.join(' · '), '#C9CEE0']);
+    if (tt.afl.length) lines.push(['AFL', tt.afl.join(' · '), '#C9CEE0']);
+    if (lines.length) {
+      let ly = y + 12;
+      const items: Phaser.GameObjects.Text[] = [];
+      for (const [name, years, col] of lines) {
+        const a = label(this, 30, ly, name, 8, '#6E7593');
+        const b = label(this, 30, ly + 14, years, 9, col).setWordWrapWidth(W - 28).setLineSpacing(3);
+        items.push(a, b);
+        ly += 14 + b.height + 10;
+      }
+      this.card(16, y, W, ly - y + 2);
+      items.forEach((o) => this.body.add(o));
+      y = ly + 14;
+    } else {
+      this.T(30, y + 4, 'SEM TÍTULOS AINDA', 9, '#6E7593');
+      y += 24;
+    }
     // Força do time
     y += this.section(y, 'FORÇA DO TIME', `OVR ${t.ovr}`);
     const fh = 20 + 3 * 30;
@@ -1487,7 +1549,7 @@ export class CarreiraMenu extends Phaser.Scene {
               : `VOCÊ: ${m.seed}º SEED DA ${['QAC', 'QNC'][m.conf]} · ${ROUND_INFO[m.round ?? 'wc'].name}`;
     this.body.add(gradCard(this, 16, y, W, 64, { from: 0xc8102e, fromAlpha: 0.75, mid: 0x161a33, midAlpha: 0.9, to: 0x5b2a9e, toAlpha: 0.85, radius: 16, glow: true, stroke: 0xffd23f, strokeAlpha: 0.7, strokeWidth: 2 }));
     this.body.add(this.add.image(46, y + 32, 'logoQflBowlS').setDisplaySize(50, 50));
-    this.T(80, y + 22, `PLAYOFFS ${SEASON_YEAR}`, 11, '#FFFFFF', 'title').setOrigin(0, 0.5);
+    this.T(80, y + 22, `PLAYOFFS ${seasonYear()}`, 11, '#FFFFFF', 'title').setOrigin(0, 0.5);
     this.T(80, y + 44, sit, 8, m.status === 'champion' ? hex(YE) : '#E8EAF2').setOrigin(0, 0.5);
     y += 76;
 
@@ -1724,6 +1786,156 @@ export class CarreiraMenu extends Phaser.Scene {
     return y + h + 8;
   }
 
+  // ---- PRÊMIOS
+  /** Cartão de um prêmio: nome, vencedor (escudo, posição, estatística) e os dois seguintes. */
+  private awardCard(y: number, name: string, w: AwardWinner | null, runners: AwardWinner[] = []) {
+    const W = GAME_W - 32;
+    const h = w ? (runners.length ? 90 : 76) : 56;
+    this.card(16, y, W, h, w?.me ? OR : w?.mine ? 0x1f5f8b : CARD, 0.4, w?.me ? YE : 0xffffff, w?.me ? 0.8 : 0.14);
+    this.T(30, y + 15, name, 8, hex(YE), 'title').setOrigin(0, 0.5);
+    if (!w) {
+      this.T(30, y + 38, 'SEM CANDIDATOS', 9, '#6E7593').setOrigin(0, 0.5);
+      return h;
+    }
+    this.body.add(this.add.image(46, y + 48, w.logo).setDisplaySize(30, 30));
+    const nm = this.T(70, y + 40, w.name, 10, '#FFFFFF', 'title').setOrigin(0, 0.5);
+    if (nm.width > W - 120) nm.setFontSize(7);
+    this.T(70, y + 58, `${w.abbr} · ${w.pos} · ${w.line}`, 8, '#C9CEE0').setOrigin(0, 0.5);
+    if (w.me) this.tag(this.body, 16 + W - 12, y + 15, 'VOCÊ', GR, true);
+    else if (w.mine) this.tag(this.body, 16 + W - 12, y + 15, 'SEU TIME', OR, true);
+    if (runners.length) {
+      const t = this.T(30, y + h - 12, runners.map((r, i) => `${i + 2}º ${r.name} (${r.abbr})`).join('  ·  '), 8, '#6E7593').setOrigin(0, 0.5);
+      if (t.width > W - 28) t.setFontSize(6);
+    }
+    return h;
+  }
+
+  private premios() {
+    const W = GAME_W - 32;
+    const s = getSave();
+    const reveal = !!s.career.seasonDone || !!s.career.post?.final?.result;
+    const awards = seasonAwards();
+    let y = 4;
+    if (!awards.length) {
+      this.card(16, y, W, 96);
+      this.T(GAME_W / 2, y + 36, `PRÊMIOS DA TEMPORADA ${seasonYear()}`, 10, '#FFFFFF', 'title').setOrigin(0.5);
+      this.T(GAME_W / 2, y + 62, 'SAEM QUANDO A TEMPORADA REGULAR TERMINAR', 9, '#9AA3C0').setOrigin(0.5);
+      return y + 104;
+    }
+    y += this.section(y, `PRÊMIOS DA TEMPORADA ${seasonYear()}`, 'TEMPORADA REGULAR') + 6;
+    for (const a of awards) y += this.awardCard(y, a.name, a.winner, a.runners) + 8;
+    // Final
+    y += 6;
+    y += this.section(y, 'QFL BOWL') + 6;
+    const fm = reveal ? finalMvp() : null;
+    if (fm) y += this.awardCard(y, 'MVP DA FINAL', fm) + 8;
+    else {
+      this.card(16, y, W, 56);
+      this.T(30, y + 28, reveal ? 'MVP DA FINAL: A FINAL AINDA NÃO FOI DECIDIDA' : 'MVP DA FINAL: SAI DEPOIS DO QFL BOWL', 9, '#9AA3C0').setOrigin(0, 0.5);
+      y += 64;
+    }
+    // Resultados dos playoffs (aparecem depois de simular a temporada até o fim)
+    if (s.career.seasonDone) {
+      const b = bracket();
+      const champ = b.games.final[0]?.winner ? TeamRepository.get(b.games.final[0].winner!) : null;
+      y += 6;
+      if (champ) {
+        this.card(16, y, W, 72, OR, 0.4, YE, 0.8);
+        this.body.add(this.add.image(54, y + 36, champ.logo.large ?? champ.logo.small).setDisplaySize(44, 44));
+        this.T(90, y + 26, 'CAMPEÃO DO QFL BOWL', 8, hex(YE), 'title').setOrigin(0, 0.5);
+        this.T(90, y + 48, champ.name, 12, '#FFFFFF', 'title').setOrigin(0, 0.5);
+        y += 82;
+      }
+      for (const r of ROUNDS) {
+        const games = b.games[r].filter((g) => g.status === 'done');
+        if (!games.length) continue;
+        y += this.section(y, `${ROUND_INFO[r].name} · ${ROUND_INFO[r].sub}`) + 4;
+        const h = games.length * 34 + 8;
+        this.card(16, y, W, h);
+        const cx = GAME_W / 2;
+        games.forEach((g, i) => {
+          const yy = y + 4 + i * 34;
+          const H = TeamRepository.get(g.home);
+          const A = TeamRepository.get(g.away);
+          const hw = g.winner === g.home;
+          if (g.mine) {
+            const gg = this.add.graphics();
+            gg.fillStyle(OR, 0.2);
+            gg.fillRect(17, yy, W - 2, 34);
+            this.body.add(gg);
+          }
+          this.body.add(this.add.image(cx - 104, yy + 17, H.logo.small).setDisplaySize(24, 24));
+          this.T(cx - 86, yy + 17, H.abbr, 9, hw ? '#FFFFFF' : '#6E7593', 'title').setOrigin(0, 0.5);
+          this.T(cx - 12, yy + 17, String(g.hs ?? 0), 11, hw ? '#FFFFFF' : '#6E7593', 'title').setOrigin(1, 0.5);
+          this.T(cx, yy + 17, '×', 9, '#6E7593').setOrigin(0.5);
+          this.T(cx + 12, yy + 17, String(g.as ?? 0), 11, !hw ? '#FFFFFF' : '#6E7593', 'title').setOrigin(0, 0.5);
+          this.T(cx + 86, yy + 17, A.abbr, 9, !hw ? '#FFFFFF' : '#6E7593', 'title').setOrigin(1, 0.5);
+          this.body.add(this.add.image(cx + 104, yy + 17, A.logo.small).setDisplaySize(24, 24));
+        });
+        y += h + 8;
+      }
+    }
+    // Seus troféus (temporadas anteriores + esta)
+    const won: string[] = [];
+    for (const rc of s.career.history ?? []) for (const a of rc.awards ?? []) if (a.me) won.push(`${rc.year} · ${a.name}`);
+    for (const a of awards) if (a.winner?.me) won.push(`${seasonYear()} · ${a.name}`);
+    if (fm?.me) won.push(`${seasonYear()} · MVP DA FINAL`);
+    if (won.length) {
+      y += 6;
+      y += this.section(y, 'SEUS TROFÉUS', String(won.length)) + 4;
+      const h = won.length * 28 + 12;
+      this.card(16, y, W, h, CARD, 0.72, YE, 0.5);
+      won.forEach((t, i) => this.T(30, y + 20 + i * 28, `★ ${t}`, 10, '#FFFFFF').setOrigin(0, 0.5));
+      y += h + 8;
+    }
+    return y;
+  }
+
+  // ---- TÍTULOS
+  /** Linha de uma conquista: quantidade, nome e todos os anos. */
+  private trophyRow(y: number, name: string, years: number[]) {
+    const W = GAME_W - 32;
+    const won = years.length > 0;
+    const t = label(this, 72, 0, won ? years.join(' · ') : 'AINDA NÃO CONQUISTADO', 9, won ? '#FFFFFF' : '#6E7593').setWordWrapWidth(W - 96).setLineSpacing(4);
+    const h = Math.max(54, 36 + t.height + 8);
+    this.card(16, y, W, h, won ? OR : CARD, 0.4, won ? YE : 0xffffff, won ? 0.6 : 0.14);
+    this.T(44, y + h / 2, String(years.length), 18, won ? hex(YE) : '#6E7593', 'title').setOrigin(0.5);
+    this.T(72, y + 16, name, 8, won ? hex(YE) : '#9AA3C0', 'title').setOrigin(0, 0.5);
+    t.setY(y + 32);
+    this.body.add(t);
+    return h;
+  }
+
+  private titulos() {
+    const s = getSave();
+    const tc = trophyCase();
+    let y = 4;
+    y += this.section(y, 'COM A EQUIPE', this.team.name) + 6;
+    for (const t of tc.team) y += this.trophyRow(y, t.name, t.years) + 8;
+    y += 8;
+    const total = tc.individual.reduce((a, t) => a + t.years.length, 0);
+    y += this.section(y, 'INDIVIDUAIS', `${total} NO TOTAL`) + 6;
+    for (const t of tc.individual) y += this.trophyRow(y, t.name, t.years) + 8;
+    // Temporada a temporada
+    const hist = s.career.history ?? [];
+    y += 8;
+    y += this.section(y, 'CARREIRA POR TEMPORADA', `${hist.length} CONCLUÍDA${hist.length === 1 ? '' : 'S'}`) + 6;
+    const W = GAME_W - 32;
+    if (!hist.length) {
+      this.card(16, y, W, 48);
+      this.T(30, y + 24, 'AS TEMPORADAS APARECEM AQUI QUANDO TERMINAM', 9, '#6E7593').setOrigin(0, 0.5);
+      y += 56;
+    }
+    for (const r of [...hist].reverse()) {
+      this.card(16, y, W, 54);
+      this.T(30, y + 17, `${r.year} · ${r.team}`, 9, '#FFFFFF', 'title').setOrigin(0, 0.5);
+      this.T(30, y + 38, `${r.record.w}-${r.record.l} · ${r.result}`, 9, '#C9CEE0').setOrigin(0, 0.5);
+      this.T(16 + W - 14, y + 17, `OVR ${r.ovrFrom} → ${r.ovrTo}`, 9, hex(YE)).setOrigin(1, 0.5);
+      y += 62;
+    }
+    return y;
+  }
+
   // ---- NOTÍCIAS
   private noticias() {
     const W = GAME_W - 32;
@@ -1761,8 +1973,9 @@ export class CarreiraMenu extends Phaser.Scene {
   private contratos() {
     const W = GAME_W - 32;
     const s = getSave();
-    const c = s.draft?.contract ?? { years: 4, value: 4 };
-    const until = SEASON_YEAR + c.years - 1;
+    const c = contractOf();
+    const until = c.until;
+    const elapsed = Math.max(0, (s.career.season || 1) - c.from);
     let y = 4;
     // Seu contrato (degradê na cor da liga)
     this.body.add(gradCard(this, 16, y, W, 176, { from: OR, fromAlpha: 0.55, to: CARD, toAlpha: 0.9, radius: 16, glow: true, stroke: OR, strokeAlpha: 0.6 }));
@@ -1773,7 +1986,7 @@ export class CarreiraMenu extends Phaser.Scene {
     const yw = (W - 28 - 6 * (c.years - 1)) / c.years;
     for (let i = 0; i < c.years; i++) {
       const b = this.add.graphics();
-      b.fillStyle(i === 0 ? OR : 0x2a3156, 1);
+      b.fillStyle(i === elapsed ? OR : 0x2a3156, 1);
       b.fillRoundedRect(30 + i * (yw + 6), y + 74, yw, 8, 4);
       this.body.add(b);
     }

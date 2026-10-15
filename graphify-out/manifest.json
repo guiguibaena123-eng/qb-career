@@ -6,9 +6,9 @@
     "semantic_hash": ""
   },
   "src/config.ts": {
-    "mtime": 1791942077.1677642,
-    "seen": 1791942282.7318935,
-    "ast_hash": "9c610252659057e2b009fa168fd829b2",
+    "mtime": 1792103152.0027404,
+    "seen": 1792104831.3482244,
+    "ast_hash": "f467b6d6fb08d5b80857a6436ac09ad4",
     "semantic_hash": ""
   },
   "src/data/plays.ts": {
@@ -30,9 +30,9 @@
     "semantic_hash": ""
   },
   "src/entities/Player.ts": {
-    "mtime": 1791737264.5300524,
-    "seen": 1791737365.4080877,
-    "ast_hash": "c202fcfb79dd6262ccfda3ad32fb6a77",
+    "mtime": 1792104371.8406549,
+    "seen": 1792104831.3482478,
+    "ast_hash": "2788e2a0a68cb358384756cd5f42b734",
     "semantic_hash": ""
   },
   "src/entities/Sideline.ts": {
@@ -54,15 +54,15 @@
     "semantic_hash": ""
   },
   "src/scenes/MatchScene.ts": {
-    "mtime": 1791943848.1703062,
-    "seen": 1791943933.9062433,
-    "ast_hash": "8e5b7a878c5b68db573dbb3b6a0141a2",
+    "mtime": 1792104375.2030718,
+    "seen": 1792104831.3482969,
+    "ast_hash": "ea739b2c6c3a90ea36ec607f72d0b640",
     "semantic_hash": ""
   },
   "src/state/GameState.ts": {
-    "mtime": 1791931497.6397102,
-    "seen": 1791931882.1102698,
-    "ast_hash": "3d2f3094992812190795c70d9af70aa5",
+    "mtime": 1792101356.767298,
+    "seen": 1792104831.3483076,
+    "ast_hash": "dcb7587923a14ad145c020df34f98996",
     "semantic_hash": ""
   },
   "src/systems/ai.ts": {
@@ -216,9 +216,9 @@
     "semantic_hash": ""
   },
   "src/ui/Hud.ts": {
-    "mtime": 1791936473.5614314,
-    "seen": 1791936878.5771084,
-    "ast_hash": "9f2dac46406809b3ddf474d2024e4af2",
+    "mtime": 1792104131.6807113,
+    "seen": 1792104831.3483648,
+    "ast_hash": "123471a0a2ec76160859799347345831",
     "semantic_hash": ""
   },
   "src/ui/Intro.ts": {
@@ -900,9 +900,9 @@
     "semantic_hash": ""
   },
   "public/sw.js": {
-    "mtime": 1791943238.2916138,
-    "seen": 1791943933.9056995,
-    "ast_hash": "6b39b20ba0c0ae0cd4fdd0a82ccd4654",
+    "mtime": 1792104783.9397078,
+    "seen": 1792104831.348191,
+    "ast_hash": "1b619f852c77a9091a0d946ee0a8ce1d",
     "semantic_hash": ""
   },
   "public/icons/icon-180.png": {
@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "src/player/PlayerSave.ts": {
-    "mtime": 1791942077.1585493,
-    "seen": 1791942282.7319636,
-    "ast_hash": "b08db736842a5b120bfd2d1ed9aa635d",
+    "mtime": 1792103039.555422,
+    "seen": 1792104831.3482604,
+    "ast_hash": "289346881c07df32a67a6ff3e0dd7cf5",
     "semantic_hash": ""
   },
   "src/scenes/CareerTest.ts": {
@@ -2244,15 +2244,15 @@
     "semantic_hash": ""
   },
   "src/career/season.ts": {
-    "mtime": 1791942619.9178324,
-    "seen": 1791942838.7389667,
-    "ast_hash": "a2d2ec8fedeb139cf3a4a04e49d821ac",
+    "mtime": 1792103041.9158354,
+    "seen": 1792104831.34821,
+    "ast_hash": "bf4831bc5be3dd29c7eeeaa86adbfa3c",
     "semantic_hash": ""
   },
   "src/scenes/CarreiraMenu.ts": {
-    "mtime": 1791942144.7432277,
-    "seen": 1791942282.731985,
-    "ast_hash": "18b860eee97e7119e3d2b3891e3eb29c",
+    "mtime": 1792103082.4077613,
+    "seen": 1792104831.348272,
+    "ast_hash": "95cfdfa54798cbff2e9966e2e0aeb877",
     "semantic_hash": ""
   },
   "src/career/kits.ts": {
@@ -2262,15 +2262,15 @@
     "semantic_hash": ""
   },
   "src/integration/MatchBridge.ts": {
-    "mtime": 1791942969.6949034,
-    "seen": 1791943173.103654,
-    "ast_hash": "f371f7484e8801f2848624fee4d78dcd",
+    "mtime": 1792103165.7597523,
+    "seen": 1792104831.348253,
+    "ast_hash": "a71de403dd6b19187d79349c7a92b61e",
     "semantic_hash": ""
   },
   "src/career/league.ts": {
-    "mtime": 1791942076.0438583,
-    "seen": 1791942282.7318537,
-    "ast_hash": "a9ef353e2ca1826f027efdef5ba93f3a",
+    "mtime": 1792102631.0115652,
+    "seen": 1792104831.3482034,
+    "ast_hash": "bbc06df7a87b072858ba1d69c8bbe908",
     "semantic_hash": ""
   },
   "src/scenes/PreJogo.ts": {
@@ -2322,9 +2322,9 @@
     "semantic_hash": ""
   },
   "src/career/playoffs.ts": {
-    "mtime": 1791942077.1539924,
-    "seen": 1791942282.7318637,
-    "ast_hash": "45df36a68e845d624697044f63781dfe",
+    "mtime": 1792101938.6139853,
+    "seen": 1792104831.3482082,
+    "ast_hash": "1042f4dfdc698c5018b5bc05e5bd4ed1",
     "semantic_hash": ""
   },
   "public/assets/po_r1.png": {
@@ -2367,6 +2367,30 @@
     "mtime": 1791942640.5555835,
     "seen": 1791942838.7391427,
     "ast_hash": "e650b1b01d8d261333ca89f5b9263856",
+    "semantic_hash": ""
+  },
+  "src/career/awards.ts": {
+    "mtime": 1792102637.7592316,
+    "seen": 1792104831.3481984,
+    "ast_hash": "9025ab5ce5185e17a660a395f614e110",
+    "semantic_hash": ""
+  },
+  "src/career/trophies.ts": {
+    "mtime": 1792103038.4415157,
+    "seen": 1792104831.3482118,
+    "ast_hash": "4a0b73237b766a710259d54257c455e9",
+    "semantic_hash": ""
+  },
+  "src/data/titles.ts": {
+    "mtime": 1792103037.2704206,
+    "seen": 1792104831.3482363,
+    "ast_hash": "5ba69b76a96d27f662566e95daa9d20a",
+    "semantic_hash": ""
+  },
+  "src/ui/primeBoard.ts": {
+    "mtime": 1792104108.6764417,
+    "seen": 1792104831.348385,
+    "ast_hash": "ee0986f970a7f3706775e2a96c68261b",
     "semantic_hash": ""
   }
 }

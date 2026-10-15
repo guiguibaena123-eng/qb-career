@@ -1,7 +1,8 @@
 import type Phaser from 'phaser';
 import { careerTeam, nextGame, PRIME } from '../career/season';
 import { ROUND_INFO, type Round } from '../career/playoffs';
-import { applyMatchup, broadcast, finalGame, matchConfig, playoffLogo, venue } from '../config';
+import { applyMatchup, broadcast, finalGame, matchConfig, matchRecords, playoffLogo, venue } from '../config';
+import { league } from '../career/league';
 import { TeamRepository } from '../data/TeamRepository';
 import { getSave, updateSave } from '../player/PlayerSave';
 import type { QbStats } from '../state/GameState';
@@ -53,6 +54,13 @@ export function startCareerMatch(scene: Phaser.Scene): boolean {
   // QFL Bowl: campo neutro com estádio, torcida e campo da final; playoffs: logo da fase nas 40
   finalGame.on = !!g.final;
   playoffLogo.key = g.round ? ROUND_INFO[g.round].logo : null;
+  // Retrospecto de cada time (temporada regular) para o placar
+  const rec = (id: string) => {
+    const x = league().teams.get(id);
+    return x ? `${x.w}-${x.l}${x.t ? `-${x.t}` : ''}` : '';
+  };
+  matchRecords.home = rec(team.id);
+  matchRecords.away = rec(g.opp.id);
   Object.assign(matchConfig, { home: team.id, away: g.opp.id, homeUni: KIT_UNI[s.look.kit], awayUni: null, weather: g.weather, stand: g.final ? 'classica' : 'auto', time: g.tod });
   venue.id = g.final ? null : g.venue;
   broadcast.prime = g.prime ? PRIME[g.prime] : null;
@@ -128,6 +136,7 @@ export function leaveCareerMatch() {
   broadcast.prime = null;
   finalGame.on = false;
   playoffLogo.key = null;
+  matchRecords.home = matchRecords.away = '';
   applyMatchup();
   current = null;
 }
