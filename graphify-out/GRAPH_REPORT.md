@@ -1,80 +1,72 @@
-# Graph Report - qb-career  (2026-10-15)
+# Graph Report - qb-career  (2026-11-03)
 
 ## Corpus Check
-- 105 files · ~206,734 words
+- 399 files · ~206,734 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 2 file(s) not represented in the graph (top: (none) 1, .webmanifest 1)
 
 ## Summary
-- 1316 nodes · 4500 edges · 61 communities (45 shown, 16 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 101 edges (avg confidence: 0.84)
-- Token cost: 0 input · 0 output
-
-## Graph Freshness
-- Built from commit: `77ce4ec2`
-- Run `git rev-parse HEAD` and compare to check if the graph is stale.
-- Run `graphify update .` after code changes (no API cost).
+- 1313 nodes · 4489 edges · 58 communities (39 shown, 19 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 84 edges (avg confidence: 0.8)
+- Token cost: 75,459 input · 0 output
 
 ## Community Hubs (Navigation)
-- .details
-- PlayerFace
-- LivePlay
-- PlayerSave.ts
-- groundfx.ts
-- MatchScene.ts
-- package.json
-- updateSave
-- field.ts
-- compilerOptions
-- draft/ui.ts
-- config.ts
-- grandstand.ts
-- LiveUi
-- season.ts
-- MatchBridge.ts
-- getSave
-- awards.ts
-- CarreiraMenu.ts
-- CarreiraMenu
-- Projection
-- Sideline.ts
-- scoring.ts
-- stage.ts
-- Player
-- CombineForca
-- .buildBottom
-- daytime.ts
-- QB Career — Ordem de execução no Claude Code
-- primeBoard.ts
-- Player.ts
-- PlayerBody.ts
-- Combine3Cones
-- manifest.json
-- .endPlay
-- .buildLive
-- title
-- DefenseScreen
-- FieldRenderer
-- jerseyArt.ts
-- Fx
-- MatchScene
-- Ball
-- GameState
-- ai.ts
-- Pane
-- Weather
-- KickUi
-- Projeto: QB Career — Criação de carreira, Combine, Draft e Menu da carreira
-- main.ts
-- .recv
-- .buildPersFixed
-- live.ts
-- CarrierControl
-- LiveUiHandlers
-- Intro
-- PreJogo.ts
-- Daylight
-- 3.2 Combine (com a gameplay dos testes)
+- Times e Draft
+- Partida: Lances ao Vivo
+- Combine: Pontuação
+- Criação da Carreira
+- Jogadores e Rotas
+- Liga e Temporada
+- Playoffs e Prêmios Finais
+- Jogadas e Passe
+- Menu da Carreira
+- Documentos de Planejamento
+- Uniformes e Ponte da Partida
+- Provas do Combine
+- Base de Cenas Phaser
+- Campo e Traves
+- Estádios e Clima
+- Pixel Art dos Estádios
+- Bola e Replay
+- Sprites dos Jogadores
+- Desenho do Gramado
+- Câmera e Palco
+- Texturas de Sprites
+- Partida da Carreira
+- Simulação de Drives
+- Dependências npm
+- Menu Principal e Times
+- Banco Lateral
+- Botões e UI Comum
+- Prêmios da Temporada
+- Palco e Público
+- Configuração da Partida
+- Títulos e Troféus
+- Barra de Força
+- Projeção 3D
+- Inicialização do Jogo
+- Painéis
+- Cena Base do Combine
+- Tela de Defesa
+- HUD
+- Config TypeScript
+- Widgets de Menu
+- Placar Horário Nobre
+- Carregamento de Assets
+- Prova 40 Jardas
+- Introdução
+- Joystick
+- Prova 3 Cones
+- Controle do Corredor
+- Efeitos Visuais
+- Chute
+- Estado do Jogo
+- Feedback de Jogo
+- Controles ao Vivo
+- Cartão de Resultado
+- Manifesto de Assets
+- Etiquetas
+- Etapa Final e Aceite
 
 ## God Nodes (most connected - your core abstractions)
 1. `MatchScene` - 130 edges
@@ -89,16 +81,16 @@
 10. `GAME_H` - 34 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Etapa 7 — PERSONALIZAR` --references--> `PlayerFace`  [INFERRED]
-  docs/carreira/ordem-de-execucao-claude-code.md → src/player/PlayerFace.ts
-- `5.4 Rosto dentro do capacete` --references--> `PlayerFace`  [INFERRED]
-  docs/carreira/prompt-qb-career-final.md → src/player/PlayerFace.ts
-- `5.3 Opções editáveis (`LookOptions`)` --references--> `LookOptions`  [INFERRED]
-  docs/carreira/prompt-qb-career-final.md → src/player/PlayerSave.ts
-- `5.2 Kits travados (`kits.ts`)` --references--> `deriveKits()`  [INFERRED]
-  docs/carreira/prompt-qb-career-final.md → src/data/TeamRepository.ts
-- `Etapa 3 — Criação da carreira` --references--> `PlayerBody`  [INFERRED]
-  docs/carreira/ordem-de-execucao-claude-code.md → src/player/PlayerBody.ts
+- `index.html (shell do jogo QB Career)` --implements--> `Etapa 1 - Base do projeto`  [INFERRED]
+  index.html → docs/carreira/ordem-de-execucao-claude-code.md
+- `PWA manifest.webmanifest + icons` --conceptually_related_to--> `Etapa 10 - Celular (Capacitor)`  [INFERRED]
+  index.html → docs/carreira/ordem-de-execucao-claude-code.md
+- `Etapa 10 - Celular (Capacitor)` --references--> `PlayerSave (save unico persistido)`  [INFERRED]
+  docs/carreira/ordem-de-execucao-claude-code.md → docs/carreira/prompt-qb-career-final.md
+- `productionSnapshot()` --calls--> `league`  [EXTRACTED]
+  src/career/awards.ts → src/career/league.ts
+- `startNextSeason()` --calls--> `productionSnapshot()`  [EXTRACTED]
+  src/career/season.ts → src/career/awards.ts
 
 ## Import Cycles
 - 3-file cycle: `src/career/awards.ts -> src/career/season.ts -> src/career/trophies.ts -> src/career/awards.ts`
@@ -109,207 +101,188 @@
 - 4-file cycle: `src/career/league.ts -> src/career/season.ts -> src/career/trophies.ts -> src/career/playoffs.ts -> src/career/league.ts`
 - 5-file cycle: `src/career/awards.ts -> src/career/playoffs.ts -> src/career/league.ts -> src/career/season.ts -> src/career/trophies.ts -> src/career/awards.ts`
 
-## Communities (61 total, 16 thin omitted)
+## Hyperedges (group relationships)
+- **PlayerFace reutilizado para rosto identico em todas as telas** — docs_carreira_prompt_qb_career_final_playerface, docs_carreira_prompt_qb_career_final_criacao_carreira, docs_carreira_prompt_qb_career_final_draft_suit_figure, docs_carreira_prompt_qb_career_final_personalizar [EXTRACTED 1.00]
+- **OVR unico via calcOvr em confirmacao, Combine, menu e HUD** — docs_carreira_prompt_qb_career_final_calcovr, docs_carreira_prompt_qb_career_final_playersave, docs_carreira_prompt_qb_career_final_combineresultado, docs_carreira_prompt_qb_career_final_matchbridge [EXTRACTED 1.00]
+- **Registro de times alimenta kits, estadio e logos** — docs_carreira_prompt_qb_career_final_teamrepository, docs_carreira_prompt_qb_career_final_teamdef, docs_carreira_prompt_qb_career_final_derivekits, docs_carreira_prompt_qb_career_final_estadio_pixelado [EXTRACTED 1.00]
 
-### Community 0 - ".details"
-Cohesion: 0.14
-Nodes (13): applyMatchup(), logoKey(), toConfig(), autoUniform(), BY_ID, colorDist(), css(), mix() (+5 more)
+## Communities (58 total, 19 thin omitted)
 
-### Community 1 - "PlayerFace"
-Cohesion: 0.29
-Nodes (6): 1.1 Corpo em camadas (tint em runtime), 1.2 Rostos em sprite (grade 48 px, ×4), 1.3 Figura de terno (Draft), PARTE 1 — ASSETS FORNECIDOS (`qb_career_assets.zip`), bustTexture(), PlayerFace
+### Community 0 - "Times e Draft"
+Cohesion: 0.07
+Nodes (59): build(), BY_ID, cityOf(), contrast(), deriveKits(), PHOTO, TEAMS, collarTexture() (+51 more)
 
-### Community 2 - "LivePlay"
-Cohesion: 0.15
-Nodes (9): LiveEvents, LivePlay, separatePlayers(), arrive(), dist(), nearest(), pursue(), seek() (+1 more)
+### Community 1 - "Partida: Lances ao Vivo"
+Cohesion: 0.07
+Nodes (5): RecvKey, MatchScene, vibrate(), Read, readThrow()
 
-### Community 3 - "PlayerSave.ts"
-Cohesion: 0.16
-Nodes (18): activeSlot(), Attrs, calcOvr(), CareerState, CombineResult, defaultSave(), deleteSlot(), keyOf() (+10 more)
+### Community 2 - "Combine: Pontuação"
+Cohesion: 0.06
+Nodes (51): attrsFromCombine(), clamp(), finalScore(), grade(), gradeColor(), projection(), QB_AVG, qbRanking() (+43 more)
 
-### Community 4 - "groundfx.ts"
-Cohesion: 0.17
-Nodes (14): fx(), fy(), Sideline, box(), byLen, fillQuad(), groundPoly(), groundQuad() (+6 more)
+### Community 3 - "Criação da Carreira"
+Cohesion: 0.06
+Nodes (38): College, COLLEGES, hexNum(), KitDef, baseLayers(), BODY_H, BODY_SCALE, BODY_W (+30 more)
 
-### Community 5 - "MatchScene.ts"
+### Community 4 - "Jogadores e Rotas"
 Cohesion: 0.10
-Nodes (28): CLOCK_RATE, FIELD, FORMATION_NAME, HOT_ROUTE_CYCLE, NICKEL_425, PASS_PLAYS, PassPlay, RECV_COLORS (+20 more)
+Nodes (20): Player, difficulty, DifficultyDef, LEVELS, ORDER, LiveEvents, LivePlay, Phase (+12 more)
 
-### Community 6 - "package.json"
+### Community 5 - "Liga e Temporada"
+Cohesion: 0.08
+Nodes (44): add(), boxFor(), clampInt(), conferenceSeeds(), CONFS, divisionOf(), divisionTable(), DIVS (+36 more)
+
+### Community 6 - "Playoffs e Prêmios Finais"
+Cohesion: 0.09
+Nodes (42): finalMvp(), bracket, Round, ROUNDS, COACHES, conferenceOf(), contractOf(), ensureSeason() (+34 more)
+
+### Community 7 - "Jogadas e Passe"
+Cohesion: 0.08
+Nodes (33): CLOCK_RATE, FIELD, FORMATION_NAME, HOT_ROUTE_CYCLE, NICKEL_425, PASS_PLAYS, PassPlay, RECV_COLORS (+25 more)
+
+### Community 8 - "Menu da Carreira"
+Cohesion: 0.19
+Nodes (7): CarreiraMenu, f1(), grpOf(), hex(), nf(), ovc(), gradCard()
+
+### Community 9 - "Documentos de Planejamento"
+Cohesion: 0.07
+Nodes (39): QB Career - Ordem de execucao no Claude Code, Etapa 10 - Celular (Capacitor), Etapa 1 - Base do projeto, Etapa 2 - Jogador em camadas e rosto, Etapa 3 - Criacao da carreira, Etapa 4 - Combine, Etapa 5 - Draft, Etapa 6 - Menu da carreira (+31 more)
+
+### Community 10 - "Uniformes e Ponte da Partida"
+Cohesion: 0.12
+Nodes (22): KIT_IDS, kitAccents(), KitId, kitInfo(), shade(), ROUND_INFO, careerTeam(), nextGame() (+14 more)
+
+### Community 11 - "Provas do Combine"
+Cohesion: 0.11
+Nodes (16): forcePanel(), Actor, CombineStage, MID, playerLook(), bottomShade(), infoPanel(), pill() (+8 more)
+
+### Community 12 - "Base de Cenas Phaser"
+Cohesion: 0.25
+Nodes (16): phaser, Attempt, broadcast, FONT_LABEL, FONT_TITLE, GAME_H, GAME_W, matchRecords (+8 more)
+
+### Community 13 - "Campo e Traves"
+Cohesion: 0.13
+Nodes (14): COLORS, hostTeam(), drawGoalPost(), drawPylon(), p, a, b, c (+6 more)
+
+### Community 14 - "Estádios e Clima"
+Cohesion: 0.12
+Nodes (26): finalGame, matchConfig, venue, isDome(), stadiumOf(), buildRows(), finishTexture(), HAIR (+18 more)
+
+### Community 15 - "Pixel Art dos Estádios"
+Cohesion: 0.12
+Nodes (20): CityPiece, CitySpec, DOMES, Stadium, STADIUMS, STAND_IDS, STAND_NAMES, StandChoice (+12 more)
+
+### Community 16 - "Bola e Replay"
+Cohesion: 0.10
+Nodes (9): Ball, g0, g1, p, Pose, POSES, Throw, Frame (+1 more)
+
+### Community 17 - "Sprites dos Jogadores"
+Cohesion: 0.14
+Nodes (18): SPRITE_SCALE, Role, Side, Slot, Attributes, BASE, drawDive(), drawDiveFlat() (+10 more)
+
+### Community 18 - "Desenho do Gramado"
+Cohesion: 0.17
+Nodes (15): blockAssignments(), fillQuad(), a, b, c, d, groundArrow(), groundArrowHead() (+7 more)
+
+### Community 19 - "Câmera e Palco"
+Cohesion: 0.17
+Nodes (15): CAMERA, guestTeam(), CORNERS, pickTimeOfDay(), RGB, shadowLights(), SkyWeather, TimeOfDay (+7 more)
+
+### Community 20 - "Texturas de Sprites"
+Cohesion: 0.12
+Nodes (20): TeamConfig, TEX_PX, BARE_HEAD, buildSidelineTextures(), COACH, HAIRS, HELMET_HEAD, HOLD_LEGS (+12 more)
+
+### Community 21 - "Partida da Carreira"
+Cohesion: 0.15
+Nodes (4): careerMatch(), leaveCareerMatch(), tipText(), CardOpts
+
+### Community 22 - "Simulação de Drives"
+Cohesion: 0.14
+Nodes (6): pickScheme(), DriveRow, simulateDrive(), spotName(), Rng, Weather
+
+### Community 23 - "Dependências npm"
 Cohesion: 0.10
 Nodes (19): dependencies, phaser, devDependencies, @fontsource/press-start-2p, @fontsource/silkscreen, typescript, vite, name (+11 more)
 
-### Community 7 - "updateSave"
-Cohesion: 0.29
-Nodes (4): hexNum(), updateSave(), CareerCreate, collegeKit()
+### Community 24 - "Menu Principal e Times"
+Cohesion: 0.22
+Nodes (16): applyMatchup(), toConfig(), autoUniform(), BY_ID, colorDist(), css(), fgOn(), lum() (+8 more)
 
-### Community 8 - "field.ts"
-Cohesion: 0.13
-Nodes (18): CAMERA, COLORS, g0, g1, p, drawGoalPost(), drawPylon(), p (+10 more)
+### Community 25 - "Banco Lateral"
+Cohesion: 0.20
+Nodes (13): MATCH_SEED, AREA, BENCH, fx(), fy(), Side, Sideline, STAND_GAP (+5 more)
 
-### Community 9 - "compilerOptions"
+### Community 26 - "Botões e UI Comum"
+Cohesion: 0.20
+Nodes (6): sideButtons(), logoKey(), backButton(), Menu, label(), title()
+
+### Community 27 - "Prêmios da Temporada"
+Cohesion: 0.21
+Nodes (16): Award, awardsReady(), awardsRecap(), AwardWinner, DEF, defScore(), lineOf(), OFF (+8 more)
+
+### Community 28 - "Palco e Público"
+Cohesion: 0.15
+Nodes (10): ActorLook, hexStr(), sidelineOptions, Billboard, BillboardLayer, p, q, ShadowLight (+2 more)
+
+### Community 29 - "Configuração da Partida"
+Cohesion: 0.21
+Nodes (5): saveMatchConfig(), WeatherChoice, MainMenu, TimeChoice, Level
+
+### Community 30 - "Títulos e Troféus"
+Cohesion: 0.23
+Nodes (14): pick(), seasonYear(), champion(), championOf(), gameChampions(), revealed(), teamTitles(), titlesOf() (+6 more)
+
+### Community 31 - "Barra de Força"
+Cohesion: 0.22
+Nodes (3): MeterBar, mix(), CombineForca
+
+### Community 32 - "Projeção 3D"
+Cohesion: 0.19
+Nodes (6): PLANE, Projection, ScreenPoint, toPlaneT(), toPlaneX(), q
+
+### Community 33 - "Inicialização do Jogo"
+Cohesion: 0.19
+Nodes (9): RES, boot(), CareerHub, CareerTest, patchText(), GradOpts, gradTexture(), path() (+1 more)
+
+### Community 38 - "Config TypeScript"
 Cohesion: 0.17
 Nodes (11): compilerOptions, isolatedModules, lib, module, moduleResolution, noEmit, skipLibCheck, strict (+3 more)
 
-### Community 10 - "draft/ui.ts"
-Cohesion: 0.06
-Nodes (70): build(), BY_ID, cityOf(), contrast(), deriveKits(), PHOTO, TeamRepository, TEAMS (+62 more)
+### Community 39 - "Widgets de Menu"
+Cohesion: 0.35
+Nodes (4): brand(), primaryButton(), hexOf(), GlassButton
 
-### Community 11 - "config.ts"
-Cohesion: 0.17
-Nodes (26): phaser, broadcast, FONT_LABEL, FONT_TITLE, GAME_H, GAME_W, matchRecords, QUARTER_SECONDS (+18 more)
+### Community 40 - "Placar Horário Nobre"
+Cohesion: 0.24
+Nodes (10): playoffLogo, buildPrimeBoard(), hex(), poly(), Prime, PrimeBoard, primeKind, Rect (+2 more)
 
-### Community 12 - "grandstand.ts"
-Cohesion: 0.07
-Nodes (45): finalGame, venue, CityPiece, CitySpec, DOMES, isDome(), Stadium, stadiumOf() (+37 more)
+### Community 41 - "Carregamento de Assets"
+Cohesion: 0.29
+Nodes (5): Boot, careerAssetCounts(), GROUPS, queueCareerAssets(), sharpenCareerAssets()
 
-### Community 14 - "season.ts"
-Cohesion: 0.09
-Nodes (43): conferenceSeeds(), divisionTable(), rankTeams(), bracket, Round, ROUND_INFO, ROUNDS, COACHES (+35 more)
-
-### Community 15 - "MatchBridge.ts"
-Cohesion: 0.17
-Nodes (13): KitId, careerTeam(), nextGame(), matchConfig, CareerMatchResult, Current, finishCareerMatch(), KIT_UNI (+5 more)
-
-### Community 16 - "getSave"
-Cohesion: 0.23
-Nodes (17): finalMvp(), contractOf(), roster(), seasonYear(), champion(), championOf(), gameChampions(), revealed() (+9 more)
-
-### Community 17 - "awards.ts"
-Cohesion: 0.23
-Nodes (15): Award, awardsReady(), awardsRecap(), AwardWinner, DEF, defScore(), lineOf(), OFF (+7 more)
-
-### Community 18 - "CarreiraMenu.ts"
-Cohesion: 0.07
-Nodes (42): add(), boxFor(), clampInt(), CONFS, divisionOf(), DIVS, emptyLine(), league (+34 more)
-
-### Community 19 - "CarreiraMenu"
-Cohesion: 0.17
-Nodes (9): teamRank(), CarreiraMenu, f1(), grpOf(), hex(), nf(), ovc(), gradCard() (+1 more)
-
-### Community 20 - "Projection"
-Cohesion: 0.17
-Nodes (5): Grandstand, pointAt(), wallQuad(), Projection, toPlaneT()
-
-### Community 22 - "Sideline.ts"
-Cohesion: 0.10
-Nodes (25): MATCH_SEED, TEX_PX, AREA, BENCH, Side, sidelineOptions, BARE_HEAD, buildSidelineTextures() (+17 more)
-
-### Community 23 - "scoring.ts"
-Cohesion: 0.15
-Nodes (20): Attempt, attrsFromCombine(), clamp(), finalScore(), grade(), gradeColor(), projection(), QB_AVG (+12 more)
-
-### Community 24 - "stage.ts"
-Cohesion: 0.21
-Nodes (12): ActorLook, College, COLLEGES, Pose, BEARD_COUNT, CELL, FACE_COUNT, HAIR_COLORS (+4 more)
-
-### Community 25 - "Player"
-Cohesion: 0.14
-Nodes (4): Player, vibrate(), statusOf(), Lane
-
-### Community 26 - "CombineForca"
-Cohesion: 0.12
-Nodes (4): MeterBar, mix(), Combine40, CombineForca
-
-### Community 28 - "daytime.ts"
-Cohesion: 0.12
-Nodes (21): guestTeam(), hostTeam(), SPRITE_SCALE, Billboard, BillboardLayer, p, q, CORNERS (+13 more)
-
-### Community 29 - "QB Career — Ordem de execução no Claude Code"
-Cohesion: 0.13
-Nodes (15): Etapa 0 — Preparação (você, 5 min), Etapa 10 — Celular (depois), Etapa 1 — Base do projeto, Etapa 3 — Criação da carreira, Etapa 4 — Combine, Etapa 5 — Draft, Etapa 6 — Menu da carreira, Etapa 7 — PERSONALIZAR (+7 more)
-
-### Community 30 - "primeBoard.ts"
-Cohesion: 0.12
-Nodes (11): playoffLogo, Hud, buildPrimeBoard(), hex(), poly(), Prime, PrimeBoard, primeKind (+3 more)
-
-### Community 31 - "Player.ts"
-Cohesion: 0.13
-Nodes (20): hexStr(), Role, Side, Slot, Attributes, BASE, drawDive(), drawDiveFlat() (+12 more)
-
-### Community 32 - "PlayerBody.ts"
-Cohesion: 0.16
-Nodes (15): Etapa 2 — Jogador em camadas e rosto, KitDef, baseLayers(), BODY_H, BODY_SCALE, BODY_W, BodyLook, composite() (+7 more)
-
-### Community 34 - "manifest.json"
+### Community 53 - "Manifesto de Assets"
 Cohesion: 0.40
 Nodes (4): draft_suit, faces, layers, stadiums
 
-### Community 36 - ".buildLive"
-Cohesion: 0.10
-Nodes (4): Feedback, Read, readThrow(), ResultCard
-
-### Community 38 - "title"
-Cohesion: 0.08
-Nodes (21): CombineBase, forcePanel(), Actor, CombineStage, MID, playerLook(), bottomShade(), brand() (+13 more)
-
-### Community 41 - "jerseyArt.ts"
-Cohesion: 0.53
-Nodes (5): css(), JerseyOpts, jerseyTexture(), lum(), mix()
-
-### Community 43 - "MatchScene"
-Cohesion: 0.10
-Nodes (3): careerMatch(), MatchScene, Menu
-
-### Community 44 - "Ball"
-Cohesion: 0.16
-Nodes (3): Ball, Throw, Replay
-
-### Community 45 - "GameState"
-Cohesion: 0.17
-Nodes (6): 7.1 Estrutura de pastas sugerida (adapte à estrutura que já existe), 7.2 Como trabalhar (uma etapa por vez), 7.3 Critérios de aceite, 7.4 Critério de pronto, PARTE 7 — ESTRUTURA, ORDEM DE TRABALHO E CRITÉRIOS, GameState
-
-### Community 46 - "ai.ts"
-Cohesion: 0.28
-Nodes (7): RouteKind, blockAssignments(), readText(), Scheme, SchemeId, SCHEMES, Zone
-
-### Community 50 - "Projeto: QB Career — Criação de carreira, Combine, Draft e Menu da carreira"
-Cohesion: 0.12
-Nodes (16): 2.1 Um único save do jogador, 2.2 Registro de times e logos (espaço preparado para todos os times), 4.1 Miniatura do estádio (foto real pixelada), 5.1 Layout, 5.2 Kits travados (`kits.ts`), 5.3 Opções editáveis (`LookOptions`), 5.4 Rosto dentro do capacete, PARTE 0 — REGRAS GLOBAIS (+8 more)
-
-### Community 51 - "main.ts"
-Cohesion: 0.15
-Nodes (13): RES, boot(), Boot, backButton(), CareerHub, CareerTest, PlayerTest, careerAssetCounts() (+5 more)
-
-### Community 52 - ".recv"
-Cohesion: 0.28
-Nodes (7): groundArrow(), groundOval(), groundPath(), groundRing(), groundSegment(), arcAt(), riskColor()
-
-### Community 53 - ".buildPersFixed"
-Cohesion: 0.27
-Nodes (6): KIT_IDS, kitAccents(), kitInfo(), shade(), pick(), LookOptions
-
-### Community 54 - "live.ts"
-Cohesion: 0.15
-Nodes (14): pickScheme(), difficulty, DifficultyDef, Level, LEVELS, ORDER, Phase, DriveRow (+6 more)
-
-### Community 59 - "PreJogo.ts"
-Cohesion: 0.19
-Nodes (11): PRIME, FaceLook, KIT_NAMES, GradOpts, gradTexture(), path(), rgba(), portrait() (+3 more)
-
-### Community 63 - "3.2 Combine (com a gameplay dos testes)"
-Cohesion: 0.40
-Nodes (4): 3.1 Criação, 3.2 Combine (com a gameplay dos testes), 3.3 Draft, PARTE 3 — FLUXO DE TELAS
-
 ## Knowledge Gaps
-- **200 isolated node(s):** `name`, `private`, `version`, `type`, `dev` (+195 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 318 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **16 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **188 isolated node(s):** `name`, `private`, `version`, `type`, `dev` (+183 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 306 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **19 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `MatchScene` connect `MatchScene` to `.details`, `LivePlay`, `MatchScene.ts`, `config.ts`, `LiveUi`, `MatchBridge.ts`, `Player`, `.buildBottom`, `daytime.ts`, `primeBoard.ts`, `.endPlay`, `.buildLive`, `DefenseScreen`, `Fx`, `Ball`, `ai.ts`, `Weather`, `KickUi`, `.recv`, `CarrierControl`, `Intro`?**
-  _High betweenness centrality (0.123) - this node is a cross-community bridge._
-- **Why does `phaser` connect `config.ts` to `PlayerSave.ts`, `groundfx.ts`, `MatchScene.ts`, `package.json`, `field.ts`, `draft/ui.ts`, `grandstand.ts`, `MatchBridge.ts`, `CarreiraMenu.ts`, `Sideline.ts`, `scoring.ts`, `stage.ts`, `daytime.ts`, `primeBoard.ts`, `Player.ts`, `PlayerBody.ts`, `title`, `jerseyArt.ts`, `Pane`, `main.ts`, `PreJogo.ts`?**
-  _High betweenness centrality (0.112) - this node is a cross-community bridge._
-- **Why does `getSave()` connect `getSave` to `Combine3Cones`, `PlayerSave.ts`, `MatchScene.ts`, `title`, `updateSave`, `draft/ui.ts`, `MatchScene`, `season.ts`, `MatchBridge.ts`, `awards.ts`, `CarreiraMenu.ts`, `main.ts`, `CarreiraMenu`, `.buildPersFixed`, `scoring.ts`, `stage.ts`, `CombineForca`, `PreJogo.ts`?**
+- **Why does `MatchScene` connect `Partida: Lances ao Vivo` to `Jogadores e Rotas`, `Jogadas e Passe`, `Uniformes e Ponte da Partida`, `Bola e Replay`, `Sprites dos Jogadores`, `Desenho do Gramado`, `Câmera e Palco`, `Partida da Carreira`, `Simulação de Drives`, `Menu Principal e Times`, `Botões e UI Comum`, `Configuração da Partida`, `Tela de Defesa`, `HUD`, `Widgets de Menu`, `Introdução`, `Joystick`, `Controle do Corredor`, `Efeitos Visuais`, `Chute`, `Feedback de Jogo`, `Cartão de Resultado`, `Etiquetas`?**
+  _High betweenness centrality (0.118) - this node is a cross-community bridge._
+- **Why does `phaser` connect `Base de Cenas Phaser` to `Times e Draft`, `Combine: Pontuação`, `Criação da Carreira`, `Liga e Temporada`, `Jogadas e Passe`, `Uniformes e Ponte da Partida`, `Provas do Combine`, `Campo e Traves`, `Estádios e Clima`, `Pixel Art dos Estádios`, `Bola e Replay`, `Sprites dos Jogadores`, `Desenho do Gramado`, `Câmera e Palco`, `Texturas de Sprites`, `Dependências npm`, `Menu Principal e Times`, `Banco Lateral`, `Palco e Público`, `Projeção 3D`, `Inicialização do Jogo`, `Painéis`, `Placar Horário Nobre`, `Carregamento de Assets`?**
+  _High betweenness centrality (0.110) - this node is a cross-community bridge._
+- **Why does `getSave()` connect `Uniformes e Ponte da Partida` to `Times e Draft`, `Partida: Lances ao Vivo`, `Combine: Pontuação`, `Criação da Carreira`, `Liga e Temporada`, `Playoffs e Prêmios Finais`, `Jogadas e Passe`, `Menu da Carreira`, `Provas do Combine`, `Base de Cenas Phaser`, `Partida da Carreira`, `Botões e UI Comum`, `Prêmios da Temporada`, `Palco e Público`, `Títulos e Troféus`, `Barra de Força`, `Cena Base do Combine`, `Widgets de Menu`, `Prova 40 Jardas`, `Prova 3 Cones`?**
   _High betweenness centrality (0.057) - this node is a cross-community bridge._
 - **What connects `name`, `private`, `version` to the rest of the system?**
-  _200 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `.details` be split into smaller, more focused modules?**
-  _Cohesion score 0.14114114114114115 - nodes in this community are weakly interconnected._
-- **Should `LivePlay` be split into smaller, more focused modules?**
-  _Cohesion score 0.14623655913978495 - nodes in this community are weakly interconnected._
-- **Should `MatchScene.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.0953058321479374 - nodes in this community are weakly interconnected._
+  _188 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `Times e Draft` be split into smaller, more focused modules?**
+  _Cohesion score 0.07075624797143784 - nodes in this community are weakly interconnected._
+- **Should `Partida: Lances ao Vivo` be split into smaller, more focused modules?**
+  _Cohesion score 0.07392607392607392 - nodes in this community are weakly interconnected._
+- **Should `Combine: Pontuação` be split into smaller, more focused modules?**
+  _Cohesion score 0.06354642313546423 - nodes in this community are weakly interconnected._
