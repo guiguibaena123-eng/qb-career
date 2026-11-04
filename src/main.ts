@@ -48,5 +48,5 @@ boot();
 
 // Modo offline (só na versão publicada): o service worker guarda o jogo para abrir sem internet
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {}));
 }
