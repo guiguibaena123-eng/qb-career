@@ -2,6 +2,10 @@ import Phaser from 'phaser';
 // Fontes embutidas no projeto (funcionam offline)
 import '@fontsource/press-start-2p';
 import '@fontsource/silkscreen';
+// Fonte dos menus (transmissão de TV)
+import '@fontsource/saira-condensed/600.css';
+import '@fontsource/saira-condensed/700.css';
+import '@fontsource/saira-condensed/800.css';
 import { GAME_H, GAME_W, RES } from './config';
 import { patchText } from './systems/hires';
 import { Boot } from './scenes/Boot';
@@ -26,7 +30,13 @@ import { CareerSlots } from './scenes/CareerSlots';
 
 async function boot() {
   // Espera as fontes carregarem para os textos do Phaser não nascerem com fonte padrão
-  await Promise.all([document.fonts.load('16px "Press Start 2P"'), document.fonts.load('16px "Silkscreen"')]).catch(() => {});
+  await Promise.all([
+    document.fonts.load('16px "Press Start 2P"'),
+    document.fonts.load('16px "Silkscreen"'),
+    document.fonts.load('600 16px "Saira Condensed"'),
+    document.fonts.load('700 16px "Saira Condensed"'),
+    document.fonts.load('800 16px "Saira Condensed"'),
+  ]).catch(() => {});
 
   patchText();
   new Phaser.Game({
@@ -34,7 +44,7 @@ async function boot() {
     parent: 'game',
     width: GAME_W * RES,
     height: GAME_H * RES,
-    backgroundColor: '#0A0C1A',
+    backgroundColor: '#0B0E14',
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, powerPreference: 'high-performance' },
     fps: { target: 60 },

@@ -14,10 +14,9 @@ import { teamById } from '../data/teams';
 import { bracket, ROUND_INFO, ROUNDS, type PGame } from '../career/playoffs';
 import { DEFAULT_LOOK, getSave, updateSave, type LookOptions } from '../player/PlayerSave';
 import { setupHiRes } from '../systems/hires';
-import { gradCard } from '../ui/gradcard';
 import { portrait as drawPortrait } from '../ui/portrait';
 import { weatherIcon } from '../ui/weatherIcon';
-import { GlassButton, label, title } from '../ui/widgets';
+import { C, feed, fillPlate, inkOn, label, lum, mix, onInk, plate, plateLine, plateShadow, scoreBug, sectionHead, star, strokePlate, title, TV, tvCard as gradCard, tvEnter, TvButton as GlassButton, tvText, wipeTo } from '../ui/tv';
 
 /*
  * CarreiraMenu — hub da carreira (como no design): cabeçalho com o jogador, time, OVR e retrospecto;
@@ -26,13 +25,16 @@ import { GlassButton, label, title } from '../ui/widgets';
  * Os dados vêm do save e de career/season.ts (registro de times, sem nada escrito à mão).
  */
 
-const OR = 0xf26b1d;
-const GR = 0x3ccb5a;
-const YE = 0xffd23f;
-const RD = 0xff7b80;
-const CARD = 0x22284a;
+/** Destaque (seleção, abas, próximo jogo): o amarelo de primeira descida da transmissão. */
+const OR = TV.yellow;
+const GR = TV.green;
+const YE = TV.yellow;
+const RD = 0xff5a6a;
+/** Faixa laranja das notas (entre amarelo e vermelho). */
+const ORG = 0xff8a2a;
+const CARD = TV.ink2;
 const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
-const ovc = (v: number) => (v >= 85 ? GR : v >= 75 ? YE : v >= 65 ? OR : RD);
+const ovc = (v: number) => (v >= 85 ? GR : v >= 75 ? YE : v >= 65 ? ORG : RD);
 
 /** Opções do PERSONALIZAR (valor + nome mostrado), como no design. */
 type Opt<T> = [T, string][];
@@ -197,159 +199,126 @@ export class CarreiraMenu extends Phaser.Scene {
     this.cards = new Pane(this, 0, 96, GAME_W, 104, 'x', 10);
     this.drawNextGames();
     this.tabsPane = new Pane(this, 0, 208, GAME_W, 44, 'x', 11);
-    this.body = new Pane(this, 0, 258, GAME_W, GAME_H - 100 - 258, 'y', 5);
-    this.persPane = new Pane(this, PX, PV.y, GAME_W - PX - 16, GAME_H - 100 - PV.y, 'y', 5);
+    this.body = new Pane(this, 0, 258, GAME_W, GAME_H - 76 - 258, 'y', 5);
+    this.persPane = new Pane(this, PX, PV.y, GAME_W - PX - 16, GAME_H - 76 - PV.y, 'y', 5);
     this.buildPersFixed();
     this.drawCta();
     this.show(this.tab);
     this.savedBadge();
+    tvEnter(this);
   }
 
-  /** Selo "JOGO SALVO" que aparece e some no topo. */
+  /** Selo "JOGO SALVO" que aparece e some acima do botão de jogar. */
   private savedBadge() {
-    const t = label(this, 0, 0, '✓ JOGO SALVO', 9, '#0D0D12').setOrigin(0.5);
-    const w = t.width + 24;
+    const t = tvText(this, 0, 0, 'JOGO SALVO', 14, C.ink, 800, 1.6).setOrigin(0.5);
+    const w = t.width + 30;
     const g = this.add.graphics();
-    g.fillStyle(GR, 1);
-    g.fillRoundedRect(-w / 2, -12, w, 24, 10);
-    const c = this.add.container(GAME_W / 2, GAME_H - 104, [g, t]).setDepth(50).setAlpha(0);
-    this.tweens.add({ targets: c, alpha: 1, y: GAME_H - 112, duration: 250, delay: 200 });
+    plate(g, -w / 2, -13, w, 26, GR);
+    const c = this.add.container(GAME_W / 2, 66, [g, t]).setDepth(50).setAlpha(0);
+    this.tweens.add({ targets: c, alpha: 1, y: 74, duration: 260, delay: 260, ease: 'Expo.Out' });
     this.tweens.add({ targets: c, alpha: 0, duration: 400, delay: 1900, onComplete: () => c.destroy() });
   }
 
   // ------------------------------------------------------------ moldura
 
   private drawBackground() {
-    const W = GAME_W;
-    const H = GAME_H;
-    const g = this.add.graphics().setDepth(-10);
-    g.fillStyle(0x0a0c1a, 1);
-    g.fillRect(0, 0, W, H);
-    // Brilho laranja vindo do topo
-    for (let i = 14; i > 0; i--) {
-      g.fillStyle(OR, 0.022);
-      g.fillEllipse(W / 2, 0, (360 * i) / 14 * 2, (260 * i) / 14 * 2);
-    }
-    // Grade fina
-    g.fillStyle(0xffffff, 0.025);
-    for (let x = 0; x < W; x += 24) g.fillRect(x, 0, 1, H);
-    for (let y = 0; y < H; y += 24) g.fillRect(0, y, W, 1);
+    // Imagem ao vivo: o estádio do seu time, bem escurecido (o conteúdo vem por cima)
+    feed(this, this.team.id, 0.84).setDepth(-10);
   }
 
   private drawHeader() {
     const s = getSave();
     const t = this.team;
-    // Camisa (silhueta de jersey) na cor do time com o 12
-    const g = this.add.graphics().setDepth(20);
-    const jersey = (ox: number, oy: number, w: number, h: number, c: number) => {
-      const P = [[17, 0], [39, 0], [44, 5], [56, 5], [61, 0], [83, 0], [100, 17], [91, 36], [81, 31], [81, 100], [19, 100], [19, 31], [9, 36], [0, 17]];
-      g.fillStyle(c, 1);
-      g.fillPoints(P.map(([px, py]) => new Phaser.Math.Vector2(ox + (px / 100) * w, oy + (py / 100) * h)), true);
-    };
-    jersey(16, 21, 36, 40, 0x0d0d12);
-    jersey(18, 23, 32, 36, t.colors.primary);
-    title(this, 34, 44, String(s.number), 9, fgOn(t.colors.primary)).setOrigin(0.5).setDepth(21);
-    // Tocar na camisa volta para a aba CARREIRA do menu principal (o design não tem botão de voltar)
-    this.add
-      .zone(34, 41, 48, 48)
-      .setDepth(22)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.scene.start('CareerSlots'));
-    title(this, 62, 32, `${s.name} · QB`, 10, '#FFFFFF').setDepth(21);
-    label(this, 62, 48, `${t.name} · TEMP. ${s.career.season} · SEM. ${Math.max(1, s.career.week)}`, 10, '#9AA3C0').setDepth(21);
-    // Pílulas: OVR e retrospecto
-    const pill = (right: number, parts: (Phaser.GameObjects.Text | Phaser.GameObjects.Arc)[]) => {
-      let w = 18;
-      parts.forEach((p) => (w += (p instanceof Phaser.GameObjects.Text ? p.width : 8) + 6));
-      w -= 6;
-      const pg = this.add.graphics().setDepth(20);
-      pg.fillStyle(0x2a3156, 0.7);
-      pg.fillRoundedRect(right - w, 25, w, 30, 12);
-      pg.lineStyle(1, 0xffffff, 0.16);
-      pg.strokeRoundedRect(right - w, 25, w, 30, 12);
-      let x = right - w + 9;
-      for (const p of parts) {
-        const pw = p instanceof Phaser.GameObjects.Text ? p.width : 8;
-        p.setPosition(x + (p instanceof Phaser.GameObjects.Text ? 0 : 4), 40).setDepth(21);
-        if (p instanceof Phaser.GameObjects.Text) p.setOrigin(0, 0.5);
-        x += pw + 6;
-      }
-      return right - w;
-    };
+    const W = GAME_W;
+    const y = 12;
+    const h = 48;
+    const c = this.add.container(0, 0).setDepth(20);
+    const g = this.add.graphics();
+    plateShadow(g, 12, y, W - 24, h, false, true);
+    plate(g, 12, y, W - 24, h, TV.ink, 0.97, false, true);
+    // voltar (saves)
+    plate(g, 12, y, 40, h, TV.ink3, 1, false, true);
+    g.lineStyle(2.5, TV.plate, 1);
+    g.beginPath();
+    g.moveTo(35, y + 16);
+    g.lineTo(27, y + 24);
+    g.lineTo(35, y + 32);
+    g.strokePath();
+    // bloco do time com o número
+    plate(g, 54, y, 46, h, t.colors.primary, 1, true, true);
+    c.add(g);
+    c.add(tvText(this, 77, y + h / 2, String(s.number), 22, inkOn(t.colors.primary), 800).setOrigin(0.5));
+    const nm = tvText(this, 108, y + 17, `${s.name} · QB`, 18, C.white, 800, 0.6).setOrigin(0, 0.5);
     const rec = `${s.career.record.w}-${s.career.record.l}`;
-    // Botão de casa: volta ao menu principal (o save já fica gravado a cada mudança)
-    const hx = GAME_W - 16 - 15;
-    const hg = this.add.graphics().setDepth(20);
-    hg.fillStyle(0x2a3156, 0.7);
-    hg.fillRoundedRect(hx - 15, 25, 30, 30, 12);
-    hg.lineStyle(1, 0xffffff, 0.16);
-    hg.strokeRoundedRect(hx - 15, 25, 30, 30, 12);
-    hg.fillStyle(0xffffff, 1);
-    hg.fillTriangle(hx - 8, 40, hx + 8, 40, hx, 32);
-    hg.fillRect(hx - 6, 40, 12, 8);
-    hg.fillStyle(0x2a3156, 1);
-    hg.fillRect(hx - 2, 43, 4, 5);
-    this.add
-      .zone(hx, 40, 40, 40)
-      .setDepth(22)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.scene.start('MainMenu'));
-    const left = pill(hx - 15 - 6, [this.add.circle(0, 0, 4, GR), title(this, 0, 0, rec, 9, '#FFFFFF')]);
-    pill(left - 8, [label(this, 0, 0, 'OVR', 9, '#9AA3C0'), title(this, 0, 0, String(s.ovr), 11, hex(YE))]);
+    const sub = tvText(this, 108, y + 35, `${t.name} · ${rec} · TEMP. ${s.career.season} · SEM. ${Math.max(1, s.career.week)}`, 12, C.muted, 600, 0.6).setOrigin(0, 0.5);
+    // OVR (placa amarela) e casa
+    const hx = W - 12 - 40;
+    plate(g, hx, y, 40, h, TV.ink3, 1, true, false);
+    g.fillStyle(TV.plate, 1);
+    g.fillTriangle(hx + 12, y + 24, hx + 28, y + 24, hx + 20, y + 15);
+    g.fillRect(hx + 14, y + 24, 12, 9);
+    g.fillStyle(TV.ink3, 1);
+    g.fillRect(hx + 18, y + 27, 4, 6);
+    const ox = hx - 6 - 70;
+    plate(g, ox, y + 6, 70, h - 12, TV.yellow);
+    c.add(tvText(this, ox + 13, y + h / 2 + 1, 'OVR', 12, C.ink, 700, 0.8).setOrigin(0, 0.5));
+    c.add(tvText(this, ox + 62, y + h / 2, String(s.ovr), 22, C.ink, 800).setOrigin(1, 0.5));
+    const room = ox - 8 - 108;
+    if (nm.width > room) nm.setScale(room / nm.width, 1);
+    if (sub.width > room) sub.setScale(Math.max(0.6, room / sub.width), 1);
+    c.add([nm, sub]);
+    const zb = this.add.zone(12, y, 42, h).setOrigin(0).setDepth(22).setInteractive({ useHandCursor: true });
+    zb.on('pointerup', () => wipeTo(this, 'CareerSlots', t.colors.primary));
+    const zh = this.add.zone(hx, y, 40, h).setOrigin(0).setDepth(22).setInteractive({ useHandCursor: true });
+    zh.on('pointerup', () => wipeTo(this, 'MainMenu', t.colors.primary));
   }
 
   /** Cartões dos próximos jogos (rolam para o lado); tocar abre a aba JOGOS. */
   private drawNextGames() {
-    const head = title(this, 16, 80, 'PRÓXIMOS JOGOS', 9, '#C9CEE0');
-    const all = label(this, GAME_W - 16, 82, 'VER TODOS ›', 10, hex(YE)).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
-    all.on('pointerdown', () => this.show('jogos'));
+    const head = sectionHead(this, 16, 80, 'PRÓXIMOS JOGOS', 'VER TODOS');
+    const all = this.add.zone(GAME_W - 110, 66, 100, 28).setOrigin(0).setInteractive({ useHandCursor: true });
+    all.on('pointerup', () => this.show('jogos'));
     this.top.add([head, all]);
     const p = this.cards;
     const next = nextGame();
     const games = schedule().filter((g) => !g.bye && !g.result).slice(0, 5);
+    const cw = 168;
     games.forEach((g, i) => {
-      const x = 16 + i * 174;
+      const x = 16 + i * (cw + 8);
       const first = !!next && g.week === next.week;
-      const c = this.add.graphics();
-      if (first) {
-        c.fillStyle(OR, 0.12);
-        c.fillRoundedRect(x - 4, -2, 172, 106, 16);
-      }
-      c.fillStyle(0x000000, 0.3);
-      c.fillRoundedRect(x, 6, 164, 98, 14);
       const pr = g.prime ? PRIME[g.prime] : null;
-      if (first || pr) {
-        p.add(c);
-        p.add(gradCard(this, x, 2, 164, 96, pr ? { from: pr.color, fromAlpha: 0.95, to: 0x0d0f1f, toAlpha: 0.95, radius: 14, glow: true, stroke: first ? OR : pr.glow, strokeAlpha: first ? 1 : 0.7, strokeWidth: 2 } : { from: OR, fromAlpha: 0.6, to: CARD, toAlpha: 0.9, radius: 14, glow: true, stroke: OR, strokeAlpha: 1, strokeWidth: 2 }));
-      } else {
-        c.fillStyle(CARD, 0.72);
-        c.fillRoundedRect(x, 2, 164, 96, 14);
-        c.lineStyle(2, 0xffffff, 0.14);
-        c.strokeRoundedRect(x, 2, 164, 96, 14);
-        p.add(c);
-      }
-      if (pr) p.add(label(this, x + 56, 18, `★ ${g.prime}`, 8, '#' + pr.glow.toString(16).padStart(6, '0')).setOrigin(0, 0.5));
-      p.add(weatherIcon(this, x + 146, 82, g.weather, 18, g.tod === 'night'));
-      p.add(label(this, x + 12, 18, `SEM. ${g.week}`, 9, '#9AA3C0').setOrigin(0, 0.5));
-      this.tag(p, x + 152, 18, first ? 'PRÓXIMO' : g.home ? 'CASA' : 'FORA', first ? OR : g.home ? GR : 0x9aa3c0, true);
-      p.add(this.add.image(x + 25, 50, g.opp!.logo.small).setDisplaySize(30, 30));
-      p.add(title(this, x + 46, 44, g.opp!.name, g.opp!.name.length > 10 ? 7 : 9, '#FFFFFF').setOrigin(0, 0.5));
-      p.add(label(this, x + 46, 60, g.home ? 'EM CASA' : 'FORA', 9, '#9AA3C0').setOrigin(0, 0.5));
-      p.add(label(this, x + 12, 84, g.when, 9, '#C9CEE0').setOrigin(0, 0.5));
-      p.hit(x, 2, 164, 96, () => this.show('jogos'));
+      const c = this.add.graphics();
+      plateShadow(c, x, 4, cw, 94);
+      plate(c, x, 4, cw, 94, TV.ink2, 0.97);
+      // faixa de cima: próximo jogo em amarelo, horário nobre em placa branca
+      plate(c, x, 4, cw, 22, first ? TV.yellow : pr ? TV.plate : TV.ink3, 1, true, true);
+      if (first) plateLine(c, x, 4, cw, 94, TV.yellow, 1, 2);
+      p.add(c);
+      const bandFg = first || pr ? C.ink : C.muted;
+      const bl = tvText(this, x + 14, 15, pr ? pr.pt : `SEMANA ${g.week}`, 12, bandFg, 800, 1).setOrigin(0, 0.5);
+      if (bl.width > cw - 86) bl.setScale((cw - 86) / bl.width, 1);
+      p.add(bl);
+      p.add(tvText(this, x + cw - 14, 15, first ? 'PRÓXIMO' : g.home ? 'CASA' : 'FORA', 12, bandFg, 800, 1.2).setOrigin(1, 0.5));
+      p.add(this.add.image(x + 30, 54, g.opp!.logo.small).setDisplaySize(34, 34));
+      const on = tvText(this, x + 54, 48, g.opp!.name, 17, C.white, 800, 0.4).setOrigin(0, 0.5);
+      if (on.width > cw - 64) on.setScale((cw - 64) / on.width, 1);
+      p.add(on);
+      p.add(tvText(this, x + 54, 66, g.home ? 'EM CASA' : 'FORA', 12, C.muted, 600, 1).setOrigin(0, 0.5));
+      p.add(tvText(this, x + 14, 86, g.when, 12, C.white, 600, 0.6).setOrigin(0, 0.5));
+      p.add(weatherIcon(this, x + cw - 22, 84, g.weather, 18, g.tod === 'night'));
+      p.hit(x, 4, cw, 94, () => this.show('jogos'));
     });
-    p.setExtent(16 + games.length * 174 + 6);
+    p.setExtent(16 + games.length * (cw + 8) + 8);
   }
 
   /** Etiqueta colorida (CASA, FORA, PRÓXIMO, TROCA...). `right` = ancorada pela direita. */
   private tag(p: Pane | null, x: number, y: number, text: string, color: number, right = false) {
-    const t = label(this, 0, y, text, 9, '#0D0D12').setOrigin(0, 0.5);
-    const w = t.width + 10;
+    const t = tvText(this, 0, y, text, 12, inkOn(color), 800, 1).setOrigin(0, 0.5);
+    const w = t.width + 14;
     const x0 = right ? x - w : x;
-    t.setX(x0 + 5);
+    t.setX(x0 + 7);
     const g = this.add.graphics();
-    g.fillStyle(color, 1);
-    g.fillRoundedRect(x0, y - 8, w, 16, 5);
+    plate(g, x0, y - 9, w, 18, color);
     if (p) {
       p.add(g);
       p.add(t);
@@ -365,44 +334,39 @@ export class CarreiraMenu extends Phaser.Scene {
     for (const [id, name, baseBadge] of TABS) {
       const badge = id === 'premios' ? (awardsReady() ? 1 : 0) : baseBadge;
       const on = this.tab === id;
-      const t = label(this, 0, 22, name, 10, on ? '#0D0D12' : '#FFFFFF').setOrigin(0, 0.5);
+      const t = tvText(this, 0, 22, name, 15, on ? C.ink : C.white, 800, 1).setOrigin(0, 0.5);
       const showBadge = badge > 0 && !on && !this.seen.has(id);
-      const w = t.width + 24 + (showBadge ? 20 : 0);
+      const w = t.width + 28 + (showBadge ? 22 : 0);
       const g = this.add.graphics();
-      if (on) {
-        g.fillStyle(OR, 0.25);
-        g.fillRoundedRect(x - 3, 1, w + 6, 42, 12);
-      }
-      g.fillStyle(on ? OR : CARD, on ? 1 : 0.7);
-      g.fillRoundedRect(x, 4, w, 36, 10);
-      g.lineStyle(1, 0xffffff, on ? 0.33 : 0.14);
-      g.strokeRoundedRect(x, 4, w, 36, 10);
-      t.setX(x + 12);
+      plate(g, x, 4, w, 36, on ? TV.yellow : TV.ink2, on ? 1 : 0.95);
+      if (!on) plateLine(g, x, 4, w, 36, TV.rule, 1, 1);
+      t.setX(x + 14);
       p.add(g);
       p.add(t);
       if (showBadge) {
-        const bx = x + 12 + t.width + 6;
+        const bx = x + 14 + t.width + 7;
         const bg = this.add.graphics();
-        bg.fillStyle(0xff4d5a, 1);
-        bg.fillRoundedRect(bx, 15, 14, 14, 7);
+        plate(bg, bx, 13, 17, 18, TV.red);
         p.add(bg);
-        p.add(label(this, bx + 7, 22, String(badge), 8, '#FFFFFF').setOrigin(0.5));
+        p.add(tvText(this, bx + 8.5, 22, String(badge), 12, C.white, 800).setOrigin(0.5));
       }
       p.hit(x, 4, w, 36, () => ((this.plSel = null), (this.teamSel = null), this.show(id)));
       if (on) sel = [x, w];
-      x += w + 6;
+      x += w + 4;
     }
-    p.setExtent(x + 10);
+    p.setExtent(x + 12);
     // Rola a fileira até a aba escolhida
     if (sel) p.reveal(sel[0], sel[1]);
   }
 
   private drawCta() {
     const g = this.add.graphics().setDepth(30);
-    for (let i = 0; i < 40; i++) {
-      g.fillStyle(0x0a0c1a, Math.min(1, (i / 40) * 1.66));
-      g.fillRect(0, GAME_H - 120 + i * 3, GAME_W, 3);
+    for (let i = 0; i < 30; i++) {
+      g.fillStyle(TV.ink, Math.min(1, (i / 30) * 1.5));
+      g.fillRect(0, GAME_H - 104 + i * 2, GAME_W, 2);
     }
+    g.fillStyle(TV.ink, 1);
+    g.fillRect(0, GAME_H - 44, GAME_W, 44);
     const n = nextGame();
     const over = !n && seasonOver();
     const done = !!getSave().career.seasonDone;
@@ -421,16 +385,20 @@ export class CarreiraMenu extends Phaser.Scene {
             ? 'ENCERRAR TEMPORADA'
             : 'SIMULAR ATÉ O FIM'
         : 'TEMPORADA ENCERRADA';
-    const b = new GlassButton(this, GAME_W / 2, GAME_H - 26 - 29, { w: GAME_W - 32, h: 58, radius: 18, fill: OR, fillAlpha: 1, borderAlpha: 0.35, primary: true }).setDepth(31);
-    const t = title(this, -8, 0, text, 12, '#0D0D12').setOrigin(0.5);
+    const hc = this.team.colors.primary;
+    const fg = inkOn(hc);
+    const bw = GAME_W - 32;
+    const b = new GlassButton(this, GAME_W / 2, GAME_H - 46, { w: bw, h: 62, fill: hc, fillAlpha: 1, primary: true }).setDepth(31);
+    const t = tvText(this, -bw / 2 + 64, 0, text, 25, fg, 800, 1.2).setOrigin(0, 0.5);
+    if (t.width > bw - 110) t.setScale((bw - 110) / t.width, 1);
     const a = this.add.graphics();
-    a.lineStyle(2.5, 0x0d0d12, 1);
+    a.lineStyle(3, parseInt(fg.slice(1), 16), 1);
     a.beginPath();
-    a.moveTo(t.width / 2 + 2, -5);
-    a.lineTo(t.width / 2 + 7, 0);
-    a.lineTo(t.width / 2 + 2, 5);
+    a.moveTo(bw / 2 - 34, -9);
+    a.lineTo(bw / 2 - 25, 0);
+    a.lineTo(bw / 2 - 34, 9);
     a.strokePath();
-    b.add([t, a]);
+    b.add([this.add.image(-bw / 2 + 36, 0, this.team.logo.small).setDisplaySize(32, 32), t, a]);
     // Antes da partida: tela de pré-jogo (detalhes do confronto e escolha do uniforme)
     let armed = 0;
     b.onTap = () => {
@@ -452,17 +420,16 @@ export class CarreiraMenu extends Phaser.Scene {
         return this.toast(`${seasonResult()} · TOQUE DE NOVO PARA AVANÇAR`);
       }
       if (!n) return this.toast(text);
-      this.time.delayedCall(30, () => this.scene.start('PreJogo'));
+      this.time.delayedCall(30, () => wipeTo(this, 'PreJogo', this.team.colors.primary));
     };
     this.add.existing(b);
   }
 
   private toast(text: string) {
-    const t = title(this, GAME_W / 2, GAME_H - 140, text, 8, '#0D0D12').setOrigin(0.5).setDepth(41);
+    const t = tvText(this, GAME_W / 2, GAME_H - 132, text, 15, C.ink, 800, 1).setOrigin(0.5).setDepth(41);
     const g = this.add.graphics().setDepth(40);
-    g.fillStyle(YE, 1);
-    g.fillRoundedRect(GAME_W / 2 - t.width / 2 - 12, GAME_H - 154, t.width + 24, 28, 10);
-    this.tweens.add({ targets: [t, g], alpha: 0, delay: 1600, duration: 300, onComplete: () => (t.destroy(), g.destroy()) });
+    plate(g, GAME_W / 2 - t.width / 2 - 16, GAME_H - 147, t.width + 32, 30, YE);
+    this.tweens.add({ targets: [t, g], alpha: 0, delay: 1800, duration: 300, onComplete: () => (t.destroy(), g.destroy()) });
   }
 
   // ------------------------------------------------------------ abas
@@ -477,7 +444,7 @@ export class CarreiraMenu extends Phaser.Scene {
     this.top.setVisible(games);
     this.cards.setVisible(games);
     this.tabsPane.moveTo(games ? 208 : 74);
-    this.body.moveTo(games ? 258 : 124, GAME_H - 100 - (games ? 258 : 124));
+    this.body.moveTo(games ? 258 : 124, GAME_H - 76 - (games ? 258 : 124));
     this.drawTabs();
     this.body.setVisible(!pers);
     this.persPane.setVisible(pers);
@@ -503,18 +470,29 @@ export class CarreiraMenu extends Phaser.Scene {
     };
     // Ficha de jogador / página de time abrem por cima da aba atual
     const h = this.plSel ? this.playerPage(this.plSel) : tab === 'times' && this.teamSel ? this.teamPage(this.teamSel) : draw[tab]();
-    this.body.setExtent(h + 28);
+    this.body.setExtent(h + 52);
+    // a aba nova entra deslizando
+    const bc = this.body.content;
+    this.tweens.killTweensOf(bc);
+    bc.setAlpha(0).setX(-28);
+    this.tweens.add({ targets: bc, x: 0, alpha: 1, duration: 360, ease: 'Expo.Out' });
+    if (pers) {
+      const pc = this.persPane.content;
+      const base = PX;
+      this.tweens.killTweensOf([pc, this.persFixed]);
+      pc.setAlpha(0).setX(base - 28);
+      this.persFixed.setAlpha(0).setX(-28);
+      this.tweens.add({ targets: this.persFixed, x: 0, alpha: 1, duration: 360, ease: 'Expo.Out' });
+      this.tweens.add({ targets: pc, x: base, alpha: 1, duration: 360, delay: 60, ease: 'Expo.Out' });
+    }
   }
 
-  /** Cartão de vidro no conteúdo. */
-  private card(x: number, y: number, w: number, h: number, fill = CARD, alpha = 0.72, stroke = 0xffffff, sa = 0.14, r = 16) {
-    // Cartão destacado (cor diferente do padrão): degradê suave com brilho, desenhado em canvas
-    if (fill !== CARD) return this.body.add(gradCard(this, x, y, w, h, { from: fill, fromAlpha: Math.min(0.85, alpha * 2.6), to: CARD, toAlpha: 0.9, radius: r, glow: true, stroke, strokeAlpha: sa, strokeWidth: stroke === 0xffffff ? 1 : 2 }));
+  /** Placa de conteúdo (as cores diferentes do padrão viram placa tingida com faixa no topo). */
+  private card(x: number, y: number, w: number, h: number, fill = CARD, alpha = 0.72, stroke = 0xffffff, sa = 0.14, _r = 16) {
+    if (fill !== CARD) return this.body.add(gradCard(this, x, y, w, h, { from: fill, fromAlpha: Math.min(0.85, alpha * 2.6), stroke, strokeAlpha: sa, strokeWidth: stroke === 0xffffff ? 1 : 2 }));
     const g = this.add.graphics();
-    g.fillStyle(fill, alpha);
-    g.fillRoundedRect(x, y, w, h, r);
-    g.lineStyle(stroke === 0xffffff ? 1 : 2, stroke, sa);
-    g.strokeRoundedRect(x, y, w, h, r);
+    plate(g, x, y, w, h, TV.ink2, Math.max(0.9, alpha));
+    plateLine(g, x, y, w, h, stroke === 0xffffff ? TV.rule : stroke === 0xf26b1d ? TV.yellow : stroke, stroke === 0xffffff ? 1 : sa, stroke === 0xffffff ? 1 : 2);
     return this.body.add(g);
   }
 
@@ -522,39 +500,37 @@ export class CarreiraMenu extends Phaser.Scene {
     return this.body.add((font === 'title' ? title : label)(this, x, y, text, size, color));
   }
 
-  /** Barra de progresso arredondada. */
+  /** Barra de progresso (reta, sem pontas arredondadas). */
   private bar(x: number, y: number, w: number, h: number, frac: number, color: number) {
     const g = this.add.graphics();
-    g.fillStyle(0x0f1224, 1);
-    g.fillRoundedRect(x, y, w, h, h / 2);
+    g.fillStyle(TV.ink, 1);
+    g.fillRect(x, y, w, h);
     if (frac > 0) {
       g.fillStyle(color, 1);
-      g.fillRoundedRect(x, y, Math.max(h, w * Math.min(1, frac)), h, h / 2);
-      g.fillStyle(0x000000, 0.22);
-      g.fillRect(x + h / 2, y + h - 3, Math.max(0, w * Math.min(1, frac) - h), 3);
+      g.fillRect(x, y, Math.max(2, w * Math.min(1, frac)), h);
     }
     return this.body.add(g);
   }
 
-  /** Fileira de filtros (chips); devolve a altura usada. */
+  /** Fileira de filtros; devolve a altura usada. */
   private chips(y: number, names: string[], current: number, pick: (i: number) => void, flex = false) {
     let x = 16;
     const W = GAME_W - 32;
     names.forEach((n, i) => {
-      const t = label(this, 0, y + 15, n, 10, i === current ? '#0D0D12' : '#FFFFFF').setOrigin(0.5);
-      const w = flex ? (W - 6 * (names.length - 1)) / names.length : t.width + 24;
+      const on = i === current;
+      const t = tvText(this, 0, y + 16, n, 14, on ? C.ink : C.white, 800, 0.8).setOrigin(0.5);
+      const w = flex ? (W - 4 * (names.length - 1)) / names.length : t.width + 26;
+      if (t.width > w - 10) t.setScale((w - 10) / t.width, 1);
       const g = this.add.graphics();
-      g.fillStyle(i === current ? OR : CARD, i === current ? 1 : 0.7);
-      g.fillRoundedRect(x, y, w, 30, 8);
-      g.lineStyle(1, 0xffffff, 0.14);
-      g.strokeRoundedRect(x, y, w, 30, 8);
+      plate(g, x, y, w, 32, on ? TV.yellow : TV.ink2, on ? 1 : 0.95);
+      if (!on) plateLine(g, x, y, w, 32, TV.rule, 1, 1);
       t.setX(x + w / 2);
       this.body.add(g);
       this.body.add(t);
-      this.body.hit(x, y, w, 30, () => pick(i));
-      x += w + 6;
+      this.body.hit(x, y, w, 32, () => pick(i));
+      x += w + 4;
     });
-    return 30;
+    return 32;
   }
 
   // ---- CLUBE
@@ -572,7 +548,7 @@ export class CarreiraMenu extends Phaser.Scene {
       g.fillStyle(0x1b2350, 1);
       g.fillRect(16, y, W, 200);
       for (let i = 0; i < 6; i++) {
-        g.fillStyle(i % 2 ? t.colors.primary : 0x2a3156, 0.8);
+        g.fillStyle(i % 2 ? t.colors.primary : TV.ink3, 0.8);
         g.fillRect(16, y + 30 + i * 18, W, 14);
       }
       g.fillStyle(0x2e7d4f, 1);
@@ -583,7 +559,7 @@ export class CarreiraMenu extends Phaser.Scene {
     const sl = label(this, 0, y + 186, `${t.stadium.name} · ${cap}`, 9, '#FFFFFF').setOrigin(0, 0.5);
     const sg = this.add.graphics();
     sg.fillStyle(0x0a0c1a, 0.8);
-    sg.fillRoundedRect(26, y + 176, sl.width + 16, 20, 8);
+    fillPlate(sg, 26, y + 176, sl.width + 16, 20, 8);
     sl.setX(34);
     this.body.add(sg);
     this.body.add(sl);
@@ -591,7 +567,7 @@ export class CarreiraMenu extends Phaser.Scene {
     const mg = this.add.graphics();
     mg.fillStyle(YE, 1);
     const mx = 16 + W - 10 - mb.width - 16;
-    mg.fillRoundedRect(mx, y + 176, mb.width + 16, 20, 8);
+    fillPlate(mg, mx, y + 176, mb.width + 16, 20, 8);
     mb.setX(mx + 8);
     this.body.add(mg);
     this.body.add(mb);
@@ -606,26 +582,26 @@ export class CarreiraMenu extends Phaser.Scene {
       ['QUÍMICA COM A EQUIPE', 41, 'NOVATO', YE],
       ['QUÍMICA COM O TÉCNICO', Math.min(90, 50 + Math.round((s.ovr - 55) * 0.8)), 'CONFIANTE', GR],
     ];
-    const rh = 14 + 16 + meters.length * 34 + 54;
+    const rh = 14 + 16 + meters.length * 34 + 74;
     this.card(16, y, W, rh);
-    this.T(30, y + 16, 'RELAÇÕES', 9, '#C9CEE0', 'title');
+    this.T(40, y + 16, 'RELAÇÕES', 9, C.white, 'title');
     meters.forEach(([n, v, lab, c], i) => {
       const yy = y + 38 + i * 34;
-      this.T(30, yy, n, 10, '#C9CEE0');
-      this.T(16 + W - 14, yy, `${lab} · ${v}`, 10, hex(c)).setOrigin(1, 0);
-      this.bar(30, yy + 16, W - 28, 10, v / 100, c);
+      this.T(40, yy, n, 10, C.muted);
+      this.T(16 + W - 24, yy, `${lab} · ${v}`, 10, hex(c)).setOrigin(1, 0);
+      this.bar(40, yy + 18, W - 56, 8, v / 100, c);
     });
     const ty = y + 38 + meters.length * 34 + 6;
     const lg = this.add.graphics();
     lg.fillStyle(0xffffff, 0.08);
-    lg.fillRect(30, ty, W - 28, 1);
-    lg.fillStyle(0x2a3156, 1);
-    lg.fillRoundedRect(30, ty + 8, 34, 34, 10);
+    lg.fillRect(40, ty, W - 56, 1);
+    lg.fillStyle(TV.ink3, 1);
+    fillPlate(lg, 40, ty + 12, 38, 38, 10);
     this.body.add(lg);
     const coach = coachOf(t);
-    this.T(47, ty + 25, coach.name.slice(0, 1) + coach.name.slice(-1), 11, '#FFFFFF', 'title').setOrigin(0.5);
-    this.T(74, ty + 12, `TÉC. ${coach.name} · ${coach.scheme}`, 10);
-    this.T(74, ty + 28, 'ESPERA 4.000 JD DE PASSE NA TEMPORADA', 9, '#9AA3C0');
+    this.T(59, ty + 31, coach.name.slice(0, 1) + coach.name.slice(-1), 11, '#FFFFFF', 'title').setOrigin(0.5);
+    this.T(90, ty + 16, `TÉC. ${coach.name} · ${coach.scheme}`, 10);
+    this.T(90, ty + 34, 'ESPERA 4.000 JD DE PASSE NA TEMPORADA', 9, C.muted);
     y += rh + 12;
 
     // Objetivos da temporada (tocar marca como concluído)
@@ -638,22 +614,29 @@ export class CarreiraMenu extends Phaser.Scene {
     ];
     const oh = 40 + OBJ.length * 72;
     this.card(16, y, W, oh);
-    this.T(30, y + 16, 'OBJETIVOS', 9, '#C9CEE0', 'title');
-    this.T(16 + W - 14, y + 16, `${this.objDone.filter(Boolean).length}/${OBJ.length} CONCLUÍDOS`, 10, hex(YE)).setOrigin(1, 0);
+    this.T(40, y + 16, 'OBJETIVOS', 9, C.white, 'title');
+    this.T(16 + W - 24, y + 16, `${this.objDone.filter(Boolean).length}/${OBJ.length} CONCLUÍDOS`, 10, hex(YE)).setOrigin(1, 0);
     OBJ.forEach(([text, rw, prog], i) => {
       const d = this.objDone[i];
       const yy = y + 38 + i * 72;
       const g = this.add.graphics();
-      g.fillStyle(d ? GR : 0x0f1224, d ? 0.12 : 0.6);
-      g.fillRoundedRect(28, yy, W - 24, 64, 12);
-      g.lineStyle(1, d ? GR : 0xffffff, d ? 1 : 0.1);
-      g.strokeRoundedRect(28, yy, W - 24, 64, 12);
+      g.fillStyle(d ? mix(TV.ink, GR, 0.14) : TV.ink, 1);
+      fillPlate(g, 30, yy, W - 30, 64, 12);
       g.fillStyle(0x0d0d12, 1);
-      g.fillRoundedRect(36, yy + 8, 22, 22, 6);
-      g.fillStyle(d ? GR : 0x2a3156, 1);
-      g.fillRoundedRect(38, yy + 10, 18, 18, 5);
+      fillPlate(g, 36, yy + 8, 22, 22, 6);
+      g.fillStyle(d ? GR : TV.ink3, 1);
+      fillPlate(g, 38, yy + 10, 18, 18, 5);
       this.body.add(g);
-      if (d) this.T(47, yy + 19, '✓', 11, '#0D0D12').setOrigin(0.5);
+      if (d) {
+        const ck = this.add.graphics();
+        ck.lineStyle(3, TV.ink, 1);
+        ck.beginPath();
+        ck.moveTo(41, yy + 19);
+        ck.lineTo(45, yy + 23);
+        ck.lineTo(53, yy + 14);
+        ck.strokePath();
+        this.body.add(ck);
+      }
       this.T(66, yy + 12, text, 10).setWordWrapWidth(W - 130);
       this.T(16 + W - 22, yy + 12, rw, 9, hex(YE)).setOrigin(1, 0);
       this.bar(38, yy + 38, W - 44, 6, d ? 1 : 0.04, OR);
@@ -671,40 +654,37 @@ export class CarreiraMenu extends Phaser.Scene {
   private buildPersFixed() {
     const c = (this.persFixed = this.add.container(0, 0).setDepth(6));
     const g = this.add.graphics();
-    g.fillStyle(0x141833, 1);
-    g.fillRoundedRect(PV.x, PV.y, PV.w, PV.h, 14);
-    // Brilho laranja atrás do jogador e grade fina vertical
-    for (let i = 12; i > 0; i--) {
-      g.fillStyle(OR, 0.03);
-      g.fillEllipse(PV.x + PV.w / 2, PV.y + PV.h * 0.45, (PV.w - 6) * (i / 12), PV.h * 0.82 * (i / 12));
-    }
-    g.fillStyle(0xffffff, 0.03);
-    for (let x = PV.x + 8; x < PV.x + PV.w; x += 8) g.fillRect(x, PV.y + 1, 1, PV.h - 2);
-    g.lineStyle(1, 0xffffff, 0.14);
-    g.strokeRoundedRect(PV.x, PV.y, PV.w, PV.h, 14);
+    // Placa de estúdio: tinta, piso na cor do time sob os pés e o número chapado no fundo
+    plateShadow(g, PV.x, PV.y, PV.w, PV.h);
+    plate(g, PV.x, PV.y, PV.w, PV.h, TV.ink2, 1);
+    plate(g, PV.x, PV.y + PV.h - 58, PV.w, 58, this.team.colors.primary, 1, false, true);
+    g.fillStyle(0x000000, 0.18);
+    g.fillRect(PV.x, PV.y + PV.h - 58, PV.w - 12, 3);
     c.add(g);
+    c.add(tvText(this, PV.x + PV.w - 14, PV.y + 26, `#${getSave().number}`, 34, hex(mix(TV.ink2, 0xffffff, 0.1)), 800, 0).setOrigin(1, 0.5));
     this.preview = new PlayerBody(this, PV.x + 9 + 75, PV.y + 12 + 300, this.bodyCfg(getSave().look));
     c.add(this.preview);
+    // nome do uniforme: selo branco na borda de baixo (longe do capacete)
     this.kitTagBg = this.add.graphics();
-    this.kitTag = label(this, PV.x + 12, PV.y + 14, '', 8, hex(YE)).setOrigin(0, 0.5);
+    this.kitTag = tvText(this, PV.x + 22, PV.y + PV.h, '', 13, C.ink, 800, 1.2).setOrigin(0, 0.5);
     c.add([this.kitTagBg, this.kitTag]);
     // Botões abaixo da prévia
     const btn = (y: number, h: number, text: string, fill: number, color: string, fn: () => void, big = false) => {
-      const b = new GlassButton(this, PV.x + PV.w / 2, y + h / 2, { w: PV.w, h, radius: big ? 10 : 9, fill, fillAlpha: big ? 1 : 0.9, borderAlpha: big ? 0.35 : 0.2, primary: big }).setDepth(6);
-      b.add((big ? title : label)(this, 0, 0, text, big ? 8 : 10, color).setOrigin(0.5));
+      const b = new GlassButton(this, PV.x + PV.w / 2, y + h / 2, { w: PV.w, h, fill, fillAlpha: 1, primary: big }).setDepth(6);
+      b.add(tvText(this, 0, 0, text, big ? 19 : 15, color, 800, 1.4).setOrigin(0.5));
       b.onTap = fn;
       this.add.existing(b);
       this.persButtons.push(b);
     };
-    let y = PV.y + PV.h + 8;
-    btn(y, 30, 'ALEATÓRIO', 0x2a3156, '#FFFFFF', () => this.randomLook());
-    y += 38;
-    btn(y, 30, 'RESTAURAR', 0x2a3156, '#C9CEE0', () => {
+    let y = PV.y + PV.h + 20;
+    btn(y, 36, 'ALEATÓRIO', TV.ink3, C.white, () => this.randomLook());
+    y += 40;
+    btn(y, 36, 'RESTAURAR', TV.ink3, C.white, () => {
       const k = getSave().look.kit;
       this.setLook({ ...DEFAULT_LOOK, kit: k, ...kitAccents(k, this.team.kits[k]) });
     });
-    y += 38;
-    btn(y, 34, 'PRONTO ✓', GR, '#0D0D12', () => this.show('clube'), true);
+    y += 40;
+    btn(y, 46, 'PRONTO', TV.yellow, C.ink, () => this.show('clube'), true);
     this.updateKitTag();
   }
 
@@ -714,10 +694,10 @@ export class CarreiraMenu extends Phaser.Scene {
   }
 
   private updateKitTag() {
-    const t = this.kitTag.setText(kitInfo(this.team, getSave().look.kit).name);
+    const t = this.kitTag.setText(kitInfo(this.team, getSave().look.kit).name).setScale(1);
+    if (t.width > PV.w - 40) t.setScale((PV.w - 40) / t.width, 1);
     this.kitTagBg.clear();
-    this.kitTagBg.fillStyle(0x0a0c1a, 0.8);
-    this.kitTagBg.fillRoundedRect(PV.x + 6, PV.y + 6, t.width + 12, 16, 6);
+    plate(this.kitTagBg, PV.x + 10, PV.y + PV.h - 11, t.displayWidth + 24, 22, TV.plate);
   }
 
   /** Grava a mudança no save (cada alteração já fica salva) e atualiza a prévia e os controles. */
@@ -750,70 +730,68 @@ export class CarreiraMenu extends Phaser.Scene {
     const s = getSave();
     const L = s.look;
     const add = <T extends Phaser.GameObjects.GameObject>(o: T) => p.add(o);
-    // Categorias (quebram linha)
+    // Categorias (quebram linha): a ativa é amarela, como as abas
     let x = 0;
     let y = 0;
     for (const [id, name] of CATS) {
       const on = this.pc === id;
-      const t = label(this, 0, 0, name, 10, on ? '#0D0D12' : '#FFFFFF').setOrigin(0.5);
-      const w = t.width + 18;
+      const t = tvText(this, 0, 0, name, 14, on ? C.ink : C.white, 800, 1).setOrigin(0.5);
+      const w = t.width + 24;
       if (x + w > W) {
         x = 0;
-        y += 33;
+        y += 36;
       }
       const g = this.add.graphics();
-      g.fillStyle(on ? OR : CARD, on ? 1 : 0.7);
-      g.fillRoundedRect(x, y, w, 28, 8);
-      g.lineStyle(1, 0xffffff, 0.14);
-      g.strokeRoundedRect(x, y, w, 28, 8);
-      t.setPosition(x + w / 2, y + 14);
+      plate(g, x, y, w, 32, on ? TV.yellow : TV.ink2, 1);
+      if (!on) plateLine(g, x, y, w, 32, TV.rule, 1, 1);
+      t.setPosition(x + w / 2, y + 16);
       add(g);
       add(t);
-      p.hit(x, y, w, 28, () => ((this.pc = id), this.drawPers(false)));
-      x += w + 5;
+      p.hit(x, y, w, 32, () => ((this.pc = id), this.drawPers(false)));
+      x += w + 4;
     }
-    y += 28 + 10;
+    y += 32 + 14;
 
     if (this.pc === 'unif') {
       // Aviso: o uniforme é do time (cores, número e fonte travados)
-      const msg = label(this, 10, y + 9, '🔒 O uniforme é do time que escolheu você: cores da camisa, número e fonte não podem ser editados.', 10, '#FFE08A')
-        .setWordWrapWidth(W - 20)
-        .setLineSpacing(4);
-      const mh = msg.height + 18;
+      const msg = tvText(this, 34, y + 10, 'O UNIFORME É DO SEU TIME: CORES, NÚMERO E FONTE NÃO MUDAM.', 13, C.muted, 600, 0.8)
+        .setWordWrapWidth(W - 46)
+        .setLineSpacing(2);
+      const mh = msg.height + 20;
       const g = this.add.graphics();
-      g.fillStyle(YE, 0.1);
-      g.fillRoundedRect(0, y, W, mh, 12);
-      g.lineStyle(1, YE, 0.4);
-      g.strokeRoundedRect(0, y, W, mh, 12);
+      plate(g, 0, y, W, mh, TV.ink, 0.9);
+      g.lineStyle(2, TV.yellow, 1);
+      g.strokeRect(12, y + 13, 10, 6);
+      g.fillStyle(TV.yellow, 1);
+      g.fillRect(10, y + 18, 14, 11);
+      g.fillStyle(TV.ink, 1);
+      g.fillRect(16, y + 21, 2, 5);
       add(g);
       add(msg);
-      y += mh + 8;
-      const head = add(label(this, 0, y, `UNIFORMES OFICIAIS · ${this.team.name}`, 10, '#C9CEE0').setWordWrapWidth(W));
-      y += head.height + 8;
+      y += mh + 18;
+      add(sectionHead(this, 0, y, 'UNIFORMES', undefined, W));
+      y += 16;
       for (const id of KIT_IDS) {
         const { name, desc, kit } = kitInfo(this.team, id);
         const on = L.kit === id;
-        const nm = title(this, 10, y + 36, name, 8, '#FFFFFF').setWordWrapWidth(W - 20).setLineSpacing(4);
-        const ds = label(this, 10, 0, desc, 9, '#9AA3C0').setWordWrapWidth(W - 20);
-        ds.setY(nm.y + nm.height + 7);
-        const h = ds.y + ds.height + 9 - y;
+        const nm = tvText(this, 12, y + 42, name, 17, on ? C.yellow : C.white, 800, 0.6).setWordWrapWidth(W - 24);
+        const ds = tvText(this, 12, 0, desc, 13, C.muted, 600, 0.4).setWordWrapWidth(W - 24).setLineSpacing(1);
+        ds.setY(nm.y + nm.height + 2);
+        const h = ds.y + ds.height + 12 - y;
         const g2 = this.add.graphics();
-        g2.fillStyle(on ? OR : CARD, on ? 0.22 : 0.72);
-        g2.fillRoundedRect(0, y, W, h, 12);
-        g2.lineStyle(1, on ? OR : 0xffffff, on ? 1 : 0.14);
-        g2.strokeRoundedRect(0, y, W, h, 12);
-        // Amostras: capacete, camisa e calça
+        plate(g2, 0, y, W, h, on ? TV.ink3 : TV.ink2, 1);
+        if (on) plateLine(g2, 0, y, W, h, TV.yellow, 1, 2);
+        else plateLine(g2, 0, y, W, h, TV.rule, 1, 1);
+        // Amostras: capacete, camisa e calça (placas chapadas)
         [kit.helmet, kit.jersey, kit.pants].forEach((col, i) => {
-          g2.fillStyle(0x0d0d12, 1);
-          g2.fillRoundedRect(9 + i * 21, y + 8, 20, 22, 5);
-          g2.fillStyle(col, 1);
-          g2.fillRoundedRect(10 + i * 21, y + 9, 18, 20, 4);
+          plate(g2, 12 + i * 26, y + 10, 24, 24, lum(col) < 60 ? TV.rule : mix(col, TV.ink, 0.35), 1);
+          plate(g2, 14 + i * 26, y + 12, 20, 20, col, 1);
         });
         add(g2);
         add(nm);
         add(ds);
         p.hit(0, y, W, h, () => this.setLook({ kit: id, ...kitAccents(id, kit) }));
-        y += h + 8;
+        y += h + 6;
       }
       p.setExtent(y + 20);
       return;
@@ -857,60 +835,55 @@ export class CarreiraMenu extends Phaser.Scene {
     };
     const top = y;
     const bg = add(this.add.graphics());
-    y += 10;
-    const IW = W - 20;
+    y += 14;
+    const IW = W - 24;
+    const chev = (g: Phaser.GameObjects.Graphics, cx: number, cy: number, dir: number) => {
+      g.lineStyle(3, TV.plate, 1);
+      g.beginPath();
+      g.moveTo(cx - 3 * dir, cy - 7);
+      g.lineTo(cx + 4 * dir, cy);
+      g.lineTo(cx - 3 * dir, cy + 7);
+      g.strokePath();
+    };
     for (const c of CT[this.pc]()) {
-      const n = add(label(this, 10, y, c.n, 9, '#C9CEE0').setWordWrapWidth(IW - 30));
-      if (c.cur) add(label(this, 10 + IW, y, c.cur, 8, '#6E7593').setOrigin(1, 0));
+      const n = add(tvText(this, 12, y, c.n, 13, C.muted, 700, 1).setWordWrapWidth(IW - 34));
+      if (c.cur) add(tvText(this, 12 + IW, y, c.cur, 12, C.dim, 600, 0.8).setOrigin(1, 0));
       y += n.height + 6;
       const g = add(this.add.graphics());
       if (c.step) {
         const st = c.step;
-        g.fillStyle(0x0f1224, 1);
-        g.fillRoundedRect(45, y, IW - 70, 36, 9);
-        g.lineStyle(2, 0xffffff, 0.12);
-        g.strokeRoundedRect(45, y, IW - 70, 36, 9);
-        for (const bx of [10, 10 + IW - 30]) {
-          g.fillStyle(0x2a3156, 1);
-          g.fillRoundedRect(bx, y, 30, 36, 9);
-          g.lineStyle(1, 0xffffff, 0.16);
-          g.strokeRoundedRect(bx, y, 30, 36, 9);
-        }
-        add(label(this, 25, y + 18, '‹', 14, '#FFFFFF').setOrigin(0.5));
-        add(label(this, IW - 5, y + 18, '›', 14, '#FFFFFF').setOrigin(0.5));
-        const v = add(label(this, 10 + IW / 2, y + 18, st.v, 10, '#FFFFFF').setOrigin(0.5).setAlign('center'));
-        if (v.width > IW - 76) v.setFontSize(9).setWordWrapWidth(IW - 76);
-        p.hit(10, y, 30, 36, st.prev);
-        p.hit(10 + IW - 30, y, 30, 36, st.next);
+        plate(g, 12, y, 34, 38, TV.ink3, 1);
+        plate(g, 12 + IW - 34, y, 34, 38, TV.ink3, 1);
+        plate(g, 50, y, IW - 76, 38, TV.ink, 1);
+        chev(g, 30, y + 19, -1);
+        chev(g, 12 + IW - 18, y + 19, 1);
+        const v = add(tvText(this, 12 + IW / 2, y + 19, st.v, 15, C.white, 800, 0.6).setOrigin(0.5));
+        if (v.width > IW - 90) v.setScale((IW - 90) / v.width, 1);
+        p.hit(12, y, 34, 38, st.prev);
+        p.hit(12 + IW - 34, y, 34, 38, st.next);
         // Tocar no valor também avança
-        p.hit(45, y, IW - 70, 36, st.next);
-        y += 36;
+        p.hit(50, y, IW - 76, 38, st.next);
+        y += 38;
       } else if (c.colors) {
         const { pal, sel, pick } = c.colors;
-        const per = Math.max(1, Math.floor((IW + 5) / 27));
+        const per = Math.max(1, Math.floor((IW + 6) / 28));
         pal.forEach((col, i) => {
-          const cx = 10 + (i % per) * 27;
-          const cy = y + Math.floor(i / per) * 27;
+          const cx = 12 + (i % per) * 28;
+          const cy = y + Math.floor(i / per) * 28;
           const on = i === sel;
-          if (on) {
-            g.fillStyle(col, 0.35);
-            g.fillRoundedRect(cx - 3, cy - 3, 28, 28, 9);
-          }
-          g.fillStyle(on ? 0xffffff : 0x0d0d12, on ? 1 : 0.7);
-          g.fillRoundedRect(cx, cy, 22, 22, 7);
+          g.fillStyle(on ? TV.yellow : TV.ink, 1);
+          g.fillRect(cx - 2, cy - 2, 26, 26);
           g.fillStyle(col, 1);
-          g.fillRoundedRect(cx + 2, cy + 2, 18, 18, 5);
+          g.fillRect(cx + 1, cy + 1, 20, 20);
           p.hit(cx - 2, cy - 2, 26, 26, () => pick(i));
         });
-        y += Math.ceil(pal.length / per) * 27 - 5;
+        y += Math.ceil(pal.length / per) * 28 - 4;
       }
-      y += 14;
+      y += 16;
     }
-    y -= 4;
-    bg.fillStyle(CARD, 0.72);
-    bg.fillRoundedRect(0, top, W, y - top, 14);
-    bg.lineStyle(1, 0xffffff, 0.14);
-    bg.strokeRoundedRect(0, top, W, y - top, 14);
+    y -= 2;
+    plate(bg, 0, top, W, y - top, TV.ink2, 1);
+    plateLine(bg, 0, top, W, y - top, TV.rule, 1, 1);
     p.setExtent(y + 20);
   }
 
@@ -930,11 +903,11 @@ export class CarreiraMenu extends Phaser.Scene {
       // número na camisa, no canto da foto
       const g = this.add.graphics();
       g.fillStyle(this.team.colors.primary, 1);
-      g.fillRoundedRect(58, y + 40, 22, 18, 6);
+      fillPlate(g, 58, y + 40, 22, 18, 6);
       g.lineStyle(1, 0xffffff, 0.5);
-      g.strokeRoundedRect(58, y + 40, 22, 18, 6);
+      strokePlate(g, 58, y + 40, 22, 18, 6);
       g.fillStyle(ovc(p.ovr), 1);
-      g.fillRoundedRect(16 + W - 50, y + 16, 38, 30, 8);
+      fillPlate(g, 16 + W - 50, y + 16, 38, 30, 8);
       this.body.add(g);
       this.T(69, y + 49, String(p.num), 7, fgOn(this.team.colors.primary), 'title').setOrigin(0.5);
       this.T(90, y + 20, p.name, 11);
@@ -1018,8 +991,8 @@ export class CarreiraMenu extends Phaser.Scene {
       const yd = wk.stats?.yards;
       const bh = yd === undefined ? 3 : Math.max(4, Math.min(1, yd / 400) * 96);
       const g = this.add.graphics();
-      g.fillStyle(yd !== undefined ? OR : wk.week === nextW ? 0x4a3a30 : 0x2a3156, 1);
-      g.fillRoundedRect(x, y + 138 - bh, bw, bh, { tl: 3, tr: 3, bl: 0, br: 0 });
+      g.fillStyle(yd !== undefined ? OR : wk.week === nextW ? 0x4a3a30 : TV.ink3, 1);
+      fillPlate(g, x, y + 138 - bh, bw, bh, { tl: 3, tr: 3, bl: 0, br: 0 });
       this.body.add(g);
       this.T(x + bw / 2, y + 128 - bh, yd === undefined ? '–' : String(yd), 8, '#C9CEE0').setOrigin(0.5);
       this.T(x + bw / 2, y + 152, `S${wk.week}`, 8, '#6E7593').setOrigin(0.5);
@@ -1034,7 +1007,7 @@ export class CarreiraMenu extends Phaser.Scene {
       if (i === 3) {
         const hg = this.add.graphics();
         hg.fillStyle(OR, 0.16);
-        hg.fillRoundedRect(24, yy - 2, W - 16, 28, 10);
+        fillPlate(hg, 24, yy - 2, W - 16, 28, 10);
         this.body.add(hg);
       }
       this.T(32, yy + 12, l.rank, 10, '#9AA3C0').setOrigin(0, 0.5);
@@ -1054,18 +1027,21 @@ export class CarreiraMenu extends Phaser.Scene {
 
   /** Botão de voltar no topo das fichas. */
   private backChip(y: number, text: string, fn: () => void) {
-    const t = label(this, 0, y + 15, `‹ ${text}`, 10, '#FFFFFF').setOrigin(0, 0.5);
-    const w = t.width + 24;
+    const t = tvText(this, 0, y + 16, text, 14, C.white, 800, 1).setOrigin(0, 0.5);
+    const w = t.width + 50;
     const g = this.add.graphics();
-    g.fillStyle(CARD, 0.8);
-    g.fillRoundedRect(16, y, w, 30, 10);
-    g.lineStyle(1, 0xffffff, 0.2);
-    g.strokeRoundedRect(16, y, w, 30, 10);
-    t.setX(28);
+    plate(g, 16, y, w, 32, TV.ink3);
+    g.lineStyle(2.5, TV.yellow, 1);
+    g.beginPath();
+    g.moveTo(37, y + 10);
+    g.lineTo(31, y + 16);
+    g.lineTo(37, y + 22);
+    g.strokePath();
+    t.setX(46);
     this.body.add(g);
     this.body.add(t);
-    this.body.hit(16, y, w, 30, fn);
-    return 30;
+    this.body.hit(16, y, w, 32, fn);
+    return 32;
   }
 
   private openPlayer(id: string) {
@@ -1080,9 +1056,8 @@ export class CarreiraMenu extends Phaser.Scene {
 
   /** Cabeçalho de seção. */
   private section(y: number, text: string, right?: string) {
-    this.T(16, y, text, 9, '#C9CEE0', 'title');
-    if (right) this.T(GAME_W - 16, y + 1, right, 9, '#6E7593').setOrigin(1, 0);
-    return 22;
+    this.body.add(sectionHead(this, 16, y + 9, text, right));
+    return 24;
   }
 
   // ---- JOGADORES (estatísticas da liga)
@@ -1119,7 +1094,7 @@ export class CarreiraMenu extends Phaser.Scene {
       if (on) {
         const g = this.add.graphics();
         g.fillStyle(OR, 0.25);
-        g.fillRoundedRect(cx(i) - 22, y + 5, 44, 24, 7);
+        fillPlate(g, cx(i) - 22, y + 5, 44, 24, 7);
         this.body.add(g);
       }
       this.T(cx(i), y + 17, on ? `${c.k}${this.plAsc ? '▲' : '▼'}` : c.k, 9, on ? hex(YE) : '#9AA3C0').setOrigin(0.5);
@@ -1163,9 +1138,9 @@ export class CarreiraMenu extends Phaser.Scene {
     if (rows.length > this.plLimit) {
       const b = this.add.graphics();
       b.fillStyle(CARD, 0.8);
-      b.fillRoundedRect(16, y, W, 40, 12);
+      fillPlate(b, 16, y, W, 40, 12);
       b.lineStyle(1, OR, 0.6);
-      b.strokeRoundedRect(16, y, W, 40, 12);
+      strokePlate(b, 16, y, W, 40, 12);
       this.body.add(b);
       this.T(GAME_W / 2, y + 20, `VER MAIS (${rows.length - this.plLimit})`, 9, hex(YE), 'title').setOrigin(0.5);
       this.body.hit(16, y, W, 40, () => ((this.plLimit += 40), this.show('jogadores')));
@@ -1203,7 +1178,7 @@ export class CarreiraMenu extends Phaser.Scene {
     this.T(180, y + 124, `${p.age} ANOS · ${p.tag}`, 9, '#C9CEE0').setOrigin(0, 0.5);
     const og = this.add.graphics();
     og.fillStyle(ovc(p.ovr), 1);
-    og.fillRoundedRect(180, y + 136, 72, 24, 8);
+    fillPlate(og, 180, y + 136, 72, 24, 8);
     this.body.add(og);
     this.T(216, y + 148, `OVR ${p.ovr}`, 8, '#0D0D12', 'title').setOrigin(0.5);
     this.body.hit(180, y + 94, 170, 20, () => this.openTeam(t.id));
@@ -1302,7 +1277,7 @@ export class CarreiraMenu extends Phaser.Scene {
         const mine = x.team.id === this.team.id;
         const g = this.add.graphics();
         g.fillStyle(0x000000, 0.3);
-        g.fillRoundedRect(cx, cy + 4, cw, 78, 14);
+        fillPlate(g, cx, cy + 4, cw, 78, 14);
         this.body.add(g);
         this.body.add(gradCard(this, cx, cy, cw, 78, { from: x.team.colors.primary, fromAlpha: 0.95, to: CARD, toAlpha: 0.9, radius: 14, glow: true, stroke: mine ? OR : 0xffffff, strokeAlpha: mine ? 1 : 0.18, strokeWidth: mine ? 2 : 1 }));
         this.body.add(this.add.image(cx + 30, cy + 39, x.team.logo.small).setDisplaySize(42, 42));
@@ -1311,7 +1286,10 @@ export class CarreiraMenu extends Phaser.Scene {
         this.T(cx + 58, cy + 42, `${x.w}-${x.l}${x.t ? `-${x.t}` : ''} · ${i + 1}º`, 10, '#E8EAF2').setOrigin(0, 0.5);
         this.T(cx + 58, cy + 60, `OVR ${x.team.ovr}`, 8, hex(ovc(x.team.ovr))).setOrigin(0, 0.5);
         const ts = teamTitles(x.team.id).qflTotal;
-        if (ts) this.T(cx + cw - 10, cy + 60, `★ ${ts}`, 9, hex(YE), 'title').setOrigin(1, 0.5);
+        if (ts) {
+          const tn = this.body.add(tvText(this, cx + cw - 12, cy + 60, String(ts), 15, C.yellow, 800, 0).setOrigin(1, 0.5)) as Phaser.GameObjects.Text;
+          this.body.add(star(this.add.graphics(), tn.x - tn.width - 9, cy + 60, 7));
+        }
         this.body.hit(cx, cy, cw, 78, () => this.openTeam(x.team.id));
       });
       y += 2 * 86 + 10;
@@ -1339,7 +1317,7 @@ export class CarreiraMenu extends Phaser.Scene {
     g.fillStyle(t.colors.secondary, 1);
     g.fillRect(16, y + hh - 34, W, 3);
     g.lineStyle(1, 0xffffff, 0.2);
-    g.strokeRoundedRect(16, y, W, hh, 18);
+    strokePlate(g, 16, y, W, hh, 18);
     this.body.add(g);
     this.body.add(this.add.image(78, y + 70, t.logo.large).setDisplaySize(104, 104));
     const nm = this.T(144, y + 24, t.name, 13, '#FFFFFF', 'title');
@@ -1478,7 +1456,7 @@ export class CarreiraMenu extends Phaser.Scene {
       this.T(74, yy + 35, `${p.pos} #${p.num} · ${p.age} ANOS · ${p.tag}`, 8, '#9AA3C0').setOrigin(0, 0.5);
       const og = this.add.graphics();
       og.fillStyle(ovc(p.ovr), 1);
-      og.fillRoundedRect(16 + W - 50, yy + 12, 38, 26, 8);
+      fillPlate(og, 16 + W - 50, yy + 12, 38, 26, 8);
       this.body.add(og);
       this.T(16 + W - 31, yy + 25, String(p.ovr), 10, '#0D0D12', 'title').setOrigin(0.5);
       this.body.hit(16, yy, W, 50, () => this.openPlayer(p.id));
@@ -1503,23 +1481,17 @@ export class CarreiraMenu extends Phaser.Scene {
       const yy = y + 30 + i * 40;
       const me = r.team.id === this.team.id;
       const g = this.add.graphics();
-      if (me) {
-        g.fillStyle(OR, 0.2);
-        g.fillRect(17, yy, W - 2, 40);
-      }
-      if (i === 0 || me) {
-        g.fillStyle(i === 0 ? YE : OR, 1);
-        g.fillRect(17, yy + 4, 3, 32);
-      }
+      if (me) plate(g, 17, yy + 2, W - 2, 36, TV.plate);
       this.body.add(g);
-      this.T(30, yy + 20, String(i + 1), 10, '#9AA3C0').setOrigin(0, 0.5);
+      const ink = (c: string) => (me ? C.ink : c);
+      this.T(30, yy + 20, String(i + 1), 10, me ? C.ink : i === 0 ? C.yellow : '#9AA3C0').setOrigin(0, 0.5);
       this.body.add(this.add.image(61, yy + 20, r.team.logo.small).setDisplaySize(24, 24));
-      const nm = this.T(78, yy + 20, r.team.name, 8, '#FFFFFF', 'title').setOrigin(0, 0.5);
+      const nm = this.T(78, yy + 20, r.team.name, 8, ink('#FFFFFF'), 'title').setOrigin(0, 0.5);
       if (nm.width > cols.v - 96) nm.setFontSize(6);
-      this.T(cols.v, yy + 20, String(r.w), 10).setOrigin(0.5);
-      this.T(cols.d, yy + 20, String(r.l), 10).setOrigin(0.5);
-      this.T(cols.dv, yy + 20, `${r.divW}-${r.divL}`, 10, '#C9CEE0').setOrigin(0.5);
-      this.T(cols.sq, yy + 20, r.streak, 10, r.streak.startsWith('V') ? hex(GR) : r.streak.startsWith('D') ? hex(RD) : '#9AA3C0').setOrigin(0.5);
+      this.T(cols.v, yy + 20, String(r.w), 10, ink('#FFFFFF')).setOrigin(0.5);
+      this.T(cols.d, yy + 20, String(r.l), 10, ink('#FFFFFF')).setOrigin(0.5);
+      this.T(cols.dv, yy + 20, `${r.divW}-${r.divL}`, 10, ink('#C9CEE0')).setOrigin(0.5);
+      this.T(cols.sq, yy + 20, r.streak, 10, r.streak.startsWith('V') ? hex(GR) : r.streak.startsWith('D') ? hex(RD) : ink('#9AA3C0')).setOrigin(0.5);
       this.body.hit(16, yy, W, 40, () => this.openTeam(r.team.id));
     });
     return y + h;
@@ -1569,7 +1541,7 @@ export class CarreiraMenu extends Phaser.Scene {
           g.fillRect(x + 1, yy, cw - 2, 26);
         }
         g.fillStyle(i === 0 ? YE : i < 4 ? 0xffffff : GR, i === 0 ? 1 : i < 4 ? 0.18 : 0.9);
-        g.fillRoundedRect(x + 8, yy + 5, 18, 16, 5);
+        fillPlate(g, x + 8, yy + 5, 18, 16, 5);
         this.body.add(g);
         this.T(x + 17, yy + 13, String(i + 1), 8, i === 0 || i >= 4 ? '#0D0D12' : '#FFFFFF', 'title').setOrigin(0.5);
         this.body.add(this.add.image(x + 40, yy + 13, t.logo.small).setDisplaySize(18, 18));
@@ -1630,9 +1602,9 @@ export class CarreiraMenu extends Phaser.Scene {
       // cabeçalho da fase com a logo
       const hg = this.add.graphics();
       hg.fillStyle(info.color, 0.25);
-      hg.fillRoundedRect(16, y, W, 50, 14);
+      fillPlate(hg, 16, y, W, 50, 14);
       hg.lineStyle(1, info.glow, 0.6);
-      hg.strokeRoundedRect(16, y, W, 50, 14);
+      strokePlate(hg, 16, y, W, 50, 14);
       this.body.add(hg);
       this.body.add(this.add.image(46, y + 25, info.logoS).setDisplaySize(44, 44));
       this.T(78, y + 17, info.name, 10, '#FFFFFF', 'title').setOrigin(0, 0.5);
@@ -1732,7 +1704,7 @@ export class CarreiraMenu extends Phaser.Scene {
         }
         const c = kind === 'div' ? YE : kind === 'wc' ? GR : 0x3a4060;
         g.fillStyle(c, 1);
-        g.fillRoundedRect(26, yy + 9, 22, 22, 6);
+        fillPlate(g, 26, yy + 9, 22, 22, 6);
         this.body.add(g);
         this.T(37, yy + 20, String(i + 1), 9, kind === 'out' ? '#9AA3C0' : '#0D0D12', 'title').setOrigin(0.5);
         this.body.add(this.add.image(66, yy + 20, x.team.logo.small).setDisplaySize(24, 24));
@@ -1885,7 +1857,10 @@ export class CarreiraMenu extends Phaser.Scene {
       y += this.section(y, 'SEUS TROFÉUS', String(won.length)) + 4;
       const h = won.length * 28 + 12;
       this.card(16, y, W, h, CARD, 0.72, YE, 0.5);
-      won.forEach((t, i) => this.T(30, y + 20 + i * 28, `★ ${t}`, 10, '#FFFFFF').setOrigin(0, 0.5));
+      won.forEach((t, i) => {
+        this.body.add(star(this.add.graphics(), 36, y + 20 + i * 28, 7));
+        this.T(50, y + 20 + i * 28, t, 10, '#FFFFFF').setOrigin(0, 0.5);
+      });
       y += h + 8;
     }
     return y;
@@ -1986,8 +1961,8 @@ export class CarreiraMenu extends Phaser.Scene {
     const yw = (W - 28 - 6 * (c.years - 1)) / c.years;
     for (let i = 0; i < c.years; i++) {
       const b = this.add.graphics();
-      b.fillStyle(i === elapsed ? OR : 0x2a3156, 1);
-      b.fillRoundedRect(30 + i * (yw + 6), y + 74, yw, 8, 4);
+      b.fillStyle(i === elapsed ? OR : TV.ink3, 1);
+      fillPlate(b, 30 + i * (yw + 6), y + 74, yw, 8, 4);
       this.body.add(b);
     }
     const half = (W - 28 - 8) / 2;
@@ -1995,7 +1970,7 @@ export class CarreiraMenu extends Phaser.Scene {
       const x = 30 + k * (half + 8);
       const bg = this.add.graphics();
       bg.fillStyle(0x0a0c1a, 0.5);
-      bg.fillRoundedRect(x, y + 92, half, 44, 10);
+      fillPlate(bg, x, y + 92, half, 44, 10);
       this.body.add(bg);
       this.T(x + 8, y + 100, n, 9, '#9AA3C0');
       this.T(x + 8, y + 116, val, 11, col);
@@ -2011,9 +1986,9 @@ export class CarreiraMenu extends Phaser.Scene {
     const bw = W - 28;
     const cg = this.add.graphics();
     cg.fillStyle(0x0f1224, 1);
-    cg.fillRoundedRect(30, y + 34, bw, 12, 6);
+    fillPlate(cg, 30, y + 34, bw, 12, 6);
     cg.fillStyle(OR, 1);
-    cg.fillRoundedRect(30, y + 34, bw * ((used - c.value) / 200), 12, { tl: 6, bl: 6, tr: 0, br: 0 });
+    fillPlate(cg, 30, y + 34, bw * ((used - c.value) / 200), 12, { tl: 6, bl: 6, tr: 0, br: 0 });
     cg.fillStyle(YE, 1);
     cg.fillRect(30 + bw * ((used - c.value) / 200), y + 34, bw * (c.value / 200), 12);
     this.body.add(cg);
@@ -2042,18 +2017,17 @@ export class CarreiraMenu extends Phaser.Scene {
       const first = !!next && g.week === next.week;
       const pr = g.prime ? PRIME[g.prime] : null;
       const h = pr ? 76 : 58;
+      this.card(16, y, W, h, CARD, 0.95, first ? OR : 0xffffff, first ? 1 : 0.14, 12);
       if (pr) {
-        // Horário nobre: degradê na cor da transmissão, faixa com o nome e estrelinhas
-        this.body.add(gradCard(this, 16, y, W, h, { from: pr.color, fromAlpha: 0.9, to: 0x0d0f1f, toAlpha: 0.95, mid: pr.color, midAlpha: 0.35, radius: 14, glow: true, stroke: first ? OR : pr.glow, strokeAlpha: first ? 1 : 0.7, strokeWidth: 2 }));
-        const rb = label(this, 0, y + 12, `★ ${pr.name} ★`, 8, '#FFFFFF').setOrigin(0.5);
-        const rw = rb.width + 18;
+        // Horário nobre: selo branco com o nome do programa
+        const rb = tvText(this, 0, y + 12, pr.pt, 12, C.ink, 800, 1.4).setOrigin(0.5);
+        const rw = rb.width + 26;
         const rg = this.add.graphics();
-        rg.fillStyle(pr.glow, 1);
-        rg.fillRoundedRect(GAME_W / 2 - rw / 2, y - 2, rw, 16, { tl: 0, tr: 0, bl: 7, br: 7 });
+        plate(rg, 94, y + 3, rw, 18, TV.plate);
         this.body.add(rg);
-        rb.setColor('#0D0D12').setX(GAME_W / 2).setY(y + 6);
+        rb.setX(94 + rw / 2);
         this.body.add(rb);
-      } else this.card(16, y, W, h, first ? OR : CARD, first ? 0.2 : 0.6, first ? OR : 0xffffff, first ? 1 : 0.1, 12);
+      }
       const cy = y + h / 2 + (pr ? 6 : 0);
       if (g.round) this.body.add(this.add.image(36, cy, ROUND_INFO[g.round].logoS).setDisplaySize(30, 30));
       else this.T(28, cy, `S${g.week}`, 9, '#9AA3C0').setOrigin(0, 0.5);
@@ -2076,7 +2050,7 @@ export class CarreiraMenu extends Phaser.Scene {
         this.T(16 + W - 96, cy + 13, `${g.temp}°C`, 8, '#C9CEE0').setOrigin(0.5);
       }
       const res = g.result ? `${g.result.us}-${g.result.them}` : null;
-      this.tag(this.body, 16 + W - 12, cy, res ?? (first ? 'PRÓXIMO' : g.bye ? 'FOLGA' : g.home ? 'CASA' : 'FORA'), res ? (g.result!.us > g.result!.them ? GR : RD) : first ? OR : g.bye ? 0x6e7593 : g.home ? GR : 0x9aa3c0, true);
+      this.tag(this.body, 16 + W - 12, cy, res ?? (first ? 'PRÓXIMO' : g.bye ? 'FOLGA' : g.home ? 'CASA' : 'FORA'), res ? (g.result!.us > g.result!.them ? GR : RD) : first ? OR : g.bye ? TV.ink3 : g.home ? TV.plate : TV.ink3, true);
       if (g.opp) this.body.hit(16, y, W - 110, h, () => this.openTeam(g.opp!.id));
       y += h + 8;
     });

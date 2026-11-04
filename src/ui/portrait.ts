@@ -8,9 +8,9 @@ import { PlayerFace, type FaceLook } from '../player/PlayerFace';
  * Uma imagem só por foto (as listas longas ficam leves).
  */
 
-export function portraitTexture(scene: Phaser.Scene, face: FaceLook, primary: number, secondary: number, size: number): string {
+export function portraitTexture(scene: Phaser.Scene, face: FaceLook, primary: number, secondary: number, size: number, shape: 'round' | 'slant' = 'round'): string {
   const S = Math.round(size * RES);
-  const key = `ptr_${S}_${primary}_${secondary}_${face.face}_${face.skin}_${face.hair}_${face.hairColor}_${face.beard}`;
+  const key = `ptr${shape === 'slant' ? 's' : ''}_${S}_${primary}_${secondary}_${face.face}_${face.skin}_${face.hair}_${face.hairColor}_${face.beard}`;
   if (scene.textures.exists(key)) return key;
   const dt = scene.textures.addDynamicTexture(key, S, S)!;
   const r = Math.round(S * 0.24);
@@ -28,9 +28,17 @@ export function portraitTexture(scene: Phaser.Scene, face: FaceLook, primary: nu
   dt.draw(f);
   f.destroy();
   bg.destroy();
-  // Recorta os 4 cantos (fora do arco)
+  // Recorta os 4 cantos (fora do arco) ou, no estilo de transmissão, as duas pontas na diagonal
   const cut = scene.make.graphics({}, false);
   cut.fillStyle(0xffffff, 1);
+  if (shape === 'slant') {
+    const s = Math.min(S * 0.2126, 12 * RES);
+    cut.fillTriangle(0, 0, s, 0, 0, S);
+    cut.fillTriangle(S, 0, S, S, S - s, S);
+    dt.erase(cut);
+    cut.destroy();
+    return key;
+  }
   const corner = (cx: number, cy: number, a0: number) => {
     const pts: Phaser.Math.Vector2[] = [];
     const ox = cx === 0 ? 0 : S;

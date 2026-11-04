@@ -1,9 +1,9 @@
 {
   "package.json": {
-    "mtime": 1791373027.8319385,
-    "seen": 1793730727.7309911,
-    "ast_hash": "02a93a27dcf5e5308ffc534391b186ef",
-    "semantic_hash": "02a93a27dcf5e5308ffc534391b186ef"
+    "mtime": 1793829999.8147688,
+    "seen": 1793833830.353662,
+    "ast_hash": "d30de03072a874e687efe641852e6c21",
+    "semantic_hash": ""
   },
   "src/config.ts": {
     "mtime": 1792103152.0027404,
@@ -48,10 +48,10 @@
     "semantic_hash": "7cd1d0ae384794d5d592257bfb34e32e"
   },
   "src/main.ts": {
-    "mtime": 1791938423.5878465,
-    "seen": 1793730727.7310588,
-    "ast_hash": "1fb60a90b3f5c1ad160150ae2fe4c0c8",
-    "semantic_hash": "1fb60a90b3f5c1ad160150ae2fe4c0c8"
+    "mtime": 1793830164.1262388,
+    "seen": 1793833830.3538232,
+    "ast_hash": "1f07afaf6e3bd448c68864e370a74186",
+    "semantic_hash": ""
   },
   "src/scenes/MatchScene.ts": {
     "mtime": 1792104375.2030718,
@@ -270,10 +270,10 @@
     "semantic_hash": "2debfbc7ab17b2bdeacbd9296aaa959d"
   },
   "src/scenes/MainMenu.ts": {
-    "mtime": 1791942969.6903443,
-    "seen": 1793730727.7310925,
-    "ast_hash": "96df723ce81e80af870eda01e4d99efb",
-    "semantic_hash": "96df723ce81e80af870eda01e4d99efb"
+    "mtime": 1793833313.0883005,
+    "seen": 1793833830.3539147,
+    "ast_hash": "3456cb41ce245255b00eba684bf76053",
+    "semantic_hash": ""
   },
   "index.html": {
     "mtime": 1791419509.1215532,
@@ -900,10 +900,10 @@
     "semantic_hash": "885ca46daa416ffc5b24efc5c9089076"
   },
   "public/sw.js": {
-    "mtime": 1792104783.9397078,
-    "seen": 1793730727.7310045,
-    "ast_hash": "1b619f852c77a9091a0d946ee0a8ce1d",
-    "semantic_hash": "1b619f852c77a9091a0d946ee0a8ce1d"
+    "mtime": 1793833765.9397893,
+    "seen": 1793833830.353685,
+    "ast_hash": "1d986cd8ed924a23f127f7d3e6fc5c50",
+    "semantic_hash": ""
   },
   "public/icons/icon-180.png": {
     "mtime": 1791373014.2273767,
@@ -2106,10 +2106,10 @@
     "semantic_hash": "96ba3b17ddc2d2f0e376e3c81887c3af"
   },
   "src/scenes/CareerCreate.ts": {
-    "mtime": 1791939522.167402,
-    "seen": 1793730727.7310674,
-    "ast_hash": "808831924cb9b0cd547860737b5a14d4",
-    "semantic_hash": "808831924cb9b0cd547860737b5a14d4"
+    "mtime": 1793833328.1652093,
+    "seen": 1793833830.3538454,
+    "ast_hash": "edce8c003c09d3bcdd88ba449684fef5",
+    "semantic_hash": ""
   },
   "src/combine/CombineBase.ts": {
     "mtime": 1791416532.653041,
@@ -2244,16 +2244,16 @@
     "semantic_hash": "59e5b2fdf3fea7ef1c2924b05e05fe20"
   },
   "src/career/season.ts": {
-    "mtime": 1792103041.9158354,
-    "seen": 1793730727.7310169,
-    "ast_hash": "bf4831bc5be3dd29c7eeeaa86adbfa3c",
-    "semantic_hash": "bf4831bc5be3dd29c7eeeaa86adbfa3c"
+    "mtime": 1793832891.2596514,
+    "seen": 1793833830.3537164,
+    "ast_hash": "ddb4a3f7e18ee3d29b5897b9abb736be",
+    "semantic_hash": ""
   },
   "src/scenes/CarreiraMenu.ts": {
-    "mtime": 1792103082.4077613,
-    "seen": 1793730727.7310739,
-    "ast_hash": "95cfdfa54798cbff2e9966e2e0aeb877",
-    "semantic_hash": "95cfdfa54798cbff2e9966e2e0aeb877"
+    "mtime": 1793833313.0932999,
+    "seen": 1793833830.353863,
+    "ast_hash": "850ae1275f5c53ebe0d9950b9806e277",
+    "semantic_hash": ""
   },
   "src/career/kits.ts": {
     "mtime": 1791829448.469689,
@@ -2274,10 +2274,10 @@
     "semantic_hash": "bbc06df7a87b072858ba1d69c8bbe908"
   },
   "src/scenes/PreJogo.ts": {
-    "mtime": 1791942144.7478132,
-    "seen": 1793730727.731097,
-    "ast_hash": "988aa4cdaf0400f7db8573cbea98b0c2",
-    "semantic_hash": "988aa4cdaf0400f7db8573cbea98b0c2"
+    "mtime": 1793833049.834202,
+    "seen": 1793833830.3539286,
+    "ast_hash": "ceeb76a6a47bcd760156fda7f352b010",
+    "semantic_hash": ""
   },
   "src/ui/gradcard.ts": {
     "mtime": 1791936527.183898,
@@ -2292,16 +2292,16 @@
     "semantic_hash": "b128c7a1dae53091fb58af6daa9dd973"
   },
   "src/ui/portrait.ts": {
-    "mtime": 1791937242.0483074,
-    "seen": 1793730727.7311676,
-    "ast_hash": "67782c46cfed91355e5141c6e617d7da",
-    "semantic_hash": "67782c46cfed91355e5141c6e617d7da"
+    "mtime": 1793830524.5805688,
+    "seen": 1793833830.354132,
+    "ast_hash": "735ef0138c6f04c5dcde0d8a3d449405",
+    "semantic_hash": ""
   },
   "src/scenes/CareerSlots.ts": {
-    "mtime": 1791939873.08704,
-    "seen": 1793730727.7310708,
-    "ast_hash": "5482bd100fff0c391ca9716848aede23",
-    "semantic_hash": "5482bd100fff0c391ca9716848aede23"
+    "mtime": 1793832968.437673,
+    "seen": 1793833830.3538542,
+    "ast_hash": "1bea88c5bad1426bb7b767e49b7497d8",
+    "semantic_hash": ""
   },
   "src/ui/jerseyArt.ts": {
     "mtime": 1791939930.2426603,
@@ -2392,5 +2392,227 @@
     "seen": 1793730727.7311692,
     "ast_hash": "ee0986f970a7f3706775e2a96c68261b",
     "semantic_hash": "ee0986f970a7f3706775e2a96c68261b"
+  },
+  ".impeccable/design.json": {
+    "mtime": 1793833585.3893182,
+    "seen": 1793833830.353638,
+    "ast_hash": "58b3cea6561853b2f00b2ebd17f9d417",
+    "semantic_hash": ""
+  },
+  ".impeccable/questions/134d0e1e.state.json": {
+    "mtime": 1793829731.3592503,
+    "seen": 1793833830.3536534,
+    "ast_hash": "2315d15e425d9f85cd55d02b56855b66",
+    "semantic_hash": ""
+  },
+  "src/ui/tv.ts": {
+    "mtime": 1793832855.7830675,
+    "seen": 1793833830.3541408,
+    "ast_hash": "8f7128ca2c9779e85720c659d276eff6",
+    "semantic_hash": ""
+  },
+  ".github/workflows/pages.yml": {
+    "mtime": 1793828961.2942986,
+    "seen": 1793833830.3541586,
+    "ast_hash": "e1c3cee71f284a7da49fb7b28e6a72c6",
+    "semantic_hash": ""
+  },
+  ".impeccable/surfaces/src-scenes-mainmenu-ts.md": {
+    "mtime": 1793831814.838509,
+    "seen": 1793833830.3541627,
+    "ast_hash": "010210f8d3033e9f2975512778ec4a6b",
+    "semantic_hash": ""
+  },
+  "DESIGN.md": {
+    "mtime": 1793833584.529906,
+    "seen": 1793833830.3541667,
+    "ast_hash": "c900b629b2587cc53b3ac11a4513f73f",
+    "semantic_hash": ""
+  },
+  "PRODUCT.md": {
+    "mtime": 1793829639.8954005,
+    "seen": 1793833830.3541698,
+    "ast_hash": "7085ecc1ec94766da988a4118d974e35",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1793735467.906752,
+    "seen": 1793833830.354183,
+    "ast_hash": "71d35715cc0eb0305697bc7c54f608bf",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/c01-slots.png": {
+    "mtime": 1793832348.2820096,
+    "seen": 1793833830.354201,
+    "ast_hash": "caa0acb0f15edeb5acf1a560b25c0403",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/c02-create0.png": {
+    "mtime": 1793832363.7149296,
+    "seen": 1793833830.3542047,
+    "ast_hash": "43acad369595cc66cae14589d5325f48",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/c05-create6.png": {
+    "mtime": 1793832378.9877887,
+    "seen": 1793833830.3542082,
+    "ast_hash": "4fd657eb703439ef3c496f00985d5a96",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/c06-prejogo.png": {
+    "mtime": 1793832394.42199,
+    "seen": 1793833830.3542118,
+    "ast_hash": "cf3da11de2a4a66c9188dd8231027230",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/f1-picker.png": {
+    "mtime": 1793831174.183699,
+    "seen": 1793833830.3542159,
+    "ast_hash": "bc0b949caa901d8b269d598a5e99555e",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/f2-picked-mia.png": {
+    "mtime": 1793831176.3597784,
+    "seen": 1793833830.3542194,
+    "ast_hash": "8fac3cfe5750816ea4c8ca3961fae1ab",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/f3-slots.png": {
+    "mtime": 1793831188.2551572,
+    "seen": 1793833830.354223,
+    "ast_hash": "b42b753cfb5a0f0aa97ecb11174ebedc",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/f4-carreira.png": {
+    "mtime": 1793831193.121094,
+    "seen": 1793833830.3542264,
+    "ast_hash": "6cc3694e2e674a8eae2bbe8d3c282470",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/f5-prejogo.png": {
+    "mtime": 1793831197.4484887,
+    "seen": 1793833830.3542302,
+    "ast_hash": "d2330778e3cb77daaa4cd6145e05bcbd",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/f6-back-carreira.png": {
+    "mtime": 1793831201.7926013,
+    "seen": 1793833830.3542342,
+    "ast_hash": "b865b7891e0dfb2cbd7adfe0f09513b3",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/f7-home.png": {
+    "mtime": 1793831206.1060355,
+    "seen": 1793833830.3542378,
+    "ast_hash": "082be296e72a02b0620972c7e85e3259",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/flow-back-setup.png": {
+    "mtime": 1793831111.2986033,
+    "seen": 1793833830.3542411,
+    "ast_hash": "6727cbb6da4ba4fc37aea03399598116",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/flow-carreira.png": {
+    "mtime": 1793831122.5377066,
+    "seen": 1793833830.3542447,
+    "ast_hash": "f0c014f9f3671695573cdac29f38e7a3",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/flow-details.png": {
+    "mtime": 1793831109.8811626,
+    "seen": 1793833830.3542476,
+    "ast_hash": "b737aea363d4345d7dbfab01245d4776",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/flow-picked.png": {
+    "mtime": 1793831114.6715405,
+    "seen": 1793833830.3542511,
+    "ast_hash": "04b1aa590523538b3361c4827c9754b6",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/flow-picker.png": {
+    "mtime": 1793831112.804899,
+    "seen": 1793833830.3542545,
+    "ast_hash": "0f5c2ad9986639dc1d57f0b9f604dba3",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/flow-prejogo.png": {
+    "mtime": 1793831125.906094,
+    "seen": 1793833830.3542578,
+    "ast_hash": "0dcd5849ab782cb9637033925dcc77dc",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/flow-setup.png": {
+    "mtime": 1793831108.4777653,
+    "seen": 1793833830.354261,
+    "ast_hash": "c032b71c6d37a0efc34e67af769978b7",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/flow-slots.png": {
+    "mtime": 1793831118.156351,
+    "seen": 1793833830.3542643,
+    "ast_hash": "1c5f491fc01c19acf8fab1101ad8f2d2",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/m-clube.png": {
+    "mtime": 1793832409.80341,
+    "seen": 1793833830.3542676,
+    "ast_hash": "a74961b23537fe0db5f6ea4f2b07622a",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/m-jogos.png": {
+    "mtime": 1793832440.5666852,
+    "seen": 1793833830.354271,
+    "ast_hash": "355e36275717964e01b7cadecc9e0872",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/m-pers.png": {
+    "mtime": 1793832425.1582682,
+    "seen": 1793833830.3542745,
+    "ast_hash": "c54c26a4b9a8d0713832c51d6097cd71",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/m-tabela.png": {
+    "mtime": 1793832456.0527234,
+    "seen": 1793833830.3542783,
+    "ast_hash": "3603bd9528e18374974bffc0b74b6c09",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/m-times.png": {
+    "mtime": 1793832471.9054744,
+    "seen": 1793833830.354282,
+    "ast_hash": "5f1911c15c45d26452e66aad889fdd4f",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/mobile.png": {
+    "mtime": 1793832271.1521502,
+    "seen": 1793833830.3542852,
+    "ast_hash": "82a4214023704b8b8d1e28b3de156e27",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/q-details.png": {
+    "mtime": 1793832302.0708623,
+    "seen": 1793833830.3542886,
+    "ast_hash": "b07e943b8138cf8cee41d4d64aff75ce",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/q-picker.png": {
+    "mtime": 1793832317.5951376,
+    "seen": 1793833830.354292,
+    "ast_hash": "34173ee563d91e693d5ce59eef41c4dc",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/q-practice.png": {
+    "mtime": 1793832332.8912716,
+    "seen": 1793833830.3542953,
+    "ast_hash": "b7b6e399e4bc7ec20832853c7ea91f45",
+    "semantic_hash": ""
+  },
+  ".impeccable/review/q-setup.png": {
+    "mtime": 1793832286.701102,
+    "seen": 1793833830.354299,
+    "ast_hash": "d9be33e3eebde8c5ddc1a074db7e1e54",
+    "semantic_hash": ""
   }
 }

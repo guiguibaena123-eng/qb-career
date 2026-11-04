@@ -28,14 +28,15 @@ export type Prime = 'TNF' | 'SNF' | 'MNF' | 'WC' | 'DIV' | 'CONF' | 'QFL';
 export type Weather = 'clear' | 'rain' | 'snow';
 export type Tod = 'day' | 'dusk' | 'night';
 /** Apresentação dos jogos de horário nobre: nome e cor da transmissão. */
-export const PRIME: Record<Prime, { name: string; short: string; color: number; glow: number }> = {
-  TNF: { name: 'THURSDAY NIGHT GAME', short: 'THURSDAY NIGHT', color: 0x7b4dd6, glow: 0xb48cff },
-  SNF: { name: 'SUNDAY NIGHT GAME', short: 'SUNDAY NIGHT', color: 0x1f5fe0, glow: 0xffd23f },
-  MNF: { name: 'MONDAY NIGHT GAME', short: 'MONDAY NIGHT', color: 0xd63a3a, glow: 0xffb02e },
-  WC: { name: 'ROUND ONE WILD CARD', short: 'WILD CARD', color: 0x1f7a44, glow: 0xe8a33d },
-  DIV: { name: 'ROUND TWO DIVISIONAL', short: 'DIVISIONAL', color: 0x1f5f8b, glow: 0xffc93c },
-  CONF: { name: 'SEMI BOWL FINAL DE CONFERÊNCIA', short: 'SEMI BOWL', color: 0x5b2a9e, glow: 0xe8b84a },
-  QFL: { name: 'QFL BOWL', short: 'QFL BOWL', color: 0xc8102e, glow: 0xffd23f },
+/** `pt`: nome curto em português, usado nos menus (a transmissão em campo usa `name`). */
+export const PRIME: Record<Prime, { name: string; short: string; pt: string; color: number; glow: number }> = {
+  TNF: { name: 'THURSDAY NIGHT GAME', short: 'THURSDAY NIGHT', pt: 'QUINTA À NOITE', color: 0x7b4dd6, glow: 0xb48cff },
+  SNF: { name: 'SUNDAY NIGHT GAME', short: 'SUNDAY NIGHT', pt: 'DOMINGO À NOITE', color: 0x1f5fe0, glow: 0xffd23f },
+  MNF: { name: 'MONDAY NIGHT GAME', short: 'MONDAY NIGHT', pt: 'SEGUNDA À NOITE', color: 0xd63a3a, glow: 0xffb02e },
+  WC: { name: 'ROUND ONE WILD CARD', short: 'WILD CARD', pt: 'WILD CARD', color: 0x1f7a44, glow: 0xe8a33d },
+  DIV: { name: 'ROUND TWO DIVISIONAL', short: 'DIVISIONAL', pt: 'DIVISIONAL', color: 0x1f5f8b, glow: 0xffc93c },
+  CONF: { name: 'SEMI BOWL FINAL DE CONFERÊNCIA', short: 'SEMI BOWL', pt: 'SEMI BOWL', color: 0x5b2a9e, glow: 0xe8b84a },
+  QFL: { name: 'QFL BOWL', short: 'QFL BOWL', pt: 'QFL BOWL', color: 0xc8102e, glow: 0xffd23f },
 };
 
 function primeOf(when: string): Prime | null {

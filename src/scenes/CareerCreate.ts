@@ -7,7 +7,8 @@ import { BEARD_COUNT, FACE_COUNT, HAIR_COLORS, HAIR_COUNT, PlayerFace, SKINS } f
 import { getSave, updateSave } from '../player/PlayerSave';
 import { setupHiRes } from '../systems/hires';
 import { jerseyTexture } from '../ui/jerseyArt';
-import { GlassButton, label, title, UI } from '../ui/widgets';
+import { UI } from '../ui/widgets';
+import { C, feed, fillPlate, inkOn, label, plate, plateShadow, scoreBug, strokePlate, title, TV, tvEnter, TvButton as GlassButton, tvText, wipeTo } from '../ui/tv';
 
 const fgOnHex = (c: number) => (((c >> 16) & 255) * 0.299 + ((c >> 8) & 255) * 0.587 + (c & 255) * 0.114 > 150 ? '#0D0D12' : '#FFFFFF');
 
@@ -38,11 +39,12 @@ export class CareerCreate extends Phaser.Scene {
 
   create() {
     setupHiRes(this);
-    this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0c1a).setOrigin(0);
+    feed(this, null);
     const raw = new URLSearchParams(location.search).get('passo');
     this.step = raw === null ? 0 : Phaser.Math.Clamp(Number(raw) || 0, 0, STEPS.length - 1);
     this.field = null;
     this.build();
+    tvEnter(this);
     // Campos de texto do celular: acompanham o tamanho do canvas e somem ao sair da cena
     const place = () => this.placeInputs();
     this.scale.on('resize', place);
@@ -71,17 +73,20 @@ export class CareerCreate extends Phaser.Scene {
       return o;
     };
 
-    // Barra de progresso
-    const bw = (W - 40 - 6 * 4) / 7;
-    STEPS.forEach((_, i) => add(this.add.rectangle(20 + i * (bw + 4), 22, bw, 5, i <= this.step ? 0xffd23f : 0x2a3156).setOrigin(0, 0.5)));
-    add(title(this, W / 2, 50, STEPS[this.step], 14, UI.yellow).setOrigin(0.5));
-    add(label(this, W / 2, 72, `PASSO ${this.step + 1} DE ${STEPS.length}`, 8, UI.muted).setOrigin(0.5));
+    // Placar do topo (voltar = passo anterior) e barra de passos
+    add(scoreBug(this, { title: `CRIAR QB · ${STEPS[this.step]}`, step: `${this.step + 1} DE ${STEPS.length}`, onBack: () => (this.step === 0 ? wipeTo(this, 'CareerSlots') : this.go(this.step - 1)) }));
+    const bw = (W - 24 - 6 * 3) / 7;
+    const pg = this.add.graphics();
+    STEPS.forEach((_, i) => plate(pg, 12 + i * (bw + 3), 62, bw, 7, i < this.step ? TV.yellow : i === this.step ? TV.plate : TV.ink3));
+    add(pg);
 
     const college = COLLEGES.find((c) => c.id === s.college.id) ?? COLLEGES[0];
     const kit = collegeKit(college.colors);
     if (this.step !== 0 && this.step !== 6) {
       // Antes do cartão final, só o rosto (a roupa de jogo aparece apenas na confirmação)
-      add(new PlayerFace(this, W / 2, 196, this.faceLook(), 1.05, [hexNum(college.colors[0]), hexNum(college.colors[1])]));
+      // passos com poucas opções mostram o rosto maior
+      const big = this.step === 2 || this.step === 3 || this.step === 5;
+      add(new PlayerFace(this, W / 2, big ? 226 : 196, this.faceLook(), big ? 1.4 : 1.05, [hexNum(college.colors[0]), hexNum(college.colors[1])]));
     }
 
     let valid = true;
@@ -93,18 +98,18 @@ export class CareerCreate extends Phaser.Scene {
         this.stepCollege(add);
         break;
       case 2:
-        this.grid(add, FACE_COUNT, 5, 'face', 0.3, 340, (i) => ({ face: i }));
+        this.grid(add, FACE_COUNT, 5, 'face', 0.33, 384, (i) => ({ face: i }), 72);
         break;
       case 3:
-        this.colorRow(add, 380, SKINS, s.skin, (i) => this.apply({ skin: i }), 40);
-        add(label(this, W / 2, 440, `TOM ${s.skin + 1} DE ${SKINS.length}`, 9, UI.muted).setOrigin(0.5));
+        this.colorRow(add, 520, SKINS, s.skin, (i) => this.apply({ skin: i }), 72);
+        add(tvText(this, W / 2, 586, `TOM ${s.skin + 1} DE ${SKINS.length}`, 16, C.muted, 700, 1.4).setOrigin(0.5));
         break;
       case 4:
         this.grid(add, HAIR_COUNT, 6, 'hair', 0.27, 332, (i) => ({ hair: i }));
         this.colorRow(add, 756, HAIR_COLORS, s.hairColor, (i) => this.apply({ hairColor: i }));
         break;
       case 5:
-        this.grid(add, BEARD_COUNT + 1, 5, 'beard', 0.3, 340, (i) => ({ beard: i === 0 ? -1 : i - 1 }));
+        this.grid(add, BEARD_COUNT + 1, 5, 'beard', 0.33, 420, (i) => ({ beard: i === 0 ? -1 : i - 1 }), 72);
         break;
       case 6:
         this.stepConfirm(add, college.name, kit);
@@ -112,21 +117,25 @@ export class CareerCreate extends Phaser.Scene {
     }
 
     // Navegação
-    const back = new GlassButton(this, 14 + 55, H - 40, { w: 110, h: 52, radius: 16 });
-    back.add(label(this, 0, 0, this.step === 0 ? 'SAIR' : 'VOLTAR', 10, '#FFFFFF').setOrigin(0.5));
-    back.onTap = () => this.time.delayedCall(30, () => (this.step === 0 ? this.scene.start('CareerSlots') : this.go(this.step - 1)));
+    const back = new GlassButton(this, 14 + 55, H - 40, { w: 110, h: 52, fill: TV.ink3, fillAlpha: 1 });
+    back.add(tvText(this, 0, 0, this.step === 0 ? 'SAIR' : 'VOLTAR', 17, C.white, 800, 1.4).setOrigin(0.5));
+    back.onTap = () => this.time.delayedCall(30, () => (this.step === 0 ? wipeTo(this, 'CareerSlots') : this.go(this.step - 1)));
     add(back);
     const pw = W - 28 - 110 - 10;
-    const next = new GlassButton(this, W - 14 - pw / 2, H - 40, { w: pw, h: 52, radius: 16, fill: 0xffd23f, fillAlpha: 1, borderAlpha: 0.35, primary: true });
-    next.add(title(this, 0, 0, 'PRÓXIMO', 13, '#1a1a1a').setOrigin(0.5));
+    const next = new GlassButton(this, W - 14 - pw / 2, H - 40, { w: pw, h: 52, fill: TV.yellow, fillAlpha: 1, primary: true });
+    next.add(tvText(this, 0, 0, 'PRÓXIMO', 22, C.ink, 800, 1.6).setOrigin(0.5));
     next.onTap = () => this.time.delayedCall(30, () => this.go(this.step + 1));
     next.setEnabled(valid);
     add(next);
   }
 
   private go(n: number) {
+    const dir = n > this.step ? 1 : -1;
     this.step = n;
     this.build();
+    // cada passo entra deslizando do lado em que a pessoa está indo
+    this.ui.setX(36 * dir).setAlpha(0.2);
+    this.tweens.add({ targets: this.ui, x: 0, alpha: 1, duration: 300, ease: 'Expo.Out' });
   }
 
   /** Aplica uma mudança de rosto: grava e refaz a tela (preview ao vivo). */
@@ -231,10 +240,10 @@ export class CareerCreate extends Phaser.Scene {
       const on = this.field === which;
       const f = F[which];
       const g = this.add.graphics();
-      g.fillStyle(on ? 0x3a4378 : 0x1c2142, on ? 1 : 0.85);
-      g.fillRoundedRect(f.x, f.y, f.w, f.h, 12);
-      g.lineStyle(on ? 2 : 1, on ? 0xffd23f : 0xffffff, on ? 1 : 0.16);
-      g.strokeRoundedRect(f.x, f.y, f.w, f.h, 12);
+      g.fillStyle(on ? TV.ink3 : TV.ink2, 1);
+      fillPlate(g, f.x, f.y, f.w, f.h, 12);
+      g.lineStyle(on ? 2 : 1, on ? TV.yellow : TV.rule, 1);
+      strokePlate(g, f.x, f.y, f.w, f.h, 12);
       add(g);
       add(label(this, f.x + 14, f.y + 14, name, 7, UI.muted).setOrigin(0, 0.5));
       const blink = on && Math.floor(this.time.now / 500) % 2 === 0;
@@ -255,8 +264,8 @@ export class CareerCreate extends Phaser.Scene {
       const y = F.num.y + 22 + Math.floor(i / 5) * 18;
       const on = n === s.number;
       const g = this.add.graphics();
-      g.fillStyle(on ? 0xffd23f : 0x2a3156, 1);
-      g.fillRoundedRect(x, y, cw, 15, 4);
+      g.fillStyle(on ? TV.yellow : TV.ink3, 1);
+      fillPlate(g, x, y, cw, 15, 4);
       add(g);
       add(label(this, x + cw / 2, y + 7.5, String(n), 8, on ? '#0D0D12' : '#FFFFFF').setOrigin(0.5));
       const z = this.add.zone(x, y, cw, 15).setOrigin(0).setInteractive({ useHandCursor: true });
@@ -286,10 +295,13 @@ export class CareerCreate extends Phaser.Scene {
     COLLEGES.forEach((c, i) => {
       const on = c.id === cur;
       const y = 345 + i * 52;
-      const b = new GlassButton(this, W / 2, y, { w: W - 40, h: 46, radius: 12, fill: on ? 0x3a4378 : UI.glass, border: on ? 0xffd23f : 0xffffff, borderAlpha: on ? 1 : 0.16 });
-      b.add(this.add.rectangle(-(W - 40) / 2 + 26, 0, 16, 28, hexNum(c.colors[0])));
-      b.add(this.add.rectangle(-(W - 40) / 2 + 44, 0, 16, 28, hexNum(c.colors[1])));
-      b.add(title(this, -(W - 40) / 2 + 66, 0, c.name, 9, '#FFFFFF').setOrigin(0, 0.5));
+      const b = new GlassButton(this, W / 2, y, { w: W - 40, h: 46, fill: on ? TV.ink3 : TV.ink2, fillAlpha: 1, border: TV.yellow, borderAlpha: on ? 1 : 0 });
+      const sw = this.add.graphics();
+      plate(sw, -(W - 40) / 2, -23, 30, 46, hexNum(c.colors[0]), 1, true, false);
+      sw.fillStyle(hexNum(c.colors[1]), 1);
+      sw.fillRect(-(W - 40) / 2 + 30, -23, 10, 46);
+      b.add(sw);
+      b.add(tvText(this, -(W - 40) / 2 + 56, 0, c.name, 18, on ? C.yellow : C.white, 800, 0.6).setOrigin(0, 0.5));
       b.onTap = () => {
         updateSave({ college: { id: c.id, name: c.name, colors: c.colors } });
         this.build();
@@ -299,23 +311,23 @@ export class CareerCreate extends Phaser.Scene {
   }
 
   // ---- 3, 5 e 6: grade de rostos / cabelos / barbas
-  private grid(add: Add, count: number, cols: number, kind: 'face' | 'hair' | 'beard', sc: number, top: number, patch: (i: number) => object) {
+  private grid(add: Add, count: number, cols: number, kind: 'face' | 'hair' | 'beard', sc: number, top: number, patch: (i: number) => object, max = 66) {
     const W = GAME_W;
     const look = this.faceLook();
-    const cell = Math.min(66, (W - 20) / cols);
+    const cell = Math.min(max, (W - 20) / cols);
     const sel = kind === 'beard' ? (look.beard < 0 ? 0 : look.beard + 1) : look[kind];
     for (let i = 0; i < count; i++) {
       const cx = W / 2 + ((i % cols) - (cols - 1) / 2) * cell;
       const cy = top + Math.floor(i / cols) * cell + cell / 2;
       const on = i === sel;
       const g = this.add.graphics();
-      g.fillStyle(0x2a3156, 0.7);
-      g.fillRoundedRect(cx - cell / 2 + 2, cy - cell / 2 + 2, cell - 4, cell - 4, 8);
-      g.lineStyle(on ? 3 : 1, on ? 0xffd23f : 0xffffff, on ? 1 : 0.14);
-      g.strokeRoundedRect(cx - cell / 2 + 2, cy - cell / 2 + 2, cell - 4, cell - 4, 8);
+      g.fillStyle(TV.ink2, 1);
+      fillPlate(g, cx - cell / 2 + 2, cy - cell / 2 + 2, cell - 4, cell - 4, 8);
+      g.lineStyle(on ? 3 : 1, on ? TV.yellow : TV.rule, 1);
+      strokePlate(g, cx - cell / 2 + 2, cy - cell / 2 + 2, cell - 4, cell - 4, 8);
       add(g);
       if (kind === 'beard' && i === 0) {
-        add(label(this, cx, cy, 'SEM\nBARBA', 7, '#FFFFFF').setOrigin(0.5).setAlign('center'));
+        add(tvText(this, cx, cy, 'SEM\nBARBA', 14, C.white, 800, 1).setOrigin(0.5).setAlign('center'));
       } else {
         add(new PlayerFace(this, cx, cy + 2, { ...look, ...(patch(i) as object) }, sc));
       }
@@ -330,7 +342,7 @@ export class CareerCreate extends Phaser.Scene {
     const gap = Math.min(size + 6, (W - 20) / colors.length);
     colors.forEach((c, i) => {
       const x = W / 2 + (i - (colors.length - 1) / 2) * gap;
-      const r = add(this.add.rectangle(x, y, gap - 4, size, c).setStrokeStyle(i === sel ? 3 : 1, i === sel ? 0xffd23f : 0xffffff, i === sel ? 1 : 0.3));
+      const r = add(this.add.rectangle(x, y, gap - 4, size, c).setStrokeStyle(i === sel ? 3 : 1, i === sel ? TV.yellow : TV.rule, 1));
       r.setInteractive({ useHandCursor: true }).on('pointerup', () => pick(i));
     });
   }
@@ -339,40 +351,64 @@ export class CareerCreate extends Phaser.Scene {
   private stepConfirm(add: Add, collegeName: string, kit: KitDef) {
     const W = GAME_W;
     const s = getSave();
+    // Cartão de apresentação do calouro: placa de tinta com o jogador sobre a cor da faculdade
+    const c1 = hexNum(s.college.colors[0]);
+    const c2 = hexNum(s.college.colors[1]);
+    const cx = 20;
+    const cw = W - 40;
     const card = this.add.graphics();
-    card.fillStyle(0x2a3156, 0.75);
-    card.fillRoundedRect(20, 90, W - 40, 560, 18);
-    card.lineStyle(2, 0xffd23f, 0.8);
-    card.strokeRoundedRect(20, 90, W - 40, 560, 18);
+    plateShadow(card, cx, 96, cw, 640);
+    plate(card, cx, 96, cw, 640, TV.ink2, 1);
+    plate(card, cx, 96, cw, 340, c1, 1, true, true);
+    card.fillStyle(c2, 1);
+    card.fillRect(cx + 12, 430, cw - 24, 6);
     add(card);
-    add(label(this, W / 2, 112, 'ROOKIE', 9, UI.yellow).setOrigin(0.5));
-    add(new PlayerBody(this, W / 2, 390, { look: s.look, kit, face: this.faceLook(), number: Math.max(0, s.number) }, 0.95));
-    add(title(this, W / 2, 412, `${s.firstName ? s.firstName + ' ' : ''}${s.name}`, 15, '#FFFFFF').setOrigin(0.5));
-    add(label(this, W / 2, 438, `${s.name} #${s.number} · ${collegeName}`, 8, UI.muted).setOrigin(0.5));
-    add(title(this, W / 2, 478, `OVR ${s.ovr}`, 20, UI.yellow).setOrigin(0.5));
+    const chip = this.add.graphics();
+    plate(chip, cx + 18, 86, 92, 22, TV.yellow);
+    add(chip);
+    add(tvText(this, cx + 64, 97, 'CALOURO', 13, C.ink, 800, 1.6).setOrigin(0.5));
+    add(tvText(this, cx + cw - 20, 140, `#${s.number}`, 72, inkOn(c1), 800, 0).setOrigin(1, 0.5).setAlpha(0.22));
+    add(new PlayerBody(this, W / 2, 418, { look: s.look, kit, face: this.faceLook(), number: Math.max(0, s.number) }, 0.95));
+    // tarja branca com o nome
+    const lt = this.add.graphics();
+    plate(lt, cx + 12, 448, cw - 24, 74, TV.plate);
+    plate(lt, cx + cw - 104, 456, 80, 58, TV.yellow);
+    add(lt);
+    const nm = tvText(this, cx + 28, 472, `${s.firstName ? s.firstName + ' ' : ''}${s.name}`, 26, C.ink, 800, 0.4).setOrigin(0, 0.5);
+    if (nm.width > cw - 150) nm.setScale((cw - 150) / nm.width, 1);
+    add(nm);
+    const sub = tvText(this, cx + 28, 502, `QB · ${collegeName}`, 14, C.inkSoft, 600, 0.8).setOrigin(0, 0.5);
+    if (sub.width > cw - 150) sub.setScale((cw - 150) / sub.width, 1);
+    add(sub);
+    add(tvText(this, cx + cw - 64, 474, String(s.ovr), 32, C.ink, 800, 0).setOrigin(0.5));
+    add(tvText(this, cx + cw - 64, 500, 'OVR', 12, C.ink, 800, 1.6).setOrigin(0.5));
     const attrs: [string, number][] = [
       ['BRAÇO', s.attrs.arm],
       ['PRECISÃO', s.attrs.accuracy],
       ['LEITURA', s.attrs.reading],
       ['VELOCIDADE', s.attrs.speed],
     ];
+    const bars = this.add.graphics();
     attrs.forEach(([n, v], i) => {
-      const y = 518 + i * 30;
-      add(label(this, 44, y, n, 9, '#C9CEE0').setOrigin(0, 0.5));
-      add(this.add.rectangle(150, y, 150, 10, 0x0a0c1a).setOrigin(0, 0.5));
-      add(this.add.rectangle(150, y, 150 * (v / 100), 10, 0x3ccb5a).setOrigin(0, 0.5));
-      add(label(this, W - 44, y, String(v), 9, '#FFFFFF').setOrigin(1, 0.5));
+      const y = 562 + i * 40;
+      add(tvText(this, cx + 22, y, n, 15, C.muted, 700, 1).setOrigin(0, 0.5));
+      add(tvText(this, cx + cw - 22, y, String(v), 18, C.white, 800, 0).setOrigin(1, 0.5));
+      bars.fillStyle(TV.ink, 1);
+      bars.fillRect(cx + 130, y - 5, cw - 190, 10);
+      bars.fillStyle(TV.yellow, 1);
+      bars.fillRect(cx + 130, y - 5, (cw - 190) * (v / 100), 10);
     });
-    const edit = new GlassButton(this, 14 + 55, GAME_H - 40, { w: 110, h: 52, radius: 16 });
-    edit.add(label(this, 0, 0, 'EDITAR', 10, '#FFFFFF').setOrigin(0.5));
+    add(bars);
+    const edit = new GlassButton(this, 14 + 55, GAME_H - 40, { w: 110, h: 52, fill: TV.ink3, fillAlpha: 1 });
+    edit.add(tvText(this, 0, 0, 'EDITAR', 17, C.white, 800, 1.4).setOrigin(0.5));
     edit.onTap = () => this.time.delayedCall(30, () => this.go(0));
     add(edit);
     const pw = W - 28 - 110 - 10;
-    const go = new GlassButton(this, W - 14 - pw / 2, GAME_H - 40, { w: pw, h: 52, radius: 16, fill: 0xffd23f, fillAlpha: 1, borderAlpha: 0.35, primary: true });
-    go.add(title(this, 0, 0, 'IR PARA O COMBINE', 11, '#1a1a1a').setOrigin(0.5));
+    const go = new GlassButton(this, W - 14 - pw / 2, GAME_H - 40, { w: pw, h: 52, fill: TV.yellow, fillAlpha: 1, primary: true });
+    go.add(tvText(this, 0, 0, 'IR PARA O COMBINE', 20, C.ink, 800, 1.2).setOrigin(0.5));
     go.onTap = () => {
       updateSave({ created: true });
-      this.time.delayedCall(30, () => this.scene.start('CombineHub'));
+      wipeTo(this, 'CombineHub', c1);
     };
     add(go);
   }

@@ -9,6 +9,7 @@
     "typecheck": "npx -y -p typescript@5.9.3 tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource/saira-condensed": "^5.3.0",
     "phaser": "^3.90.0"
   },
   "devDependencies": {
