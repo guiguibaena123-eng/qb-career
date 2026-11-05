@@ -167,10 +167,10 @@ export class Ball {
       sx2 /= sn;
       sy2 /= sn;
       // meio torto: o plano do giro fica inclinado para o lado e balança (a bola nunca sai perfeita do pé)
-      const psi = 0.42 + Math.sin(this.spin * 3.1) * 0.22;
+      const psi = 0.5 + Math.sin(this.spin * 3.1) * 0.38;
       const cp = Math.cos(psi), sp = Math.sin(psi);
       const vx = cp * ux + sp * sx2, vy = cp * uy + sp * sy2, vh = cp * uh;
-      const th = Math.PI / 2 + this.spin * Math.PI * 2 * 2.4;
+      const th = Math.PI / 2 + this.spin * Math.PI * 2 * 1.9;
       const c = Math.cos(th), s = Math.sin(th);
       const ax = c * fx + s * vx, ay = c * fy + s * vy, ah = c * fh + s * vh;
       const L = 0.3;
@@ -180,9 +180,11 @@ export class Ball {
       const ty = g1.y - g0.y;
       const fl = Phaser.Math.Clamp(Math.hypot(tx, ty) / (0.6 * p.s * 10), 0.6, 1);
       this.img
-        .setFrame(Math.floor((this.spin * 2.4 * 2) % 2) ? 'b1' : 'b0')
-        .setScale(base * fl, base)
-        .setRotation(Math.atan2(ty, tx));
+        .setFrame(Math.floor((this.spin * 1.9 * 2) % 2) ? 'b1' : 'b0')
+        .setScale(base * 1.2 * fl, base * 1.2)
+        // balanço da bola chutada: ela bambeia de um lado para o outro e desvia um pouco no ar
+        .setRotation(Math.atan2(ty, tx) + Math.sin(this.spin * 5.2) * 0.55)
+        .setPosition(p.x + Math.sin(this.spin * 2.3) * p.s * 2.2, p.y);
     }
   }
 
