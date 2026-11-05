@@ -117,7 +117,7 @@ export interface CareerState {
   teamId: string | null;
   season: number;
   week: number;
-  record: { w: number; l: number };
+  record: { w: number; l: number; t?: number };
   schedule: { week: number; opp: string; home: boolean; result?: { us: number; them: number }; stats?: GameLine }[];
   news: { week: number; text: string; body?: string }[];
   /** XP somado nas partidas da carreira e confiança no fim do último jogo (0-5). */
@@ -154,7 +154,7 @@ export interface SeasonRecap {
   season: number;
   year: number;
   team: string;
-  record: { w: number; l: number };
+  record: { w: number; l: number; t?: number };
   /** "CAMPEÃO DO QFL BOWL", "ELIMINADO NO ROUND TWO"... */
   result: string;
   stats: GameLine;
@@ -329,4 +329,9 @@ export function resetSave(): PlayerSave {
   deleteSlot(slot);
   cache = null;
   return getSave();
+}
+
+/** Campanha "V-D" (com "-E" só quando houve empate). */
+export function recordText(r: { w: number; l: number; t?: number }) {
+  return `${r.w}-${r.l}${r.t ? `-${r.t}` : ''}`;
 }

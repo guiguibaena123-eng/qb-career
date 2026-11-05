@@ -178,7 +178,7 @@ Placa elevada (ink-raised) com faixa amarela de 4px no topo e contorno amarelo d
 Placa pequena chapada (verde = salvo/concluído, vermelho = armado para apagar) com ícone desenhado, logo acima do botão de baixo; some sozinha.
 
 ### Abas da carreira
-Fileira rolável de placas; a ativa é amarela com texto em tinta; contador de novidades em selo vermelho. A borda direita esmaece para mostrar que a fileira rola.
+Cinco abas fixas, todas visíveis (INÍCIO · MEU QB · ELENCO · LIGA · NOTÍCIAS); a ativa é amarela com texto em tinta; novidade em selo vermelho no canto. MEU QB (stats, visual, contrato, títulos) e LIGA (tabela, jogos, times, jogadores, prêmios) mostram sub-abas logo abaixo, no estilo de opção (placa elevada, texto amarelo e traço). Tocar em qualquer item de lista dá um clarão rápido sobre ele. Textos longos encolhem na horizontal para caber (`fit`), nunca saem da placa.
 
 ### Vinheta (assinatura)
 Três faixas diagonais (amarelo, cor do time, tinta) varrem a tela; a tela troca por baixo da faixa de tinta (~510ms no total). Toda navegação entre telas passa por ela.

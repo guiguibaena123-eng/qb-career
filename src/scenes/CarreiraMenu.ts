@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { careerTeam, coachOf, contractOf, ensureSeason, finalInfo, mi, newsFeed, nextGame, passerRating, PRIME, passLeaders, roster, schedule, seasonOver, seasonResult, seasonStats, seasonYear, standings, startNextSeason, type Game } from '../career/season';
 import { Pane } from '../career/pane';
+import { devSimWeeks } from '../integration/MatchBridge';
 import { awardsReady, finalMvp, seasonAwards, type AwardWinner } from '../career/awards';
 import { teamTitles, trophyCase } from '../career/trophies';
 import { GAME_H, GAME_W } from '../config';
@@ -12,7 +13,7 @@ import { BEARD_COUNT, HAIR_COLORS, PlayerFace, SKINS, type FaceLook } from '../p
 import { conferenceSeeds, CONFS, divisionOf, divisionTable, DIVS, league, pct, PLAYOFF_SPOTS, teamRank, type LeaguePlayer, type StatLine, type TeamSeason } from '../career/league';
 import { teamById } from '../data/teams';
 import { bracket, ROUND_INFO, ROUNDS, type PGame } from '../career/playoffs';
-import { DEFAULT_LOOK, getSave, updateSave, type LookOptions } from '../player/PlayerSave';
+import { DEFAULT_LOOK, getSave, recordText, updateSave, type LookOptions } from '../player/PlayerSave';
 import { setupHiRes } from '../systems/hires';
 import { portrait as drawPortrait } from '../ui/portrait';
 import { weatherIcon } from '../ui/weatherIcon';
@@ -34,6 +35,11 @@ const RD = 0xff5a6a;
 const ORG = 0xff8a2a;
 const CARD = TV.ink2;
 const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
+/** Encolhe o texto na horizontal para caber na largura (nada salta para fora da placa). */
+const fit = <T extends Phaser.GameObjects.Text>(t: T, w: number): T => {
+  if (w > 0 && t.width > w) t.setScale((w / t.width) * t.scaleX, t.scaleY);
+  return t;
+};
 /** Faixas de nota: verde ≥ 85, amarelo ≥ 75, laranja ≥ 65, abaixo disso cinza (vermelho é só derrota/apagar). */
 const ovc = (v: number) => (v >= 85 ? GR : v >= 75 ? YE : v >= 65 ? ORG : 0x93a0b6);
 
@@ -78,24 +84,26 @@ const CATS: [Cat, string][] = [
   ['extras', 'EXTRAS'],
 ];
 /** Prévia fixa do PERSONALIZAR (à esquerda) e área rolável dos controles (à direita). */
-const PV = { x: 16, y: 122, w: 168, h: 330 };
+const PV = { x: 16, y: 168, w: 168, h: 330 };
 const PX = PV.x + PV.w + 10;
 
 type Tab = 'clube' | 'pers' | 'elenco' | 'stats' | 'jogadores' | 'times' | 'tabela' | 'premios' | 'titulos' | 'noticias' | 'contratos' | 'jogos';
-const TABS: [Tab, string, number][] = [
-  ['clube', 'CLUBE', 0],
-  ['pers', 'PERSONALIZAR', 0],
-  ['elenco', 'ELENCO', 0],
-  ['stats', 'MEUS STATS', 0],
-  ['jogadores', 'JOGADORES', 0],
-  ['times', 'TIMES', 0],
-  ['tabela', 'TABELA', 0],
-  ['premios', 'PRÊMIOS', 0],
-  ['titulos', 'TÍTULOS', 0],
-  ['noticias', 'NOTÍCIAS', 3],
-  ['contratos', 'CONTRATOS', 0],
-  ['jogos', 'JOGOS', 0],
+
+/**
+ * As 12 telas da carreira em 5 abas fixas (todas visíveis, sem rolar). Abas com mais de uma tela
+ * mostram uma fileira de sub-abas logo abaixo.
+ */
+type Group = 'inicio' | 'qb' | 'elenco' | 'liga' | 'noticias';
+const GROUPS: { id: Group; name: string; tabs: Tab[]; subs: string[] }[] = [
+  { id: 'inicio', name: 'INÍCIO', tabs: ['clube'], subs: [] },
+  { id: 'qb', name: 'MEU QB', tabs: ['stats', 'pers', 'contratos', 'titulos'], subs: ['STATS', 'VISUAL', 'CONTRATO', 'TÍTULOS'] },
+  { id: 'elenco', name: 'ELENCO', tabs: ['elenco'], subs: [] },
+  { id: 'liga', name: 'LIGA', tabs: ['tabela', 'jogos', 'times', 'jogadores', 'premios'], subs: ['TABELA', 'JOGOS', 'TIMES', 'JOGADORES', 'PRÊMIOS'] },
+  { id: 'noticias', name: 'NOTÍCIAS', tabs: ['noticias'], subs: [] },
 ];
+const groupOf = (t: Tab) => GROUPS.find((g) => g.tabs.includes(t))!;
+/** Última sub-aba aberta em cada grupo (voltar ao grupo reabre onde a pessoa estava). */
+const lastSub: Partial<Record<Group, Tab>> = {};
 
 let lastTab: Tab = 'clube';
 
@@ -154,8 +162,8 @@ export class CarreiraMenu extends Phaser.Scene {
   private team!: CareerTeam;
   private top!: Phaser.GameObjects.Container;
   private tabsPane!: Pane;
-  /** Esmaecimento na borda direita das abas: mostra que a fileira rola. */
-  private tabFade!: Phaser.GameObjects.Graphics;
+  /** Sub-abas do grupo atual (MEU QB e LIGA). */
+  private subBar!: Phaser.GameObjects.Container;
   private body!: Pane;
   private cards!: Pane;
   private seen = new Set<Tab>();
@@ -191,22 +199,29 @@ export class CarreiraMenu extends Phaser.Scene {
   create() {
     setupHiRes(this);
     ensureSeason();
+    // Teste (só no desenvolvimento): ?simsemanas=N joga N semanas automaticamente
+    const sim = import.meta.env.DEV ? Number(new URLSearchParams(location.search).get('simsemanas') ?? 0) : 0;
+    if (sim > 0) devSimWeeks(sim);
+    // Campanha refeita a partir dos resultados (saves antigos não contavam empates)
+    {
+      const sv = getSave();
+      const rs = sv.career.schedule.filter((g) => g.opp && g.result).map((g) => g.result!);
+      const rec = { w: rs.filter((r) => r.us > r.them).length, l: rs.filter((r) => r.us < r.them).length, t: rs.filter((r) => r.us === r.them).length };
+      const cur = sv.career.record;
+      if (rs.length && (cur.w !== rec.w || cur.l !== rec.l || (cur.t ?? 0) !== rec.t)) updateSave({ career: { ...sv.career, record: rec } });
+    }
     // Salvamento automático ao chegar no menu da carreira (inclusive na volta de cada partida)
     updateSave({});
     this.team = careerTeam();
     const q = new URLSearchParams(location.search).get('aba') as Tab | null;
-    this.tab = q && TABS.some((t) => t[0] === q) ? q : lastTab;
+    this.tab = q && GROUPS.some((g) => g.tabs.includes(q)) ? q : lastTab;
     this.drawBackground();
     this.drawHeader();
     this.top = this.add.container(0, 0);
     this.cards = new Pane(this, 0, 96, GAME_W, 104, 'x', 10);
     this.drawNextGames();
     this.tabsPane = new Pane(this, 0, 208, GAME_W, 44, 'x', 11);
-    this.tabFade = this.add.graphics().setDepth(12);
-    for (let i = 0; i < 14; i++) {
-      this.tabFade.fillStyle(TV.ink, (i / 14) * 0.9);
-      this.tabFade.fillRect(GAME_W - 28 + i * 2, 0, 2, 44);
-    }
+    this.subBar = this.add.container(0, 0).setDepth(11);
     this.body = new Pane(this, 0, 258, GAME_W, GAME_H - 76 - 258, 'y', 5);
     this.persPane = new Pane(this, PX, PV.y, GAME_W - PX - 16, GAME_H - 76 - PV.y, 'y', 5);
     this.buildPersFixed();
@@ -265,7 +280,7 @@ export class CarreiraMenu extends Phaser.Scene {
     c.add(g);
     c.add(tvText(this, 77, y + h / 2, String(s.number), 22, inkOn(t.colors.primary), 800).setOrigin(0.5));
     const nm = tvText(this, 108, y + 17, `${s.name} · QB`, 18, C.white, 800, 0.6).setOrigin(0, 0.5);
-    const rec = `${s.career.record.w}-${s.career.record.l}`;
+    const rec = recordText(s.career.record);
     const sub = tvText(this, 108, y + 35, `${t.name} · ${rec} · TEMP. ${s.career.season} · SEM. ${Math.max(1, s.career.week)}`, 12, C.muted, 600, 0.6).setOrigin(0, 0.5);
     // OVR (placa amarela) e casa
     const hx = W - 12 - 40;
@@ -311,10 +326,12 @@ export class CarreiraMenu extends Phaser.Scene {
       if (first) plateLine(c, x, 4, cw, 94, TV.yellow, 1, 2);
       p.add(c);
       const bandFg = first || pr ? C.ink : C.muted;
+      // faixa: o programa (ou a semana) à esquerda e o selo à direita, sem encostar
+      const tag = tvText(this, x + cw - 14, 15, first ? 'PRÓXIMO' : g.home ? 'CASA' : 'FORA', 12, bandFg, 800, 1.2).setOrigin(1, 0.5);
       const bl = tvText(this, x + 14, 15, pr ? pr.pt : `SEMANA ${g.week}`, 12, bandFg, 800, 1).setOrigin(0, 0.5);
-      if (bl.width > cw - 86) bl.setScale((cw - 86) / bl.width, 1);
+      fit(bl, cw - 28 - tag.width - 12);
       p.add(bl);
-      p.add(tvText(this, x + cw - 14, 15, first ? 'PRÓXIMO' : g.home ? 'CASA' : 'FORA', 12, bandFg, 800, 1.2).setOrigin(1, 0.5));
+      p.add(tag);
       p.add(this.add.image(x + 30, 54, g.opp!.logo.small).setDisplaySize(34, 34));
       const on = tvText(this, x + 54, 48, g.opp!.name, 17, C.white, 800, 0.4).setOrigin(0, 0.5);
       if (on.width > cw - 64) on.setScale((cw - 64) / on.width, 1);
@@ -345,34 +362,72 @@ export class CarreiraMenu extends Phaser.Scene {
   private drawTabs() {
     const p = this.tabsPane;
     p.clear();
-    let x = 16;
-    let sel: [number, number] | null = null;
-    for (const [id, name, baseBadge] of TABS) {
-      const badge = id === 'premios' ? (awardsReady() ? 1 : 0) : baseBadge;
-      const on = this.tab === id;
-      const t = tvText(this, 0, 22, name, 15, on ? C.ink : C.white, 800, 1).setOrigin(0, 0.5);
-      const showBadge = badge > 0 && !on && !this.seen.has(id);
-      const w = t.width + 28 + (showBadge ? 22 : 0);
-      const g = this.add.graphics();
-      plate(g, x, 4, w, 36, on ? TV.yellow : TV.ink2, on ? 1 : 0.95);
-      if (!on) plateLine(g, x, 4, w, 36, TV.rule, 1, 1);
-      t.setX(x + 14);
-      p.add(g);
+    const W = GAME_W;
+    const gap = 4;
+    const tw = (W - 32 - gap * (GROUPS.length - 1)) / GROUPS.length;
+    const cur = groupOf(this.tab).id;
+    GROUPS.forEach((g, i) => {
+      const x = 16 + i * (tw + gap);
+      const on = g.id === cur;
+      // novidade: notícias não lidas e prêmios entregues
+      const badge = g.id === 'noticias' ? (this.seen.has('noticias') ? 0 : 3) : g.id === 'liga' && awardsReady() && !this.seen.has('premios') ? 1 : 0;
+      const pg = this.add.graphics();
+      plate(pg, x, 4, tw, 38, on ? TV.yellow : TV.ink2, on ? 1 : 0.95);
+      if (!on) plateLine(pg, x, 4, tw, 38, TV.rule, 1, 1);
+      p.add(pg);
+      const t = tvText(this, x + tw / 2, 23, g.name, 15, on ? C.ink : C.white, 800, 0.8).setOrigin(0.5);
+      if (t.width > tw - 12) t.setScale((tw - 12) / t.width, 1);
       p.add(t);
-      if (showBadge) {
-        const bx = x + 14 + t.width + 7;
+      if (badge && !on) {
         const bg = this.add.graphics();
-        plate(bg, bx, 13, 17, 18, TV.red);
+        plate(bg, x + tw - 20, -2, 20, 16, TV.red);
         p.add(bg);
-        p.add(tvText(this, bx + 8.5, 22, String(badge), 12, C.white, 800).setOrigin(0.5));
+        p.add(tvText(this, x + tw - 10, 6, String(badge), 11, C.white, 800, 0).setOrigin(0.5));
       }
-      p.hit(x, 4, w, 36, () => ((this.plSel = null), (this.teamSel = null), this.show(id)));
-      if (on) sel = [x, w];
-      x += w + 4;
-    }
-    p.setExtent(x + 12);
-    // Rola a fileira até a aba escolhida
-    if (sel) p.reveal(sel[0], sel[1]);
+      p.hit(x, 0, tw, 44, () => {
+        this.plSel = null;
+        this.teamSel = null;
+        this.show(lastSub[g.id] ?? g.tabs[0]);
+      });
+    });
+    p.setExtent(W);
+  }
+
+  /** Sub-abas do grupo (opção escolhida = placa elevada, texto amarelo e traço de caneta). */
+  private drawSubs(grp: (typeof GROUPS)[number], tab: Tab) {
+    const c = this.subBar;
+    c.removeAll(true);
+    if (grp.tabs.length < 2 || tab === 'clube') return;
+    const W = GAME_W;
+    const y = 122;
+    const gap = 4;
+    const n = grp.tabs.length;
+    const sw = (W - 32 - gap * (n - 1)) / n;
+    grp.tabs.forEach((t, i) => {
+      const x = 16 + i * (sw + gap);
+      const on = t === tab;
+      const g = this.add.graphics();
+      plate(g, x, y, sw, 34, on ? TV.ink3 : TV.ink, on ? 1 : 0.85);
+      c.add(g);
+      const tx = tvText(this, x + sw / 2, y + 16, grp.subs[i], 13, on ? C.yellow : C.muted, 800, 0.8).setOrigin(0.5);
+      if (tx.width > sw - 10) tx.setScale((sw - 10) / tx.width, 1);
+      c.add(tx);
+      if (on) {
+        const u = this.add.graphics();
+        u.fillStyle(TV.yellow, 1);
+        u.fillRect(x + sw / 2 - Math.min(tx.displayWidth, sw - 20) / 2, y + 28, Math.min(tx.displayWidth, sw - 20), 3);
+        c.add(u);
+      }
+      const z = this.add.zone(x, y - 2, sw, 38).setOrigin(0).setInteractive({ useHandCursor: true });
+      z.on('pointerup', () => {
+        if (t === this.tab && !this.plSel && !this.teamSel) return;
+        navigator.vibrate?.(8);
+        this.plSel = null;
+        this.teamSel = null;
+        this.show(t);
+      });
+      c.add(z);
+    });
   }
 
   private drawCta() {
@@ -459,10 +514,14 @@ export class CarreiraMenu extends Phaser.Scene {
     const games = tab === 'clube';
     this.top.setVisible(games);
     this.cards.setVisible(games);
+    const grp = groupOf(tab);
+    lastSub[grp.id] = tab;
+    const subs = grp.tabs.length > 1;
+    const by = games ? 258 : subs ? 164 : 124;
     this.tabsPane.moveTo(games ? 208 : 74);
-    this.tabFade.setY(games ? 208 : 74);
-    this.body.moveTo(games ? 258 : 124, GAME_H - 76 - (games ? 258 : 124));
+    this.body.moveTo(by, GAME_H - 76 - by);
     this.drawTabs();
+    this.drawSubs(grp, tab);
     this.body.setVisible(!pers);
     this.persPane.setVisible(pers);
     this.persFixed.setVisible(pers);
@@ -599,16 +658,16 @@ export class CarreiraMenu extends Phaser.Scene {
       ['QUÍMICA COM A EQUIPE', 41, 'NOVATO', YE],
       ['QUÍMICA COM O TÉCNICO', Math.min(90, 50 + Math.round((s.ovr - 55) * 0.8)), 'CONFIANTE', GR],
     ];
-    const rh = 14 + 16 + meters.length * 34 + 74;
+    const rh = 14 + 16 + meters.length * 40 + 74;
     this.card(16, y, W, rh);
     this.T(40, y + 16, 'RELAÇÕES', 9, C.white, 'title');
     meters.forEach(([n, v, lab, c], i) => {
-      const yy = y + 38 + i * 34;
+      const yy = y + 38 + i * 40;
       this.T(40, yy, n, 10, C.muted);
       this.T(16 + W - 24, yy, `${lab} · ${v}`, 10, hex(c)).setOrigin(1, 0);
-      this.bar(40, yy + 18, W - 56, 8, v / 100, c);
+      this.bar(40, yy + 25, W - 56, 8, v / 100, c);
     });
-    const ty = y + 38 + meters.length * 34 + 6;
+    const ty = y + 38 + meters.length * 40 + 6;
     const lg = this.add.graphics();
     lg.fillStyle(0xffffff, 0.08);
     lg.fillRect(40, ty, W - 56, 1);
@@ -626,7 +685,7 @@ export class CarreiraMenu extends Phaser.Scene {
     const OBJ: [string, string, string][] = [
       ['GANHAR 10 JOGOS NA TEMPORADA', '$ 2M', `${s.career.record.w} / 10 VITÓRIAS`],
       ['4.000 JARDAS DE PASSE', 'FÃS +10', `${seasonStats().total.yards.toLocaleString('pt-BR')} / 4.000 JD`],
-      ['CLASSIFICAR PARA OS PLAYOFFS', 'QUÍMICA +15', s.career.record.w + s.career.record.l ? `${s.career.record.w}-${s.career.record.l} NA TEMPORADA` : 'TEMP. NÃO INICIADA'],
+      ['CLASSIFICAR PARA OS PLAYOFFS', 'QUÍMICA +15', s.career.record.w + s.career.record.l + (s.career.record.t ?? 0) ? `${recordText(s.career.record)} NA TEMPORADA` : 'TEMP. NÃO INICIADA'],
       [`VENCER O CLÁSSICO CONTRA ${g1?.opp?.name ?? 'O RIVAL'}`, 'FÃS +8', `SEMANA ${g1?.week ?? 1} · ${g1?.home ? 'EM CASA' : 'FORA'}`],
     ];
     const oh = 40 + OBJ.length * 72;
@@ -914,7 +973,7 @@ export class CarreiraMenu extends Phaser.Scene {
     roster(this.team).forEach((p, i) => {
       if (this.pos !== 'TODOS' && group(p.pos) !== this.pos) return;
       const open = this.open === i;
-      const h = open ? 62 + 2 * 36 + 50 : 62;
+      const h = open ? 62 + 2 * 44 + 50 : 62;
       this.card(16, y, W, h, p.me ? OR : CARD, p.me ? 0.16 : 0.72, p.me ? OR : 0xffffff, p.me ? 1 : open ? 0.33 : 0.12, 14);
       this.portrait(26, y + 8, 46, p.face, this.team, p.me ? OR : undefined);
       // número na camisa, no canto da foto
@@ -939,11 +998,11 @@ export class CarreiraMenu extends Phaser.Scene {
         this.body.hit(16 + W - 100, y + h - 48, 100, 40, () => this.openPlayer(p.id));
         p.attrs.forEach(([n, v], k) => {
           const cx = 28 + (k % 2) * ((W - 24) / 2 + 7);
-          const cy = y + 68 + Math.floor(k / 2) * 36;
+          const cy = y + 68 + Math.floor(k / 2) * 44;
           const cw = (W - 24) / 2 - 7;
           this.T(cx, cy, n, 9, '#C9CEE0');
-          this.T(cx + cw, cy, String(v), 9, '#C9CEE0').setOrigin(1, 0);
-          this.bar(cx, cy + 14, cw, 6, v / 100, ovc(v));
+          this.T(cx + cw, cy, String(v), 9, hex(ovc(v)), 'title').setOrigin(1, 0);
+          this.bar(cx, cy + 23, cw, 6, v / 100, ovc(v));
         });
       }
       this.body.hit(16, y, W, h, () => ((this.open = open ? -1 : i), this.show('elenco')));
@@ -1104,8 +1163,8 @@ export class CarreiraMenu extends Phaser.Scene {
     const cx = (i: number) => 16 + W - 26 - (cols.length - 1 - i) * 46;
     const h = 34 + Math.min(rows.length, this.plLimit) * 52;
     this.card(16, y, W, h);
-    this.T(28, y + 17, '#', 9, '#6E7593').setOrigin(0, 0.5);
-    this.T(88, y + 17, 'JOGADOR', 9, '#6E7593').setOrigin(0, 0.5);
+    this.T(36, y + 17, '#', 9, '#6E7593').setOrigin(0.5);
+    this.T(96, y + 17, 'JOGADOR', 9, '#6E7593').setOrigin(0, 0.5);
     cols.forEach((c, i) => {
       const on = i === this.plSort;
       if (on) {
@@ -1131,21 +1190,19 @@ export class CarreiraMenu extends Phaser.Scene {
       const mine = p.me;
       if (mine || i % 2) {
         const g = this.add.graphics();
-        g.fillStyle(mine ? OR : 0xffffff, mine ? 0.18 : 0.025);
+        g.fillStyle(mine ? TV.ink3 : 0xffffff, mine ? 1 : 0.025);
         g.fillRect(17, yy, W - 2, 52);
-        if (mine) {
-          g.fillStyle(OR, 1);
-          g.fillRect(17, yy, 4, 52);
-        }
         this.body.add(g);
       }
-      this.T(30, yy + 26, String(i + 1), i < 3 ? 10 : 10, i < 3 ? hex(YE) : '#9AA3C0', i < 3 ? 'title' : 'label').setOrigin(0.5);
-      this.portrait(42, yy + 7, 38, p.face, p.team, mine ? OR : undefined);
-      const nm = this.T(88, yy + 18, p.name, 10, mine ? hex(YE) : '#FFFFFF').setOrigin(0, 0.5);
-      const maxW = cx(0) - 26 - 88;
+      const rk = this.T(36, yy + 26, String(i + 1), 10, i < 3 ? hex(YE) : '#9AA3C0', i < 3 ? 'title' : 'label').setOrigin(0.5);
+      if (rk.width > 20) rk.setScale(20 / rk.width);
+      this.portrait(50, yy + 7, 38, p.face, p.team, mine ? OR : undefined);
+      const nm = this.T(96, yy + 18, p.name, 10, mine ? hex(YE) : '#FFFFFF').setOrigin(0, 0.5);
+      const maxW = cx(0) - 26 - 96;
       if (nm.width > maxW) nm.setText(p.name.split(' ').map((w, k) => (k === 0 ? w[0] + '.' : w)).join(' '));
-      this.body.add(this.add.image(95, yy + 36, p.team.logo.small).setDisplaySize(14, 14));
-      this.T(106, yy + 36, `${p.team.abbr} · ${p.pos} · ${p.ovr}`, 8, '#9AA3C0').setOrigin(0, 0.5);
+      fit(nm, maxW);
+      this.body.add(this.add.image(103, yy + 36, p.team.logo.small).setDisplaySize(14, 14));
+      this.T(114, yy + 36, `${p.team.abbr} · ${p.pos} · ${p.ovr}`, 8, '#9AA3C0').setOrigin(0, 0.5);
       cols.forEach((c, k) => {
         const v = c.v(p.season);
         this.T(cx(k), yy + 26, p.season.gp ? (c.fmt ?? nf)(v) : '–', k === this.plSort ? 9 : 10, k === this.plSort ? '#FFFFFF' : '#C9CEE0', k === this.plSort ? 'title' : 'label').setOrigin(0.5);
@@ -1239,15 +1296,15 @@ export class CarreiraMenu extends Phaser.Scene {
     }
     // Atributos
     y += this.section(y, 'ATRIBUTOS');
-    const ah = 20 + Math.ceil(p.attrs.length / 2) * 38;
+    const ah = 22 + Math.ceil(p.attrs.length / 2) * 46;
     this.card(16, y, W, ah);
     p.attrs.forEach(([n, v], k) => {
       const ax = 30 + (k % 2) * ((W - 28) / 2 + 8);
-      const ay = y + 14 + Math.floor(k / 2) * 38;
+      const ay = y + 14 + Math.floor(k / 2) * 46;
       const aw = (W - 28) / 2 - 8;
       this.T(ax, ay, n, 9, '#C9CEE0');
       this.T(ax + aw, ay, String(v), 9, hex(ovc(v)), 'title').setOrigin(1, 0);
-      this.bar(ax, ay + 16, aw, 7, v / 100, ovc(v));
+      this.bar(ax, ay + 24, aw, 7, v / 100, ovc(v));
     });
     y += ah + 14;
     // Jogo a jogo
@@ -1257,18 +1314,18 @@ export class CarreiraMenu extends Phaser.Scene {
       const lh = 34 + Math.max(1, rows.length) * 40;
       this.card(16, y, W, lh);
       const gx = (i: number) => 16 + W - 24 - (cols.length - 1 - i) * 42;
-      this.T(28, y + 17, 'SEM', 9, '#6E7593').setOrigin(0, 0.5);
-      this.T(64, y + 17, 'ADVERSÁRIO', 9, '#6E7593').setOrigin(0, 0.5);
+      this.T(34, y + 17, 'SEM', 9, '#6E7593').setOrigin(0, 0.5);
+      this.T(74, y + 17, 'ADVERSÁRIO', 9, '#6E7593').setOrigin(0, 0.5);
       cols.forEach((c, i) => this.T(gx(i), y + 17, c.k, 9, '#6E7593').setOrigin(0.5));
       if (!rows.length) this.T(GAME_W / 2, y + 54, 'NENHUM JOGO AINDA', 9, '#6E7593').setOrigin(0.5);
       rows.forEach((r, i) => {
         const yy = y + 34 + i * 40;
         const o = TeamRepository.get(r.opp);
-        this.T(30, yy + 20, `S${r.week}`, 9, '#9AA3C0').setOrigin(0, 0.5);
-        this.body.add(this.add.image(74, yy + 20, o.logo.small).setDisplaySize(20, 20));
-        this.T(88, yy + 13, `${r.home ? 'vs' : '@'} ${o.abbr}`, 9, '#FFFFFF').setOrigin(0, 0.5);
+        this.T(34, yy + 20, `S${r.week}`, 9, '#9AA3C0').setOrigin(0, 0.5);
+        this.body.add(this.add.image(84, yy + 20, o.logo.small).setDisplaySize(20, 20));
+        this.T(98, yy + 13, `${r.home ? 'vs' : '@'} ${o.abbr}`, 9, '#FFFFFF').setOrigin(0, 0.5);
         const win = r.us > r.them;
-        this.T(88, yy + 28, `${win ? 'V' : r.us < r.them ? 'D' : 'E'} ${r.us}-${r.them}`, 8, win ? hex(GR) : hex(RD)).setOrigin(0, 0.5);
+        this.T(98, yy + 28, `${win ? 'V' : r.us < r.them ? 'D' : 'E'} ${r.us}-${r.them}`, 8, win ? hex(GR) : r.us < r.them ? hex(RD) : '#9AA3C0').setOrigin(0, 0.5);
         cols.forEach((c, k) => this.T(gx(k), yy + 20, (c.fmt ?? nf)(c.v(r.line)), 10, '#E8EAF2').setOrigin(0.5));
       });
       y += lh + 14;
@@ -1973,8 +2030,8 @@ export class CarreiraMenu extends Phaser.Scene {
       if (keep && n.tag !== keep) return;
       const open = this.nopen === i;
       // Mede o texto para a altura do cartão
-      const head = label(this, 28, y + 36, n.head, 11, '#FFFFFF').setWordWrapWidth(W - 24).setLineSpacing(5);
-      const body = open ? label(this, 28, 0, n.body, 10, '#C9CEE0').setWordWrapWidth(W - 24).setLineSpacing(6) : null;
+      const head = label(this, 28, y + 36, n.head, 11, '#FFFFFF').setWordWrapWidth(W - 40).setLineSpacing(2);
+      const body = open ? label(this, 28, 0, n.body.toUpperCase(), 10, '#C9CEE0').setWordWrapWidth(W - 40).setLineSpacing(3) : null;
       let h = 36 + head.height + 14;
       if (body) {
         body.setY(y + h - 4);

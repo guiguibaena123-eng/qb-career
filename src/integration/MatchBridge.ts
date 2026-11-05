@@ -4,7 +4,7 @@ import { ROUND_INFO, type Round } from '../career/playoffs';
 import { applyMatchup, broadcast, finalGame, matchConfig, matchRecords, playoffLogo, venue } from '../config';
 import { league } from '../career/league';
 import { TeamRepository } from '../data/TeamRepository';
-import { getSave, updateSave } from '../player/PlayerSave';
+import { getSave, updateSave, recordText } from '../player/PlayerSave';
 import type { QbStats } from '../state/GameState';
 import { MatchScene } from '../scenes/MatchScene';
 
@@ -108,13 +108,13 @@ export function finishCareerMatch(r: CareerMatchResult) {
     });
     return;
   }
-  const record = { w: c.record.w + (win ? 1 : 0), l: c.record.l + (!win && !tie ? 1 : 0) };
+  const record = { w: c.record.w + (win ? 1 : 0), l: c.record.l + (!win && !tie ? 1 : 0), t: (c.record.t ?? 0) + (tie ? 1 : 0) };
   const head = win
     ? `${team.name} VENCEM ${opp.name} POR ${r.us} A ${r.them}`
     : tie
       ? `${team.name} E ${opp.name} EMPATAM EM ${r.us} A ${r.them}`
       : `${team.name} PERDEM PARA ${opp.name} POR ${r.them} A ${r.us}`;
-  const body = `${s.name} completou ${line.comp} de ${line.att} passes para ${line.yards} jardas, com ${line.td} TD e ${line.int} INT. Retrospecto: ${record.w}-${record.l}.`;
+  const body = `${s.name} completou ${line.comp} de ${line.att} passes para ${line.yards} jardas, com ${line.td} TD e ${line.int} INT. Retrospecto: ${recordText(record)}.`;
   updateSave({
     career: {
       ...c,
@@ -139,4 +139,18 @@ export function leaveCareerMatch() {
   matchRecords.home = matchRecords.away = '';
   applyMatchup();
   current = null;
+}
+
+/** Só para testes (desenvolvimento): simula `n` jogos da carreira com resultados e números plausíveis. */
+export function devSimWeeks(n: number) {
+  for (let i = 0; i < n; i++) {
+    const g = nextGame();
+    if (!g?.opp) return;
+    current = { week: g.week, opp: g.opp.id, home: g.home, final: !!g.final, round: g.round ?? null, done: false, prev: { ...matchConfig } };
+    const us = 10 + Math.floor(Math.random() * 28);
+    const them = 7 + Math.floor(Math.random() * 28);
+    const att = 28 + Math.floor(Math.random() * 18);
+    finishCareerMatch({ us, them, stats: { comp: Math.floor(att * 0.66), att, yards: 180 + Math.floor(Math.random() * 260), td: Math.floor(Math.random() * 4), int: Math.floor(Math.random() * 2), sacks: Math.floor(Math.random() * 4) }, xp: 40, confidence: 3 });
+    current = null;
+  }
 }

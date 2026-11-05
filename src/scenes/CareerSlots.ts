@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_W, matchConfig } from '../config';
 import { TeamRepository } from '../data/TeamRepository';
-import { activeSlot, deleteSlot, peekSlot, resetSave, setActiveSlot, SLOT_COUNT, updateSave, type PlayerSave } from '../player/PlayerSave';
+import { activeSlot, deleteSlot, peekSlot, recordText, resetSave, setActiveSlot, SLOT_COUNT, updateSave, type PlayerSave } from '../player/PlayerSave';
 import { setupHiRes } from '../systems/hires';
 import { portraitTexture } from '../ui/portrait';
 import { C, feed, inkOn, plate, plateShadow, scoreBug, slideIn, TV, tvEnter, TvButton, tvText, wipeTo } from '../ui/tv';
@@ -106,7 +106,7 @@ export class CareerSlots extends Phaser.Scene {
       if (tn.width > room - 28) tn.setScale((room - 28) / tn.width, 1);
       c.add(tn);
       const cr = s.career;
-      c.add(tvText(this, tx, y + 124, `TEMP. ${cr.season} · SEM. ${Math.max(1, cr.week)} · ${cr.record.w}-${cr.record.l}`, 16, C.ink, 800, 0.8).setOrigin(0, 0.5));
+      c.add(tvText(this, tx, y + 124, `TEMP. ${cr.season} · SEM. ${Math.max(1, cr.week)} · ${recordText(cr.record)}`, 16, C.ink, 800, 0.8).setOrigin(0, 0.5));
     } else {
       const cn = tvText(this, tx, y + 98, s.college.name, 15, C.ink, 600, 0.6).setOrigin(0, 0.5);
       if (cn.width > room) cn.setScale(room / cn.width, 1);

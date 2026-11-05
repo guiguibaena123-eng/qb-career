@@ -158,8 +158,16 @@ export class PreJogo extends Phaser.Scene {
     weatherIcon(this, W - 104, y3 + 22, g.weather, 22, g.tod === 'night');
     const wn = tvText(this, W - 88, y3 + 22, WX_NAME[g.weather], 14, C.ink, 800, 0.8).setOrigin(0, 0.5);
     if (wn.width > 62) wn.setScale(62 / wn.width, 1);
-    tvText(this, W - 28, y3 + 44, `${g.temp}°C`, 18, C.ink, 800).setOrigin(1, 0.5);
-    if (g.weather === 'snow' || g.weather === 'rain') tvText(this, W - 88, y3 + 44, g.weather === 'snow' ? 'PESADO' : 'MOLHADO', 11, C.inkSoft, 600, 0.6).setOrigin(0, 0.5);
+    const tp = tvText(this, W - 28, y3 + 44, `${g.temp}°C`, 18, C.ink, 800).setOrigin(1, 0.5);
+    if (g.weather === 'snow' || g.weather === 'rain') {
+      // condição do campo à esquerda da temperatura, sem encostar
+      // condição do campo: selo de tinta na borda de cima da tarja (como o FIQUE DE OLHO)
+      const ct = tvText(this, 0, y3 - 1, g.weather === 'snow' ? 'CAMPO PESADO' : 'CAMPO MOLHADO', 12, C.white, 800, 1.2).setOrigin(0.5).setDepth(2);
+      const cw = ct.width + 26;
+      const cg = this.add.graphics().setDepth(1);
+      plate(cg, W - 16 - cw, y3 - 11, cw, 20, TV.ink);
+      ct.setX(W - 16 - cw / 2);
+    }
 
     // ---- fique de olho
     const y4 = y3 + sh + 18;

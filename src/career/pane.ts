@@ -66,6 +66,13 @@ export class Pane {
         const hh = this.hits[i];
         if (lx >= hh.x && lx <= hh.x + hh.w && ly >= hh.y && ly <= hh.y + hh.h) {
           navigator.vibrate?.(8);
+          // retorno do toque: um clarão rápido sobre o item (fora do conteúdo, que pode ser redesenhado)
+          const fx0 = Math.max(this.x, this.content.x + hh.x);
+          const fx1 = Math.min(this.x + this.w, this.content.x + hh.x + hh.w);
+          const fy0 = Math.max(this.y, this.content.y + hh.y);
+          const fy1 = Math.min(this.y + this.h, this.content.y + hh.y + hh.h);
+          const fl = scene.add.rectangle(fx0, fy0, Math.max(0, fx1 - fx0), Math.max(0, fy1 - fy0), 0xffffff, 0.16).setOrigin(0).setDepth(this.content.depth + 1);
+          scene.tweens.add({ targets: fl, alpha: 0, duration: 260, ease: 'Quad.Out', onComplete: () => fl.destroy() });
           hh.fn();
           return;
         }
