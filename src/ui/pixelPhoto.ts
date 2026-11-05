@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { addCanvasTex } from '../systems/perf';
 
 /*
  * Foto do estádio pixelizada (estilo do jogo): recorta o centro da foto na proporção pedida, reduz
@@ -28,6 +29,6 @@ export function pixelPhoto(scene: Phaser.Scene, src: string, w: number, h: numbe
   const d = ctx.getImageData(0, 0, cols, rows);
   for (let i = 0; i < d.data.length; i += 4) for (let k = 0; k < 3; k++) d.data[i + k] = Math.round(d.data[i + k] / 24) * 24;
   ctx.putImageData(d, 0, 0);
-  scene.textures.addCanvas(key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+  addCanvasTex(scene, key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
   return key;
 }

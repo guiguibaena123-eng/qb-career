@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { addCanvasTex } from '../systems/perf';
 
 /*
  * Rosto em sprite (grade 48 px ×4 = células de 192). Um único componente usado em todas as telas
@@ -43,7 +44,7 @@ export function faceCell(scene: Phaser.Scene, sheet: string, i: number): string 
   const ctx = cv.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(src, i * CELL, 0, CELL, CELL, 0, 0, CELL, CELL);
-  const tex = scene.textures.addCanvas(key, cv)!;
+  const tex = addCanvasTex(scene, key, cv)!;
   tex.setFilter(Phaser.Textures.FilterMode.NEAREST);
   return key;
 }
@@ -71,7 +72,7 @@ export function bustTexture(scene: Phaser.Scene, primary: number, secondary: num
     if (c) [d[i], d[i + 1], d[i + 2]] = c;
   }
   ctx.putImageData(img, 0, 0);
-  scene.textures.addCanvas(key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+  addCanvasTex(scene, key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
   return key;
 }
 

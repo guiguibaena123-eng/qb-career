@@ -65,9 +65,10 @@ export function inkOn(bg: number) {
 /** Texto da transmissão (Saira Condensed). */
 export function tvText(scene: Phaser.Scene, x: number, y: number, text: string, size: number, color = C.white, weight = 700, spacing = 0.2) {
   // testString com as maiúsculas acentuadas: o Phaser mede a altura da linha por ela, senão o acento de Á/Í/Ç é cortado
-  const t = scene.add.text(x, y, text, { fontFamily: FONT_TV, fontSize: `${size}px`, fontStyle: String(weight), color, testString: '|ÁÉÍÓÚÂÊÔÃÕÀÇÑ_gjpqy' });
-  if (spacing) t.setLetterSpacing(spacing);
-  return t;
+  // Cria vazio, ajusta o espaçamento e só então escreve: o texto é desenhado uma vez só (antes eram duas)
+  const t = scene.add.text(x, y, '', { fontFamily: FONT_TV, fontSize: `${size}px`, fontStyle: String(weight), color, testString: '|ÁÉÍÓÚÂÊÔÃÕÀÇÑ_gjpqy' });
+  t.letterSpacing = spacing;
+  return t.setText(text);
 }
 /**
  * Substitutos de `title`/`label` dos widgets (mesma assinatura) para as telas de menu:
@@ -237,10 +238,12 @@ const PMID = (MIDX - X0) / (X1 - X0);
 
 function drawWipe(g: Phaser.GameObjects.Graphics, p: number, color: number) {
   g.clear();
+  // faixas inclinadas como dois triângulos (fillPoints triangulava o polígono a cada quadro)
   const band = (lead: number, w: number, c: number) => {
     const X = X0 + (p + lead) * (X1 - X0);
     g.fillStyle(c, 1);
-    g.fillPoints([new Phaser.Math.Vector2(X, -10), new Phaser.Math.Vector2(X + w, -10), new Phaser.Math.Vector2(X + w - OFF, GAME_H + 10), new Phaser.Math.Vector2(X - OFF, GAME_H + 10)], true);
+    g.fillTriangle(X, -10, X + w, -10, X + w - OFF, GAME_H + 10);
+    g.fillTriangle(X, -10, X + w - OFF, GAME_H + 10, X - OFF, GAME_H + 10);
   };
   band(0.075, BW + 70, TV.yellow);
   band(0.04, BW + 34, color);
@@ -250,17 +253,35 @@ function runWipe(scene: Phaser.Scene, from: number, to: number, ms: number, colo
   const g = scene.add.graphics().setDepth(10000);
   const o = { p: from };
   drawWipe(g, from, color);
-  scene.tweens.add({
-    targets: o,
-    p: to,
-    duration: ms,
-    ease: from === 0 ? 'Cubic.In' : 'Cubic.Out',
-    onUpdate: () => drawWipe(g, o.p, color),
-    onComplete: () => {
-      if (to >= 1) g.destroy();
-      done?.();
-      if (to < 1) g.destroy();
-    },
+  const start = () =>
+    scene.tweens.add({
+      targets: o,
+      p: to,
+      duration: ms,
+      ease: from === 0 ? 'Cubic.In' : 'Cubic.Out',
+      onUpdate: () => drawWipe(g, o.p, color),
+      onComplete: () => {
+        if (to >= 1) g.destroy();
+        done?.();
+        if (to < 1) g.destroy();
+      },
+    });
+  if (from === 0) return void start();
+  // Saída da vinheta: a tela nova acabou de ser montada (quadro demorado). Se a animação começasse já,
+  // o tempo desse quadro entraria nela e a vinheta sumiria de uma vez; espera dois quadros e então desliza.
+  let frames = 0;
+  const tick = () => {
+    if (++frames < 2) return;
+    scene.events.off(Phaser.Scenes.Events.POST_UPDATE, tick);
+    start();
+  };
+  scene.events.on(Phaser.Scenes.Events.POST_UPDATE, tick);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    if (frames >= 2) return;
+    // a cena fechou antes da vinheta sair: solta a trava (senão nenhuma vinheta roda mais)
+    scene.events.off(Phaser.Scenes.Events.POST_UPDATE, tick);
+    frames = 2;
+    done?.();
   });
 }
 let busy = false;

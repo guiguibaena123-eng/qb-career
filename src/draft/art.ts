@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { addCanvasTex } from '../systems/perf';
 import type { CareerTeam } from '../data/TeamRepository';
 import { getSave } from '../player/PlayerSave';
 import { faceCell, PlayerFace, SHAPE } from '../player/PlayerFace';
@@ -75,7 +76,7 @@ export function commissionerBody(scene: Phaser.Scene, clap: boolean) {
     restArm(ctx, true);
   }
   jacket(ctx);
-  scene.textures.addCanvas(key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+  addCanvasTex(scene, key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
   return key;
 }
 
@@ -265,7 +266,7 @@ export function upperArmTexture(scene: Phaser.Scene) {
   ctx.fillRect(w - 6, 4, 4, h - 8);
   ctx.fillStyle = 'rgba(0,0,0,0.2)';
   ctx.fillRect(2, h - 6, w - 4, 2); // dobra do cotovelo
-  scene.textures.addCanvas(key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+  addCanvasTex(scene, key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
   return key;
 }
 
@@ -312,7 +313,7 @@ export function foreArmTexture(scene: Phaser.Scene) {
   for (const y of [cy - 10, cy - 6]) ctx.fillRect(hx + 4, y, 6, 1); // dobras dos dedos
   ctx.fillStyle = hex(COMMISH.skin);
   ctx.fillRect(hx - 2, cy - 2, 2, 4); // polegar
-  scene.textures.addCanvas(key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+  addCanvasTex(scene, key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
   return key;
 }
 
@@ -442,7 +443,7 @@ export function suitFigure(scene: Phaser.Scene, x: number, y: number, team: Care
     stamp(scene, ctx, 'layer_nf_2', kit.number, 98, 140);
     stamp(scene, ctx, 'drsuit_dr_hands', skin);
     slopeShoulders(ctx, 0x3a4e8a);
-    scene.textures.addCanvas(key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    addCanvasTex(scene, key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
   }
   const c = scene.add.container(x, y);
   c.add(scene.add.image(0, 0, key).setOrigin(0));
@@ -563,7 +564,7 @@ export function collarTexture(scene: Phaser.Scene, tie: number, jacket: number, 
     else if (a < 40) img.data[i] = 0;
   }
   ctx.putImageData(img, 0, 0);
-  scene.textures.addCanvas(key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+  addCanvasTex(scene, key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
   return key;
 }
 

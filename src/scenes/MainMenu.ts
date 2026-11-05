@@ -11,7 +11,8 @@ import { DEFAULT_LOOK, peekSlot, SLOT_COUNT } from '../player/PlayerSave';
 import { TEAM_LIST, autoUniform, teamById, uiColor, uniformsOf, type TeamDef, type Uniform } from '../data/teams';
 import { difficulty, LEVELS, type Level } from '../systems/difficulty';
 import { setupHiRes } from '../systems/hires';
-import { arrowAfter, C, feed, inkOn, onInk, underline, plate, plateShadow, scoreBug, sectionHead, slideIn, ticker, TV, tvEnter, TvButton, tvText, wipe, wipeTo } from '../ui/tv';
+import { arrowAfter, C, feed, FONT_TV, inkOn, onInk, underline, plate, plateShadow, scoreBug, sectionHead, slideIn, ticker, TV, tvEnter, TvButton, tvText, wipe, wipeTo } from '../ui/tv';
+import { fontWarmJobs } from '../systems/perf';
 import { MatchScene } from './MatchScene';
 
 /*
@@ -215,6 +216,28 @@ export class MainMenu extends Phaser.Scene {
         'ATÉ 3 CARREIRAS SALVAS',
       ]),
     );
+    this.warmUniforms();
+  }
+
+  /**
+   * Prepara, aos poucos e escondido, os bonecos dos uniformes da Partida Rápida (um a cada poucos
+   * quadros, depois que a abertura terminou de entrar). Montar essas imagens pela primeira vez
+   * travava a tela da Partida Rápida por ~0,5 s; com elas prontas, a tela abre lisa.
+   */
+  private warmUniforms() {
+    const jobs: (() => void)[] = fontWarmJobs(FONT_TV, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 24, 26, 28, 30], [600, 700, 800]);
+    for (const side of ['home', 'away'] as const) {
+      const t = teamById(side === 'home' ? matchConfig.home : matchConfig.away);
+      uniformsOf(t).forEach((u) => jobs.push(() => new PlayerBody(this, -500, -500, this.bodyCfg(u, side === 'home' ? 12 : 21), 0.27).destroy()));
+    }
+    const view = this.view;
+    const next = () => {
+      const job = jobs.shift();
+      if (!job || this.view !== view || this.current !== 'home') return;
+      job();
+      this.time.delayedCall(90, next);
+    };
+    this.time.delayedCall(900, next);
   }
 
   /** Tarja do menu: bloco de cor com logo/ícone, título e linha de apoio, seta à direita. */

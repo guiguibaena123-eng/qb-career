@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { addCanvasTex } from '../systems/perf';
 import { RES } from '../config';
 
 /*
@@ -245,6 +246,6 @@ export function jerseyTexture(scene: Phaser.Scene, o: JerseyOpts): string {
   c.stroke();
   c.restore();
 
-  scene.textures.addCanvas(key, cv);
+  addCanvasTex(scene, key, cv);
   return key;
 }

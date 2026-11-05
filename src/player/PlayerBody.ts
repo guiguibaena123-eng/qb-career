@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { addCanvasTex } from '../systems/perf';
 import type { KitDef } from '../data/TeamRepository';
 import type { LookOptions } from './PlayerSave';
 import { HAIR_COLORS, PlayerFace, SKINS, type FaceLook } from './PlayerFace';
@@ -131,7 +132,7 @@ function composite(scene: Phaser.Scene, layers: Layer[], digits?: number): strin
       stamp(scene, ctx, name, tint, x * 2, 58 * 2, alpha);
     } else stamp(scene, ctx, name, tint, 0, 0, alpha);
   }
-  scene.textures.addCanvas(k, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+  addCanvasTex(scene, k, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
   return k;
 }
 

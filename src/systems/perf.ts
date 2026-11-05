@@ -36,6 +36,30 @@ export function patchGraphicsPerf() {
     return g;
   };
 
+  // Placas inclinadas, faixas e losangos (3 ou 4 pontos, convexos) viram triângulos diretos;
+  // fillPoints triangulava o polígono (earcut) a cada quadro, em dezenas de placas dos menus.
+  const origFillPoints = G.fillPoints;
+  G.fillPoints = function (this: Phaser.GameObjects.Graphics, pts: { x: number; y: number }[], closeShape?: boolean, closePath?: boolean, endIndex?: number) {
+    const n = endIndex === undefined ? pts.length : Math.min(endIndex, pts.length);
+    if (n === 3) return this.fillTriangle(pts[0].x, pts[0].y, pts[1].x, pts[1].y, pts[2].x, pts[2].y);
+    if (n === 4) {
+      // convexo = todas as quinas viram para o mesmo lado
+      let pos = 0;
+      let neg = 0;
+      for (let i = 0; i < 4; i++) {
+        const a = pts[i], b = pts[(i + 1) % 4], c = pts[(i + 2) % 4];
+        const cr = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+        if (cr > 0) pos++;
+        else if (cr < 0) neg++;
+      }
+      if (!(pos && neg)) {
+        this.fillTriangle(pts[0].x, pts[0].y, pts[1].x, pts[1].y, pts[2].x, pts[2].y);
+        return this.fillTriangle(pts[0].x, pts[0].y, pts[2].x, pts[2].y, pts[3].x, pts[3].y);
+      }
+    }
+    return origFillPoints.call(this, pts, closeShape, closePath, endIndex);
+  };
+
   G.fillCircle = function (this: Phaser.GameObjects.Graphics, x: number, y: number, r: number) {
     return fan(this, x, y, r, r);
   };
@@ -63,4 +87,39 @@ export function patchGraphicsPerf() {
     if (smoothness !== undefined) return this.strokeEllipseShape(new Phaser.Geom.Ellipse(x, y, w, h), smoothness);
     return ring(this, x, y, w / 2, h / 2);
   };
+}
+
+/**
+ * Igual a `scene.textures.addCanvas(key, canvas)`, mas sem a CanvasTexture: ela lê todos os pixels
+ * (getImageData) só para guardar uma cópia que o jogo nunca usa, e isso travava a troca de telas
+ * (bonecos, rostos, uniformes). Aqui o canvas vai direto para a placa de vídeo como imagem comum.
+ * Só para arte pronta: quem precisa redesenhar depois (getContext/refresh) usa createCanvas.
+ */
+export function addCanvasTex(scene: Phaser.Scene, key: string, canvas: HTMLCanvasElement) {
+  return scene.textures.addImage(key, canvas as unknown as HTMLImageElement);
+}
+
+/**
+ * Tarefas pequenas que "aquecem" a fonte da transmissão em cada tamanho/peso: a primeira vez que o
+ * navegador usa um tamanho de fonte ele prepara as letras, e isso pesava na primeira abertura de cada
+ * tela. Rodadas aos poucos em tela parada, as telas seguintes abrem sem esse custo.
+ */
+export function fontWarmJobs(family: string, sizes: number[], weights: number[], per = 8): (() => void)[] {
+  const combos: string[] = [];
+  for (const w of weights) for (const s of sizes) combos.push(`${w} ${s}px ${family}`);
+  const jobs: (() => void)[] = [];
+  let ctx: CanvasRenderingContext2D | null = null;
+  for (let i = 0; i < combos.length; i += per) {
+    const part = combos.slice(i, i + per);
+    jobs.push(() => {
+      ctx ??= document.createElement('canvas').getContext('2d');
+      if (!ctx) return;
+      for (const f of part) {
+        ctx.font = f;
+        ctx.measureText('ABCDEFGHIJKLMNOPQRSTUVWXYZ ÁÉÍÓÚÂÊÔÃÕÀÇ 0123456789 ·×:-%');
+        ctx.fillText('ABCDEFGHIJKLMNOPQRSTUVWXYZ ÁÉÍÓÚÂÊÔÃÕÀÇ 0123456789 ·×:-%', 0, 20);
+      }
+    });
+  }
+  return jobs;
 }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { addCanvasTex } from '../systems/perf';
 import { RES } from '../config';
 
 /*
@@ -91,7 +92,7 @@ export function gradTexture(scene: Phaser.Scene, w: number, h: number, o: GradOp
     ctx.strokeStyle = rgba(o.stroke ?? 0xffffff, o.strokeAlpha ?? 0.2);
     ctx.stroke();
   }
-  scene.textures.addCanvas(key, cv);
+  addCanvasTex(scene, key, cv);
   return key;
 }
 
