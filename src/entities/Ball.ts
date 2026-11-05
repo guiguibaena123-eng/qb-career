@@ -27,7 +27,7 @@ export class Ball {
   private img: Phaser.GameObjects.Image;
   private trail: { x: number; y: number }[] = [];
   private spin = 0;
-  /** Passe e punt: espiral (gira em volta do próprio eixo). Field goal e kickoff: de ponta a ponta. */
+  /** Passe: espiral (gira em volta do próprio eixo). Chutes (field goal, punt, kickoff): de ponta a ponta, meio torto. */
   spinMode: 'spiral' | 'tumble' = 'spiral';
   /** Bola em pé no chão (presa pelo segurador antes do field goal); sai sozinho quando ela começa a voar. */
   upright = false;
@@ -161,9 +161,18 @@ export class Ball {
       ux /= un;
       uy /= un;
       uh /= un;
+      // de lado (horizontal, perpendicular ao voo)
+      let sx2 = fy, sy2 = -fx;
+      const sn = Math.hypot(sx2, sy2) || 1;
+      sx2 /= sn;
+      sy2 /= sn;
+      // meio torto: o plano do giro fica inclinado para o lado e balança (a bola nunca sai perfeita do pé)
+      const psi = 0.42 + Math.sin(this.spin * 3.1) * 0.22;
+      const cp = Math.cos(psi), sp = Math.sin(psi);
+      const vx = cp * ux + sp * sx2, vy = cp * uy + sp * sy2, vh = cp * uh;
       const th = Math.PI / 2 + this.spin * Math.PI * 2 * 2.4;
       const c = Math.cos(th), s = Math.sin(th);
-      const ax = c * fx + s * ux, ay = c * fy + s * uy, ah = c * fh + s * uh;
+      const ax = c * fx + s * vx, ay = c * fy + s * vy, ah = c * fh + s * vh;
       const L = 0.3;
       pr.project(this.x + ax * L, this.y + ay * L, this.h + ah * L, g1);
       pr.project(this.x - ax * L, this.y - ay * L, this.h - ah * L, g0);

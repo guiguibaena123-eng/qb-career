@@ -1846,7 +1846,7 @@ export class MatchScene extends Phaser.Scene {
     this.ball.x = MID;
     this.ball.y = ballY;
     this.ball.h = kind === 'punt' ? 1.1 : 0.25;
-    this.ball.spinMode = kind === 'punt' ? 'spiral' : 'tumble';
+    this.ball.spinMode = 'tumble'; // todo chute (field goal, ponto extra, punt) gira de ponta a ponta, meio torto
     this.world.targetY = Phaser.Math.Clamp(s.los - 1, CAMERA.minY, CAMERA.maxY);
 
     const spot = spotName(s.los, TEAMS.home.abbr, TEAMS.away.abbr);
