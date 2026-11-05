@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { isDome, STAND_NAMES, stadiumOf } from '../data/stadiums';
 import { pixelPhoto } from '../ui/pixelPhoto';
 import { type SkyWeather, type TimeChoice, type TimeOfDay } from '../systems/daytime';
-import { GAME_H, GAME_W, applyMatchup, broadcast, finalGame, logoKey, matchRecords, playoffLogo, matchConfig, saveMatchConfig, venue, type WeatherChoice } from '../config';
+import { GAME_H, GAME_W, applyMatchup, broadcast, finalGame, logoKey, matchRecords, playoffLogo, matchConfig, saveMatchConfig, venue, type PrimeKey, type WeatherChoice } from '../config';
 import { PRIME } from '../career/season';
 import { ROUND_INFO } from '../career/playoffs';
 import { TeamRepository, type KitDef } from '../data/TeamRepository';
@@ -504,7 +504,7 @@ export class MainMenu extends Phaser.Scene {
 
     // ---- estádio: imagem ao vivo com tarja embaixo
     const py = 66;
-    const ph = 300;
+    const ph = 232;
     const fr = this.add.graphics();
     fr.fillStyle(TV.ink2, 1);
     fr.fillRect(0, py, W, ph);
@@ -567,7 +567,7 @@ export class MainMenu extends Phaser.Scene {
     }
 
     // ---- clima
-    let y = py + ph + 40;
+    let y = py + ph + 38;
     v.add(sectionHead(this, 16, y, 'CLIMA', lockWx ? (fin ? 'FINAL: SEMPRE LIMPO' : 'COBERTO: SEMPRE LIMPO') : undefined));
     const opts: { key: WeatherChoice; name: string }[] = [
       { key: 'clear', name: 'LIMPO' },
@@ -578,16 +578,16 @@ export class MainMenu extends Phaser.Scene {
     const wW = (W - 32 - 12) / 4;
     const wb: TvButton[] = [];
     const wt: Phaser.GameObjects.Text[] = [];
-    const wy = y + 48;
-    const pickW = this.choice(wb, wt, opts.map((_, i) => ({ x: 16 + wW / 2 + i * (wW + 4), y: wy, w: wW, h: 68 })));
+    const wy = y + 44;
+    const pickW = this.choice(wb, wt, opts.map((_, i) => ({ x: 16 + wW / 2 + i * (wW + 4), y: wy, w: wW, h: 60 })));
     const paintW = () => pickW(opts.findIndex((o) => (lockWx ? o.key === 'clear' : o.key === matchConfig.weather)));
     opts.forEach((o, i) => {
-      const b = new TvButton(this, 16 + wW / 2 + i * (wW + 4), y + 48, { w: wW, h: 68, fill: TV.ink2, fillAlpha: 1 });
+      const b = new TvButton(this, 16 + wW / 2 + i * (wW + 4), wy, { w: wW, h: 60, fill: TV.ink2, fillAlpha: 1 });
       const ic = this.add.graphics();
       this.weatherIcon(ic, o.key);
-      ic.setPosition(0, -10).setScale(0.62);
+      ic.setPosition(0, -9).setScale(0.56);
       b.add(ic);
-      const t = tvText(this, 0, 18, o.name, 14, C.white, 800, 1).setOrigin(0.5);
+      const t = tvText(this, 0, 16, o.name, 14, C.white, 800, 1).setOrigin(0.5);
       b.add(t);
       wt.push(t);
       b.onTap = () => {
@@ -603,7 +603,7 @@ export class MainMenu extends Phaser.Scene {
     paintW();
 
     // ---- horário
-    y += 114;
+    y += 102;
     v.add(sectionHead(this, 16, y, 'HORÁRIO'));
     const topts: { key: TimeChoice; name: string }[] = [
       { key: 'day', name: 'DIA' },
@@ -636,7 +636,7 @@ export class MainMenu extends Phaser.Scene {
     paintT();
 
     // ---- dificuldade
-    y += 94;
+    y += 90;
     v.add(sectionHead(this, 16, y, 'DIFICULDADE'));
     const levels: Level[] = ['easy', 'normal', 'hard'];
     const lW = (W - 32 - 8) / 3;
@@ -657,6 +657,63 @@ export class MainMenu extends Phaser.Scene {
       v.add(b);
     });
     paintL();
+
+    // ---- transmissão: placar e abertura de horário nobre ou de playoffs
+    y += 88;
+    v.add(sectionHead(this, 16, y, 'TRANSMISSÃO', fin ? 'FINAL: SEMPRE QFL BOWL' : 'PLACAR E ABERTURA'));
+    const popts: { key: PrimeKey | null; name: string; sub?: string }[] = [
+      { key: null, name: 'NORMAL' },
+      { key: 'TNF', name: 'QUINTA', sub: 'À NOITE' },
+      { key: 'SNF', name: 'DOMINGO', sub: 'À NOITE' },
+      { key: 'MNF', name: 'SEGUNDA', sub: 'À NOITE' },
+      { key: 'WC', name: 'WILD CARD', sub: 'PLAYOFFS' },
+      { key: 'DIV', name: 'DIVISIONAL', sub: 'PLAYOFFS' },
+      { key: 'CONF', name: 'SEMI BOWL', sub: 'PLAYOFFS' },
+      { key: 'QFL', name: 'QFL BOWL', sub: 'A FINAL' },
+    ];
+    const pW = (W - 32 - 12) / 4;
+    const pH = 42;
+    const pb: TvButton[] = [];
+    const ptx: Phaser.GameObjects.Text[] = [];
+    const ppos = popts.map((_, i) => ({ x: 16 + pW / 2 + (i % 4) * (pW + 4), y: y + 34 + Math.floor(i / 4) * (pH + 4), w: pW, h: pH }));
+    const pickP = this.choice(pb, ptx, ppos);
+    const curPrime = () => (fin ? 'QFL' : matchConfig.prime);
+    const paintP = () => pickP(popts.findIndex((o) => o.key === curPrime()));
+    popts.forEach((o, i) => {
+      const p = ppos[i];
+      const b = new TvButton(this, p.x, p.y, { w: pW, h: pH, fill: TV.ink2, fillAlpha: 1 });
+      // faixa na cor do programa (a mesma do placar dele)
+      const pr = o.key ? PRIME[o.key] : null;
+      const s = Math.min(pH * 0.2126, 12);
+      const bar = this.add.graphics();
+      bar.fillStyle(pr ? pr.color : TV.rule, 1);
+      bar.fillRect(-pW / 2 + s, -pH / 2, pW - s, 3);
+      if (pr) {
+        bar.fillStyle(pr.glow, 1);
+        bar.fillRect(-pW / 2 + s, -pH / 2 + 3, pW - s, 1);
+      }
+      b.add(bar);
+      const t = tvText(this, 0, o.sub ? -5 : 1, o.name, 14, C.white, 800, 0.8).setOrigin(0.5);
+      if (t.width > pW - 14) t.setScale((pW - 14) / t.width, 1);
+      b.add(t);
+      if (o.sub) b.add(tvText(this, 0, 10, o.sub, 10, C.muted, 700, 1.2).setOrigin(0.5));
+      ptx.push(t);
+      b.onTap = () => {
+        if (fin) return;
+        matchConfig.prime = o.key;
+        // programa da noite: o horário vai para NOITE (dá para trocar depois)
+        if (o.key === 'TNF' || o.key === 'SNF' || o.key === 'MNF') {
+          matchConfig.time = 'night';
+          paintT();
+          paintMood();
+        }
+        paintP();
+      };
+      if (fin && o.key !== 'QFL') b.setEnabled(false);
+      pb.push(b);
+      v.add(b);
+    });
+    paintP();
 
     // ---- jogar
     const hc = uiColor(h);
@@ -850,14 +907,20 @@ export class MainMenu extends Phaser.Scene {
     // QFL Bowl (a final): campo e estádio especiais e a apresentação da final
     const fin = !practice && matchConfig.side === 'final';
     finalGame.on = fin;
-    playoffLogo.key = fin ? 'logoQflBowl' : null;
-    broadcast.prime = fin ? PRIME.QFL : null;
+    // Transmissão: a final é sempre QFL BOWL; senão, a escolhida (playoffs pintam o logo da fase no campo)
+    const pk = practice ? null : fin ? 'QFL' : matchConfig.prime;
+    const rk = pk ? ({ WC: 'wc', DIV: 'div', CONF: 'conf', QFL: 'final' } as const)[pk as 'WC' | 'DIV' | 'CONF' | 'QFL'] : undefined;
+    playoffLogo.key = rk ? ROUND_INFO[rk].logo : null;
+    broadcast.prime = pk ? PRIME[pk] : null;
+    // Partida Rápida não tem campanha (sem isto, ficava o "7-2" do último jogo da carreira)
+    matchRecords.home = '';
+    matchRecords.away = '';
     // Teste (só no desenvolvimento): ?prime=TNF|SNF|MNF|WC|DIV|CONF|QFL força o placar de uma transmissão
     const qp = import.meta.env.DEV ? (new URLSearchParams(location.search).get('prime') as keyof typeof PRIME | null) : null;
     if (qp && PRIME[qp]) {
       broadcast.prime = PRIME[qp];
-      const rk = ({ WC: 'wc', DIV: 'div', CONF: 'conf', QFL: 'final' } as const)[qp as 'WC' | 'DIV' | 'CONF' | 'QFL'];
-      playoffLogo.key = rk ? ROUND_INFO[rk].logo : null;
+      const rq = ({ WC: 'wc', DIV: 'div', CONF: 'conf', QFL: 'final' } as const)[qp as 'WC' | 'DIV' | 'CONF' | 'QFL'];
+      playoffLogo.key = rq ? ROUND_INFO[rq].logo : null;
       matchRecords.home = '7-2';
       matchRecords.away = '6-3';
     }

@@ -65,7 +65,9 @@ export interface TeamConfig {
 export type WeatherChoice = 'clear' | 'rain' | 'snow' | 'random';
 
 /** Escolhas do menu (Partida rápida). `awayUni` = null deixa o uniforme do adversário automático (o que mais contrasta). */
-export const matchConfig: { home: string; away: string; homeUni: number; awayUni: number | null; weather: WeatherChoice; stand: StandChoice; time: TimeChoice; side: 'home' | 'away' | 'final'; standTeam: string | null } = {
+/** Transmissões especiais que dá para escolher na Partida Rápida (mesmas chaves de PRIME em career/season). */
+export type PrimeKey = 'TNF' | 'SNF' | 'MNF' | 'WC' | 'DIV' | 'CONF' | 'QFL';
+export const matchConfig: { home: string; away: string; homeUni: number; awayUni: number | null; weather: WeatherChoice; stand: StandChoice; time: TimeChoice; side: 'home' | 'away' | 'final'; standTeam: string | null; prime: PrimeKey | null } = {
   home: 'kc',
   away: 'buf',
   homeUni: 0,
@@ -76,6 +78,8 @@ export const matchConfig: { home: string; away: string; homeUni: number; awayUni
   /** Partida Rápida: jogar em casa ou fora, e o estádio de outro time (campo neutro). */
   side: 'home',
   standTeam: null,
+  /** Transmissão especial (placar e abertura de horário nobre/playoffs). null = transmissão normal. */
+  prime: null,
 };
 
 try {
