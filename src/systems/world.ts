@@ -42,6 +42,8 @@ export class World {
   update(dt: number) {
     const k = 1 - Math.pow(1 - CAMERA.followLerp, dt * 60); // lerp independente do FPS
     this.proj.camY += (this.targetY - this.proj.camY) * k;
+    // chegou: encaixa no alvo (assim o gramado e a lateral param de ser redesenhados)
+    if (Math.abs(this.targetY - this.proj.camY) < 0.002) this.proj.camY = this.targetY;
     this.stadium.update();
     this.stand.update(dt);
     this.field.draw();

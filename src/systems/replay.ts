@@ -6,7 +6,7 @@ import { POSES, type Player, type Pose } from '../entities/Player';
  * rotação e altura de cada jogador; bola; câmera) e reproduz em câmera lenta.
  */
 
-const N = 7; // x, y, vx, vy, angle, hop, pose
+const N = 9; // x, y, vx, vy, angle, hop, pose, sx, sy
 const MAX_FRAMES = 60 * 25;
 
 interface Frame {
@@ -46,6 +46,8 @@ export class Replay {
       ps[o + 4] = p.angle;
       ps[o + 5] = p.hop;
       ps[o + 6] = p.pose ? POSES.indexOf(p.pose) : -1;
+      ps[o + 7] = p.sx;
+      ps[o + 8] = p.sy;
     });
     this.frames.push({ t: this.t, ps, ball: [ball.x, ball.y, ball.h, ball.state === 'held' ? 0 : 1], cam: camY });
   }
@@ -72,6 +74,8 @@ export class Replay {
       p.hop = f.ps[o + 5];
       const pi = f.ps[o + 6];
       p.pose = pi < 0 ? null : (POSES[pi] as Pose);
+      p.sx = f.ps[o + 7];
+      p.sy = f.ps[o + 8];
     });
     ball.x = f.ball[0];
     ball.y = f.ball[1];

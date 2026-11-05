@@ -42,7 +42,8 @@ const BASE: Record<Role, Attributes> = {
 };
 
 /** Poses (frames) desenhadas para cada jogador. */
-export const POSES = ['idle', 'run1', 'run2', 'throw', 'catch', 'carry', 'carrySide', 'carryTurn', 'diveUp', 'dive', 'diveFlat'] as const;
+// (novas poses sempre no fim: o replay guarda o índice)
+export const POSES = ['idle', 'run1', 'run2', 'throw', 'catch', 'carry', 'carrySide', 'carryTurn', 'diveUp', 'dive', 'diveFlat', 'run3', 'run4', 'carry1', 'carry2', 'stance', 'ready'] as const;
 export type Pose = (typeof POSES)[number];
 const MARGIN = PX;
 const FRAME_W = BOX_W * PX + 2 * MARGIN;
@@ -213,127 +214,234 @@ function drawDiveFlat(ctx: CanvasRenderingContext2D, L: Look) {
   r(24, 0, 2, 2, '#3a8a32', false);
 }
 
+/** Número da camisa com um contorno escuro fino (lê melhor de longe). */
+function jerseyNumber(ctx: CanvasRenderingContext2D, L: Look, size: number, cx: number, cyBottom: number) {
+  ctx.font = `${size * PX}px ${FONT_TITLE}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = PX * 0.9;
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+  ctx.strokeText(L.num, cx * PX, (BOX_H - cyBottom) * PX);
+  ctx.fillStyle = L.numColor;
+  ctx.fillText(L.num, cx * PX, (BOX_H - cyBottom) * PX);
+}
+
+/** Capacete (de frente com rosto e grade, ou de costas com a faixa), com a base em `b`. */
+function drawHelmet(ctx: CanvasRenderingContext2D, L: Look, x: number, b: number) {
+  const r = rect(ctx);
+  r(x, b, 14, 12, L.helmet);
+  ctx.clearRect((x - 1) * PX, (BOX_H - b - 12 - 1) * PX, 2 * PX, 2 * PX);
+  ctx.clearRect((x + 13) * PX, (BOX_H - b - 12 - 1) * PX, 2 * PX, 2 * PX);
+  // volume: lado direito na sombra e a borda de baixo mais escura
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect((x + 11) * PX, (BOX_H - b - 12) * PX, 3 * PX, 12 * PX);
+  ctx.fillRect(x * PX, (BOX_H - b - 2) * PX, 14 * PX, 2 * PX);
+  if (L.front) {
+    r(x + 6, b + 6, 2, 6, '#FFFFFF', false);
+    r(x + 2, b + 1, 10, 5, L.skin, false);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect((x + 2) * PX, (BOX_H - b - 6) * PX, 10 * PX, 1 * PX); // sombra da aba sobre os olhos
+    r(x + 3, b + 4, 2, 1, '#1A1A1A', false); // eye black
+    r(x + 9, b + 4, 2, 1, '#1A1A1A', false);
+    ctx.fillStyle = '#D7DBE0';
+    ctx.fillRect((x + 2) * PX, (BOX_H - b - 5) * PX, 1 * PX, 5 * PX);
+    ctx.fillRect((x + 11) * PX, (BOX_H - b - 5) * PX, 1 * PX, 5 * PX);
+    ctx.fillRect((x + 2) * PX, (BOX_H - b - 1) * PX, 10 * PX, 1 * PX);
+    r(x + 2, b + 2, 10, 1, '#D7DBE0', false);
+    r(x + 6, b, 2, 3, '#D7DBE0', false);
+  } else {
+    r(x + 6, b, 2, 12, '#FFFFFF', false);
+    r(x + 1, b, 12, 1, 'rgba(0,0,0,0.35)', false); // protetor de nuca
+  }
+  r(x + 2, b + 7, 3, 3, 'rgba(255,255,255,0.55)', false); // brilho
+  r(x + 3, b + 9, 1, 1, 'rgba(255,255,255,0.8)', false);
+}
+
+/** Postura de 3 apoios (linha de scrimmage): agachado, pernas abertas, uma mão no chão. */
+function drawStance(ctx: CanvasRenderingContext2D, L: Look) {
+  const r = rect(ctx);
+  r(3, 0, 6, 3, '#111111', false);
+  r(19, 0, 6, 3, '#111111', false);
+  r(4, 2, 3, 1, L.trim, false);
+  r(20, 2, 3, 1, L.trim, false);
+  r(4, 3, 4, 4, L.sock);
+  r(20, 3, 4, 4, L.sock);
+  // coxas dobradas
+  r(4, 7, 20, 7, L.pants);
+  r(12, 7, 4, 3, 'rgba(0,0,0,0.35)', false);
+  r(4, 7, 2, 7, L.trim, false);
+  r(22, 7, 2, 7, L.trim, false);
+  r(5, 9, 4, 2, 'rgba(255,255,255,0.18)', false);
+  r(19, 9, 4, 2, 'rgba(255,255,255,0.18)', false);
+  // braço de apoio até o chão e o outro no joelho
+  r(22, 9, 4, 6, L.jersey);
+  r(22, 3, 4, 6, L.skin);
+  r(21, 0, 5, 3, L.glove);
+  r(1, 10, 4, 5, L.jersey);
+  r(1, 7, 4, 3, L.glove);
+  // tronco inclinado para a frente (mais curto e largo) e ombreiras
+  r(4, 13, 20, 8, L.jersey);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(20 * PX, (BOX_H - 21) * PX, 4 * PX, 8 * PX);
+  if (!L.front) jerseyNumber(ctx, L, 5, 14, 16);
+  r(2, 19, 24, 5, L.jersey);
+  r(2, 20, 4, 1, L.trim, false);
+  r(22, 20, 4, 1, L.trim, false);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(2 * PX, (BOX_H - 24) * PX, 24 * PX, 1 * PX);
+  drawHelmet(ctx, L, 7, 21);
+}
+
+/** Desenho de cada quadro do corpo (pernas, braços, agachamento). */
+interface Frame {
+  liftL: number;
+  liftR: number;
+  swing: number;
+  /** Quanto o corpo desce (joelho dobrado). */
+  drop: number;
+  /** Pés mais abertos. */
+  spread: number;
+  arms: 'down' | 'catch' | 'throw' | 'knees';
+  ball: 'none' | 'hand' | 'chest';
+}
+const FRAMES: Partial<Record<Pose, Frame>> = {
+  idle: { liftL: 0, liftR: 0, swing: 0, drop: 0, spread: 0, arms: 'down', ball: 'none' },
+  // corrida em 4 tempos: apoio (joelho dobrado) → passagem → apoio do outro lado → passagem
+  run1: { liftL: 4, liftR: 0, swing: 3, drop: 1, spread: 0, arms: 'down', ball: 'none' },
+  run3: { liftL: 1, liftR: 2, swing: 0, drop: 0, spread: 0, arms: 'down', ball: 'none' },
+  run2: { liftL: 0, liftR: 4, swing: -3, drop: 1, spread: 0, arms: 'down', ball: 'none' },
+  run4: { liftL: 2, liftR: 1, swing: 0, drop: 0, spread: 0, arms: 'down', ball: 'none' },
+  throw: { liftL: 0, liftR: 0, swing: 0, drop: 0, spread: 1, arms: 'throw', ball: 'hand' },
+  catch: { liftL: 0, liftR: 0, swing: 0, drop: 0, spread: 0, arms: 'catch', ball: 'none' },
+  carry: { liftL: 0, liftR: 0, swing: 0, drop: 0, spread: 0, arms: 'down', ball: 'chest' },
+  carry1: { liftL: 4, liftR: 0, swing: 2, drop: 1, spread: 0, arms: 'down', ball: 'chest' },
+  carry2: { liftL: 0, liftR: 4, swing: -2, drop: 1, spread: 0, arms: 'down', ball: 'chest' },
+  // pronto para o snap: joelhos dobrados, pés abertos, mãos nas coxas
+  ready: { liftL: 0, liftR: 0, swing: 0, drop: 3, spread: 2, arms: 'knees', ball: 'none' },
+};
+
 /** Desenha o jogador no canvas (coordenadas "bottom" do design convertidas para "top"). */
 function drawPlayer(ctx: CanvasRenderingContext2D, L: Look, pose: Pose) {
   if (pose === 'carrySide') return drawSide(ctx, L);
   if (pose === 'dive') return drawDive(ctx, L);
   if (pose === 'diveUp') return drawDiveUp(ctx, L);
   if (pose === 'diveFlat') return drawDiveFlat(ctx, L);
+  if (pose === 'stance' && !L.casual) return drawStance(ctx, L);
   // Meio giro: o mesmo jogador visto do outro lado (de frente se é do ataque)
   if (pose === 'carryTurn') {
     L = { ...L, front: !L.front };
     pose = 'carry';
   }
+  const f = FRAMES[pose] ?? FRAMES.idle!;
   const r = rect(ctx);
+  const d = f.drop;
+  const sp = f.spread;
+  // parte de cima do corpo desce junto com o agachamento
+  const u = (x: number, b: number, w: number, h: number, c: string, o = true) => r(x, b - d, w, h, c, o);
+  const { liftL, liftR } = f;
 
-  // Chuteiras e meiões (correndo: uma perna levantada de cada vez)
-  const liftL = pose === 'run1' ? 3 : 0;
-  const liftR = pose === 'run2' ? 3 : 0;
-  r(7, liftL, 6, 3, '#111111', false);
-  r(15, liftR, 6, 3, '#111111', false);
+  // Chuteiras (com o detalhe na cor do time) e meiões com faixa
+  r(7 - sp, liftL, 6, 3, '#111111', false);
+  r(15 + sp, liftR, 6, 3, '#111111', false);
+  r(8 - sp, liftL + 2, 3, 1, L.trim, false);
+  r(16 + sp, liftR + 2, 3, 1, L.trim, false);
+  if (liftL >= 3) r(7 - sp, liftL, 6, 1, '#4A4A52', false); // sola aparecendo no passo
+  if (liftR >= 3) r(15 + sp, liftR, 6, 1, '#4A4A52', false);
+  const sockL = Math.max(1, 6 - liftL - d);
+  const sockR = Math.max(1, 6 - liftR - d);
   if (L.casual) {
     // Pernas de fora, meia curta branca e bermuda
-    r(8, 3 + liftL, 4, 9 - liftL, L.skin);
-    r(16, 3 + liftR, 4, 9 - liftR, L.skin);
-    r(8, 3 + liftL, 4, 3, '#F4F1E8');
-    r(16, 3 + liftR, 4, 3, '#F4F1E8');
-    r(7, 11, 14, 7, L.pants);
-    r(13, 11, 2, 4, 'rgba(0,0,0,0.3)', false);
-    r(7, 11, 2, 7, L.trim, false);
-    r(19, 11, 2, 7, L.trim, false);
+    r(8 - sp, 3 + liftL, 4, Math.max(2, 9 - liftL - d), L.skin);
+    r(16 + sp, 3 + liftR, 4, Math.max(2, 9 - liftR - d), L.skin);
+    r(8 - sp, 3 + liftL, 4, 3, '#F4F1E8');
+    r(16 + sp, 3 + liftR, 4, 3, '#F4F1E8');
+    u(7, 11, 14, 7, L.pants);
+    u(13, 11, 2, 4, 'rgba(0,0,0,0.3)', false);
+    u(7, 11, 2, 7, L.trim, false);
+    u(19, 11, 2, 7, L.trim, false);
   } else {
-    r(8, 3 + liftL, 4, 6 - liftL, L.sock);
-    r(16, 3 + liftR, 4, 6 - liftR, L.sock);
-    r(7, 9, 14, 9, L.pants);
-    r(13, 9, 2, 5, 'rgba(0,0,0,0.35)', false);
-    r(7, 9, 2, 9, L.trim, false);
-    r(19, 9, 2, 9, L.trim, false);
-    r(7, 17, 14, 2, '#1A1A1A', false);
+    r(8 - sp, 3 + liftL, 4, sockL, L.sock);
+    r(16 + sp, 3 + liftR, 4, sockR, L.sock);
+    if (sockL >= 3) r(8 - sp, 3 + liftL + sockL - 2, 4, 1, L.trim, false);
+    if (sockR >= 3) r(16 + sp, 3 + liftR + sockR - 2, 4, 1, L.trim, false);
+    // calça: as pernas abrem com os pés; joelheiras com brilho
+    u(7 - Math.min(sp, 1), 9, 14 + 2 * Math.min(sp, 1), 9, L.pants);
+    u(13, 9, 2, 5, 'rgba(0,0,0,0.35)', false);
+    u(7 - Math.min(sp, 1), 9, 2, 9, L.trim, false);
+    u(19 + Math.min(sp, 1), 9, 2, 9, L.trim, false);
+    u(9, 10, 3, 2, 'rgba(255,255,255,0.2)', false);
+    u(16, 10, 3, 2, 'rgba(255,255,255,0.2)', false);
+    u(17, 12, 2, 6, 'rgba(0,0,0,0.12)', false);
+    u(7, 17, 14, 2, '#1A1A1A', false);
   }
-  // Braços: para baixo (manga, pele, luva) ou para cima (passe / recepção)
-  const upL = pose === 'catch';
-  const upR = pose === 'catch' || pose === 'throw';
-  const swing = pose === 'run1' ? 2 : pose === 'run2' ? -2 : 0;
-  ([[0, upL, swing], [24, upR, -swing]] as [number, boolean, number][]).forEach(([ax, up, sw]) => {
+  // Braços: para baixo (balançando), nas coxas (pronto), ou para cima (passe / recepção)
+  const upL = f.arms === 'catch';
+  const upR = f.arms === 'catch' || f.arms === 'throw';
+  ([[0, upL, f.swing], [24, upR, -f.swing]] as [number, boolean, number][]).forEach(([ax, up, sw]) => {
     if (up) return;
-    r(ax, 23 + sw, 4, 5, L.jersey);
-    r(ax, 17 + sw, 4, 6, L.skin);
-    r(ax, 14 + sw, 4, 3, L.glove);
+    if (f.arms === 'knees') {
+      const ix = ax === 0 ? 2 : 22; // mãos puxadas para dentro, apoiadas nas coxas
+      u(ax, 23, 4, 5, L.jersey);
+      u(ax === 0 ? 1 : 23, 17, 4, 6, L.skin);
+      u(ix, 13, 4, 4, L.glove);
+      return;
+    }
+    u(ax, 23 + sw, 4, 5, L.jersey);
+    u(ax, 23 + sw, 4, 1, L.trim, false);
+    u(ax, 17 + sw, 4, 6, L.skin);
+    u(ax, 19 + sw, 4, 1, 'rgba(0,0,0,0.18)', false); // cotovelo
+    u(ax, 14 + sw, 4, 3, L.glove);
   });
-  // Camisa com número
-  r(5, 19, 18, 11, L.jersey);
+  // Camisa com número (sombra no lado direito e na barra)
+  u(5, 19, 18, 11, L.jersey);
   ctx.fillStyle = 'rgba(0,0,0,0.22)';
-  ctx.fillRect(5 * PX, (BOX_H - 19 - 2) * PX, 18 * PX, 2 * PX);
-  ctx.fillStyle = L.numColor;
-  ctx.font = `${6 * PX}px ${FONT_TITLE}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(L.num, 14 * PX, (BOX_H - 19 - 5) * PX);
+  ctx.fillRect(5 * PX, (BOX_H - 19 - 2 + d) * PX, 18 * PX, 2 * PX);
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  ctx.fillRect(20 * PX, (BOX_H - 30 + d) * PX, 3 * PX, 11 * PX);
+  jerseyNumber(ctx, L, 6, 14, 22.5 - d);
   if (L.casual) {
     // Camiseta mais estreita, pescoço e cabeça com cabelo (sem capacete)
-    r(5, 27, 18, 3, L.jersey);
-    r(11, 30, 6, 3, L.skin);
-    r(9, 33, 10, 10, L.skin);
-    r(9, 37, 10, 7, L.hair ?? '#15110F');
-    r(8, 36, 12, 2, L.hair ?? '#15110F', false);
-    if (pose === 'catch' || pose === 'throw') {
-      for (const [ax, up] of [[0, upL], [24, upR]] as [number, boolean][]) {
-        if (!up) continue;
-        r(ax, 30, 4, 5, L.jersey);
-        r(ax, 35, 4, 6, L.skin);
-        r(ax, 41, 4, 3, L.glove);
-      }
+    u(5, 27, 18, 3, L.jersey);
+    u(11, 30, 6, 3, L.skin);
+    u(9, 33, 10, 10, L.skin);
+    u(9, 37, 10, 7, L.hair ?? '#15110F');
+    u(8, 36, 12, 2, L.hair ?? '#15110F', false);
+    for (const [ax, up] of [[0, upL], [24, upR]] as [number, boolean][]) {
+      if (!up) continue;
+      u(ax, 30, 4, 5, L.jersey);
+      u(ax, 35, 4, 6, L.skin);
+      u(ax, 41, 4, 3, L.glove);
     }
-    if (pose === 'throw') {
-      r(21, 44, 8, 5, '#8A4B1F');
-      r(24, 46, 3, 1, '#FFFFFF', false);
-    } else if (pose === 'carry') {
-      r(18, 19, 8, 5, '#8A4B1F');
-      r(21, 21, 3, 1, '#FFFFFF', false);
-    }
-    return;
-  }
-  // Ombreiras
-  r(2, 27, 24, 6, L.jersey);
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.fillRect(2 * PX, (BOX_H - 33) * PX, 24 * PX, 2 * PX);
-  // Capacete arredondado (cantos de cima recortados)
-  r(7, 31, 14, 12, L.helmet);
-  ctx.clearRect(7 * PX - PX, (BOX_H - 43) * PX - PX, 2 * PX, 2 * PX);
-  ctx.clearRect(21 * PX - PX, (BOX_H - 43) * PX - PX, 2 * PX, 2 * PX);
-  ctx.fillStyle = 'rgba(0,0,0,0.2)';
-  ctx.fillRect(19 * PX, (BOX_H - 43) * PX, 2 * PX, 12 * PX);
-  ctx.fillRect(7 * PX, (BOX_H - 33) * PX, 14 * PX, 2 * PX);
-  if (L.front) {
-    // De frente: faixa curta, rosto, eye black, grade
-    r(13, 37, 2, 6, '#FFFFFF', false);
-    r(9, 32, 10, 5, L.skin, false);
-    r(10, 35, 8, 1, '#1A1A1A', false);
-    ctx.fillStyle = '#D7DBE0';
-    ctx.fillRect(9 * PX, (BOX_H - 36) * PX, 1 * PX, 5 * PX);
-    ctx.fillRect(18 * PX, (BOX_H - 36) * PX, 1 * PX, 5 * PX);
-    ctx.fillRect(9 * PX, (BOX_H - 32) * PX, 10 * PX, 1 * PX);
-    r(9, 33, 10, 1, '#D7DBE0', false);
   } else {
-    // De costas: faixa inteira do capacete
-    r(13, 31, 2, 12, '#FFFFFF', false);
+    // Ombreiras com a faixa da manga
+    u(2, 27, 24, 6, L.jersey);
+    u(2, 29, 4, 1, L.trim, false);
+    u(22, 29, 4, 1, L.trim, false);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(2 * PX, (BOX_H - 33 + d) * PX, 24 * PX, 2 * PX);
+    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    ctx.fillRect(22 * PX, (BOX_H - 31 + d) * PX, 4 * PX, 4 * PX);
+    drawHelmet(ctx, L, 7, 31 - d);
+    // Braços levantados por cima de tudo
+    for (const [ax, up] of [[0, upL], [24, upR]] as [number, boolean][]) {
+      if (!up) continue;
+      u(ax, 30, 4, 5, L.jersey);
+      u(ax, 30, 4, 1, L.trim, false);
+      u(ax, 35, 4, 6, L.skin);
+      u(ax, 41, 4, 3, L.glove);
+    }
   }
-  // Brilho no capacete
-  r(9, 38, 3, 3, 'rgba(255,255,255,0.55)', false);
-  // Braços levantados por cima de tudo
-  for (const [ax, up] of [[0, upL], [24, upR]] as [number, boolean][]) {
-    if (!up) continue;
-    r(ax, 30, 4, 5, L.jersey);
-    r(ax, 35, 4, 6, L.skin);
-    r(ax, 41, 4, 3, L.glove);
-  }
-  // Bola: na mão (passe) ou presa junto ao peito (carregando)
-  if (pose === 'throw') {
-    r(21, 44, 8, 5, '#8A4B1F');
-    r(24, 46, 3, 1, '#FFFFFF', false);
-  } else if (pose === 'carry') {
-    r(18, 19, 8, 5, '#8A4B1F');
-    r(21, 21, 3, 1, '#FFFFFF', false);
+  // Bola: na mão (passe) ou presa junto ao peito (carregando), com a costura
+  if (f.ball === 'hand') {
+    u(21, 44, 8, 5, '#8A4B1F');
+    u(22, 47, 3, 1, 'rgba(255,255,255,0.3)', false);
+    u(24, 46, 3, 1, '#FFFFFF', false);
+  } else if (f.ball === 'chest') {
+    u(18, 19, 8, 5, '#8A4B1F');
+    u(19, 22, 3, 1, 'rgba(255,255,255,0.3)', false);
+    u(21, 21, 3, 1, '#FFFFFF', false);
+    u(17, 19, 4, 3, L.glove, false); // mão segurando a bola
   }
 }
 
@@ -405,6 +513,12 @@ export class Player {
   /** Tempo até poder agir de novo (ex.: atraso de reação, caído). */
   wait = 0;
   private animT = 0;
+  /** Inclinação suavizada (evita tremida ao mudar de direção). */
+  private tiltS = 0;
+  /** Fase da respiração (cada jogador num tempo diferente). */
+  private breath = 0;
+  /** Antes do snap: a linha fica em 3 apoios e os outros agachados, prontos. */
+  static preSnap = false;
 
   constructor(
     layer: BillboardLayer,
@@ -427,6 +541,7 @@ export class Player {
     this.skinIndex = skinIndex;
     this.bb = layer.add(key, this.x, this.y, { scale: PLAYER_SCALE, shadow: 2.2 });
     this.bb.img.setFrame('idle');
+    this.breath = (slot.num * 1.37) % (Math.PI * 2);
   }
 
   private texKey: string;
@@ -450,6 +565,14 @@ export class Player {
     return this.slot.key;
   }
 
+  /** Pose parada antes do snap (linha em 3 apoios; recebedores e defesa agachados). */
+  private setPose(): Pose {
+    const r = this.role;
+    if (r === 'C' || r === 'G' || r === 'T' || r === 'DL') return 'stance';
+    if (r === 'QB') return 'idle';
+    return 'ready';
+  }
+
   /** Copia posição, pose e rotação para o billboard (chamar uma vez por frame). */
   sync(dt = 0) {
     this.bb.x = this.x;
@@ -457,27 +580,38 @@ export class Player {
     this.bb.h = this.hop;
     this.bb.sx = this.sx;
     this.bb.sy = this.sy;
-    const moving = Math.hypot(this.vx, this.vy) > 0.6;
+    const sp = Math.hypot(this.vx, this.vy);
+    const moving = sp > 0.6;
     let frame: Pose = this.pose ?? 'idle';
     if (!this.pose && moving) {
-      this.animT += dt * (2 + Math.hypot(this.vx, this.vy) * 0.9);
-      frame = Math.floor(this.animT) % 2 ? 'run1' : 'run2';
+      // corrida em 4 quadros (dois passos por ciclo); o ritmo acompanha a velocidade
+      this.animT += dt * (2 + sp * 0.9);
+      frame = RUN_CYCLE[Math.floor(this.animT * 2) % 4];
     } else if (this.pose === 'carry' && moving) {
-      this.animT += dt * (2 + Math.hypot(this.vx, this.vy) * 0.9);
-      // carregando a bola: alterna as pernas mas mantém a bola no peito
-      frame = 'carry';
-      this.bb.h = this.hop + (Math.floor(this.animT) % 2) * 0.12;
+      this.animT += dt * (2 + sp * 0.9);
+      frame = CARRY_CYCLE[Math.floor(this.animT * 2) % 4];
+    } else if (!this.pose && Player.preSnap && this.state === 'idle') {
+      frame = this.setPose();
     }
     if (this.bb.img.frame.name !== frame) this.bb.img.setFrame(frame);
     // Peso do corpo: correndo, balança de um lado para o outro a cada passada, quica um pouco
-    // e inclina para dentro nas curvas (corte para o lado)
+    // e inclina para dentro nas curvas (corte para o lado); a inclinação é suavizada
     let tilt = 0;
-    const sp = Math.hypot(this.vx, this.vy);
     if (moving && (!this.pose || this.pose === 'carry') && this.angle === 0) {
       const k = Math.min(1, sp / 6);
-      tilt = Math.sin(this.animT * Math.PI) * 3 * k + Math.max(-9, Math.min(9, this.vx * 1.4));
+      tilt = Math.sin(this.animT * Math.PI) * 2.5 * k + Math.max(-9, Math.min(9, this.vx * 1.4));
       this.bb.h = Math.max(this.bb.h, this.hop + Math.abs(Math.sin(this.animT * Math.PI)) * 0.1 * k);
     }
-    this.bb.img.setAngle(this.angle + tilt);
+    this.tiltS += (tilt - this.tiltS) * Math.min(1, dt * 14);
+    if (dt === 0) this.tiltS = tilt;
+    this.bb.img.setAngle(this.angle + (this.angle === 0 ? this.tiltS : 0));
+    // Parado: respira (o peito sobe e desce de leve)
+    if (!moving && !this.pose && this.angle === 0 && this.hop === 0) {
+      this.breath += dt * 2.6;
+      this.bb.sy = this.sy * (1 + Math.sin(this.breath) * 0.018);
+    }
   }
 }
+
+const RUN_CYCLE: Pose[] = ['run1', 'run3', 'run2', 'run4'];
+const CARRY_CYCLE: Pose[] = ['carry1', 'carry', 'carry2', 'carry'];

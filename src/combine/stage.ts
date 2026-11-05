@@ -61,7 +61,7 @@ export class Actor {
     let frame: Pose = this.pose ?? 'idle';
     if (!this.pose && this.speed > 0.6) {
       this.animT += dt * (2 + this.speed * 0.9);
-      frame = Math.floor(this.animT) % 2 ? 'run1' : 'run2';
+      frame = (['run1', 'run3', 'run2', 'run4'] as const)[Math.floor(this.animT * 2) % 4];
     }
     if (this.bb.img.frame.name !== frame) this.bb.img.setFrame(frame);
   }

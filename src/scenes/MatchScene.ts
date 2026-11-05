@@ -819,7 +819,9 @@ export class MatchScene extends Phaser.Scene {
     }
     if (this.phase === 'post' || this.phase === 'kickoff') this.stepTdRun(dt);
     else this.tdRun = null;
-    for (const p of [...this.offense, ...this.defense]) p.sync(dt);
+    Player.preSnap = this.phase === 'pre';
+    for (const p of this.offense) p.sync(dt);
+    for (const p of this.defense) p.sync(dt);
 
     this.world.update(dt);
     this.fx.clear();

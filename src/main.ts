@@ -39,7 +39,7 @@ async function boot() {
   ]).catch(() => {});
 
   patchText();
-  new Phaser.Game({
+  const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
     width: GAME_W * RES,
@@ -52,6 +52,8 @@ async function boot() {
     input: { activePointers: 4 },
     scene: [Boot, MainMenu, CareerTest, PlayerTest, CareerHub, CareerCreate, CombineHub, Combine40, Combine3Cones, CombinePasse, CombineForca, CombineResultado, DraftEspera, DraftTelefone, DraftAnuncio, DraftEscolhido, CarreiraMenu, PreJogo, CareerSlots],
   });
+  // Teste (só no desenvolvimento): acesso ao jogo pelo console
+  if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game;
 }
 
 boot();

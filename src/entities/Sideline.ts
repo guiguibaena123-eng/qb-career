@@ -79,9 +79,18 @@ export class Sideline {
     }
   }
 
+  /** Câmera e neve do último desenho (parados = nada a redesenhar; as pessoas da lateral não se mexem). */
+  private lastCam = NaN;
+  private lastTilt = NaN;
+  private lastSnow: boolean | null = null;
+
   draw() {
     const g = this.g;
     const p = this.proj;
+    if (p.camY === this.lastCam && p.tilt === this.lastTilt && this.snow === this.lastSnow) return;
+    this.lastCam = p.camY;
+    this.lastTilt = p.tilt;
+    this.lastSnow = this.snow;
     g.clear();
 
     for (const side of ['home', 'away'] as const) this.drawTeamArea(side);

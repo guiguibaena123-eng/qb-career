@@ -38,6 +38,8 @@ export class FieldRenderer {
   /** Linha de scrimmage e de first down (em jardas, eixo y). */
   scrimmageY = 25;
   firstDownY = 35;
+  /** Estado do último desenho: com a câmera e as linhas paradas, não redesenha nada. */
+  private last = { camY: NaN, tilt: NaN, scr: NaN, fd: NaN, g0: NaN, g1: NaN };
 
   constructor(scene: Phaser.Scene, private proj: Projection) {
     this.g = scene.add.graphics().setDepth(0);
@@ -90,6 +92,10 @@ export class FieldRenderer {
   }
 
   draw() {
+    const L = this.last;
+    const pj = this.proj;
+    if (L.camY === pj.camY && L.tilt === pj.tilt && L.scr === this.scrimmageY && L.fd === this.firstDownY && L.g0 === this.grass[0] && L.g1 === this.grass[1]) return;
+    Object.assign(L, { camY: pj.camY, tilt: pj.tilt, scr: this.scrimmageY, fd: this.firstDownY, g0: this.grass[0], g1: this.grass[1] });
     const g = this.g;
     const W = FIELD.width;
     g.clear();
