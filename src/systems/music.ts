@@ -63,6 +63,8 @@ class MenuMusic {
   private started = false;
   /** play() bloqueado pelo navegador: tenta de novo no próximo toque */
   private blocked: (() => Promise<void>) | null = null;
+  /** fim da transição em andamento (tempo do AudioContext); fora dela só o deck atual pode soar */
+  private xfadeEnd = 0;
 
   constructor() {
     // Já baixa a primeira faixa ao abrir o jogo (baixar não precisa de toque): no primeiro toque ela toca na hora
@@ -76,6 +78,20 @@ class MenuMusic {
     document.addEventListener('visibilitychange', () => {
       this.hidden = document.hidden;
       this.apply();
+    });
+    // Vigia: nunca deixa duas faixas soando fora de uma transição
+    window.setInterval(() => this.settle(), 1000);
+  }
+
+  /** Fora de uma transição, o deck que não é o atual fica parado e mudo. */
+  private settle() {
+    const ctx = this.ctx;
+    if (!ctx || ctx.currentTime < this.xfadeEnd) return;
+    this.decks.forEach((d, i) => {
+      if (i === this.cur || d.track < 0) return;
+      if (!d.el.paused) d.el.pause();
+      d.gain.gain.cancelScheduledValues(ctx.currentTime);
+      d.gain.gain.setValueAtTime(0, ctx.currentTime);
     });
   }
 
@@ -94,7 +110,7 @@ class MenuMusic {
         if (d.track < 0) d.el.pause();
       }, () => {});
     }
-    const retry = this.blocked;
+    const retry = this.playing ? this.blocked : null; // na partida (música pausada) não destrava nada
     if (retry) {
       retry().then(() => {
         if (this.blocked === retry) this.blocked = null;
@@ -240,7 +256,15 @@ class MenuMusic {
       const now = ctx.currentTime;
       const dur = first ? 0.6 : XFADE;
       fade(deck.gain.gain, now, dur, true);
-      if (!old.el.paused) fade(old.gain.gain, now, dur, false);
+      // a antiga sai junto; se já estava parada, fica muda de vez (senão voltaria tocando junto depois)
+      if (old !== deck && old.track >= 0) {
+        if (!old.el.paused) fade(old.gain.gain, now, dur, false);
+        else {
+          old.gain.gain.cancelScheduledValues(now);
+          old.gain.gain.setValueAtTime(0, now);
+        }
+      }
+      this.xfadeEnd = now + dur;
       window.setTimeout(() => {
         if (this.decks[this.cur] !== old) old.el.pause();
         this.trim();
@@ -250,8 +274,15 @@ class MenuMusic {
       if (this.peekTrack() < 0) this.shuffle();
       void this.load(this.peekTrack()).catch(() => {});
     };
-    deck.el.play().then(go, () => {
-      this.blocked = () => deck.el.play().then(go);
+    let went = false;
+    const goOnce = () => {
+      if (went) return;
+      went = true;
+      this.blocked = null;
+      go();
+    };
+    deck.el.play().then(goOnce, () => {
+      this.blocked = () => deck.el.play().then(goOnce);
     });
   }
 
@@ -284,8 +315,11 @@ class MenuMusic {
         const d = this.decks[this.cur];
         if (d.track < 0) void this.next(true);
         else {
-          // volta de onde parou (os dois decks, se estava no meio de uma transição)
-          for (const k of this.decks) if (k.track >= 0 && k.gain.gain.value > 0.001) void k.el.play().catch(() => {});
+          // volta de onde parou: a faixa atual (e a anterior só se a transição ainda não terminou)
+          void d.el.play().catch(() => {});
+          const o = this.decks[(this.cur + 1) % 2];
+          if (o.track >= 0 && ctx.currentTime < this.xfadeEnd) void o.el.play().catch(() => {});
+          else this.settle();
         }
       }
     } else if (this.playing) {

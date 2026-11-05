@@ -13,6 +13,7 @@ import { difficulty, LEVELS, type Level } from '../systems/difficulty';
 import { setupHiRes } from '../systems/hires';
 import { arrowAfter, C, feed, FONT_TV, inkOn, onInk, underline, plate, plateShadow, scoreBug, sectionHead, slideIn, ticker, TV, tvEnter, TvButton, tvText, wipe, wipeTo } from '../ui/tv';
 import { fontWarmJobs } from '../systems/perf';
+import { music } from '../systems/music';
 import { MatchScene } from './MatchScene';
 
 /*
@@ -29,7 +30,7 @@ let matchCounter = 0;
 let booted = false;
 
 const hexOf = (css: string) => parseInt(css.slice(1), 16);
-type View = 'home' | 'setup' | 'details' | 'pickHome' | 'pickAway' | 'pickStand' | 'practice' | 'favorite';
+type View = 'home' | 'setup' | 'details' | 'pickHome' | 'pickAway' | 'pickStand' | 'practice' | 'favorite' | 'settings';
 
 export class MainMenu extends Phaser.Scene {
   private view: Phaser.GameObjects.Container | null = null;
@@ -65,7 +66,7 @@ export class MainMenu extends Phaser.Scene {
     this.bgTeam = '';
     // ?tela=partida|detalhes|times|treino abre direto numa tela (para testes)
     // Primeira abertura: escolher o time do coração antes da página inicial
-    const start = ({ partida: 'setup', detalhes: 'details', times: 'pickHome', treino: 'practice', favorito: 'favorite' } as Record<string, View>)[q.get('tela') ?? ''] ?? (getFavorite() ? 'home' : 'favorite');
+    const start = ({ partida: 'setup', detalhes: 'details', times: 'pickHome', treino: 'practice', favorito: 'favorite', config: 'settings' } as Record<string, View>)[q.get('tela') ?? ''] ?? (getFavorite() ? 'home' : 'favorite');
     this.render(start);
     tvEnter(this);
   }
@@ -101,6 +102,7 @@ export class MainMenu extends Phaser.Scene {
       pickStand: () => this.picker('stand'),
       practice: () => this.practiceMenu(),
       favorite: () => this.picker('fav'),
+      settings: () => this.settings(),
     };
     draw[v]();
   }
@@ -199,13 +201,16 @@ export class MainMenu extends Phaser.Scene {
     pr.onTap = () => this.go('practice');
     v.add([quick, car, pr]);
 
-    // Dificuldade: três segmentos (vale para Partida Rápida e Carreira)
-    const seg = this.segments(732, 'DIFICULDADE', (['easy', 'normal', 'hard'] as Level[]).map((l) => LEVELS[l].label), ['easy', 'normal', 'hard'].indexOf(this.level), (i) => {
-      this.level = (['easy', 'normal', 'hard'] as Level[])[i];
-      difficulty.set(this.level);
+    // Configurações: música e dificuldade
+    const cfg = this.tarja(16 + bw / 2, 736, bw, 60, {
+      color: 0x93a0b6,
+      title: 'CONFIGURAÇÕES',
+      sub: `MÚSICA ${music.on ? 'LIGADA' : 'DESLIGADA'} · ${LEVELS[this.level].label}`,
+      icon: 'gear',
     });
-    v.add(seg);
-    slideIn(this, [quick, car, pr, seg], 55, 140);
+    cfg.onTap = () => this.go('settings');
+    v.add(cfg);
+    slideIn(this, [quick, car, pr, cfg], 55, 140);
 
     v.add(
       ticker(this, H - 30, [
@@ -240,8 +245,62 @@ export class MainMenu extends Phaser.Scene {
     this.time.delayedCall(900, next);
   }
 
+  // ------------------------------------------------------------ configurações
+
+  private settings() {
+    const v = this.view!;
+    const [h] = this.teams();
+    v.add(scoreBug(this, { title: 'CONFIGURAÇÕES', step: 'AJUSTES', onBack: () => this.go('home'), team: { abbr: h.abbr, color: uiColor(h) } }));
+
+    // ---- som
+    let y = 104;
+    v.add(sectionHead(this, 16, y, 'SOM'));
+    v.add(this.segments(y + 46, 'MÚSICA', ['LIGADA', 'DESLIGADA'], music.on ? 0 : 1, (i) => music.setEnabled(i === 0)));
+    v.add(tvText(this, 18, y + 86, 'A TRILHA TOCA NOS MENUS E PARA DURANTE A PARTIDA', 13, C.muted, 600, 0.8).setOrigin(0, 0.5));
+
+    // ---- jogo
+    y = 236;
+    v.add(sectionHead(this, 16, y, 'JOGO', 'PARTIDA RÁPIDA E CARREIRA'));
+    const ORDER: Level[] = ['easy', 'normal', 'hard'];
+    const DESC: Record<Level, string> = {
+      easy: 'DEFESA MAIS LENTA · MAIS TEMPO NO POCKET · −20% DE XP',
+      normal: 'O JOGO COMO FOI PENSADO',
+      hard: 'DEFESA MAIS RÁPIDA · MENOS TEMPO NO POCKET · +40% DE XP',
+    };
+    const desc = tvText(this, 18, y + 86, DESC[this.level], 13, C.muted, 600, 0.8).setOrigin(0, 0.5);
+    v.add(
+      this.segments(y + 46, 'DIFICULDADE', ORDER.map((l) => LEVELS[l].label), ORDER.indexOf(this.level), (i) => {
+        this.level = ORDER[i];
+        difficulty.set(this.level);
+        desc.setText(DESC[this.level]);
+      }),
+    );
+    v.add(desc);
+
+    // ---- sobre
+    y = 380;
+    v.add(sectionHead(this, 16, y, 'SOBRE'));
+    const facts: [string, string][] = [
+      ['SAVES', 'ATÉ 3 CARREIRAS, GUARDADAS NESTE APARELHO'],
+      ['OFFLINE', 'DEPOIS DA PRIMEIRA ABERTURA, JOGA SEM INTERNET'],
+      ['TRILHA', '11 FAIXAS EMBARALHADAS COM TRANSIÇÃO SUAVE'],
+    ];
+    const g = this.add.graphics();
+    facts.forEach(([k, t], i) => {
+      const fy = y + 32 + i * 54;
+      plate(g, 16, fy, GAME_W - 32, 46, TV.ink2, 0.92);
+      plate(g, 16, fy, 96, 46, TV.ink3, 1);
+      v.add(tvText(this, 64, fy + 23, k, 14, C.yellow, 800, 1.2).setOrigin(0.5));
+      const ft = tvText(this, 124, fy + 23, t, 14, C.white, 700, 0.6).setOrigin(0, 0.5);
+      if (ft.width > GAME_W - 32 - 120) ft.setScale((GAME_W - 32 - 120) / ft.width, 1);
+      v.add(ft);
+    });
+    v.addAt(g, 0);
+    v.add(ticker(this, GAME_H - 30, ['CONFIGURAÇÕES FICAM SALVAS NO APARELHO', 'A DIFICULDADE VALE PARA PARTIDA RÁPIDA E CARREIRA', 'NO IPHONE, A CHAVE DE SILENCIOSO TAMBÉM DESLIGA A MÚSICA']));
+  }
+
   /** Tarja do menu: bloco de cor com logo/ícone, título e linha de apoio, seta à direita. */
-  private tarja(x: number, y: number, w: number, h: number, o: { color: number; title: string; sub: string; logo?: string; icon?: 'target'; primary?: boolean; vs?: string }) {
+  private tarja(x: number, y: number, w: number, h: number, o: { color: number; title: string; sub: string; logo?: string; icon?: 'target' | 'gear'; primary?: boolean; vs?: string }) {
     const b = new TvButton(this, x, y, { w, h, fill: o.primary ? o.color : TV.plate, fillAlpha: 1, primary: o.primary });
     const fg = o.primary ? inkOn(o.color) : C.ink;
     const bwid = h * 0.9;
@@ -260,6 +319,33 @@ export class MainMenu extends Phaser.Scene {
       ic.strokeCircle(cx, 0, 9);
       ic.fillStyle(TV.ink, 1);
       ic.fillCircle(cx, 0, 3);
+      b.add(ic);
+    }
+    if (o.icon === 'gear') {
+      // engrenagem: 8 dentes em volta de um anel
+      const ic = this.add.graphics();
+      ic.fillStyle(TV.ink, 1);
+      const r = h * 0.2;
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        const ca = Math.cos(a);
+        const sa = Math.sin(a);
+        const tw = r * 0.32;
+        const r0 = r * 0.8;
+        const r1 = r * 1.38;
+        ic.fillPoints(
+          [
+            { x: cx + ca * r0 - sa * tw, y: sa * r0 + ca * tw },
+            { x: cx + ca * r1 - sa * tw * 0.8, y: sa * r1 + ca * tw * 0.8 },
+            { x: cx + ca * r1 + sa * tw * 0.8, y: sa * r1 - ca * tw * 0.8 },
+            { x: cx + ca * r0 + sa * tw, y: sa * r0 - ca * tw },
+          ] as Phaser.Math.Vector2[],
+          true,
+        );
+      }
+      ic.fillCircle(cx, 0, r);
+      ic.fillStyle(o.color, 1);
+      ic.fillCircle(cx, 0, r * 0.42);
       b.add(ic);
     }
     const tx = x0 + bwid + 16;
