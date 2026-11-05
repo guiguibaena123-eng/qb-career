@@ -9,6 +9,8 @@ import '@fontsource/saira-condensed/800.css';
 import { GAME_H, GAME_W, RES } from './config';
 import { patchText } from './systems/hires';
 import { patchGraphicsPerf } from './systems/perf';
+import { music } from './systems/music';
+import { MatchScene } from './scenes/MatchScene';
 import { Boot } from './scenes/Boot';
 import { CareerTest } from './scenes/CareerTest';
 import { CareerHub } from './scenes/CareerHub';
@@ -53,6 +55,12 @@ async function boot() {
     // Vários dedos ao mesmo tempo: segurar o joystick e apertar SPRINT/JUKE/SPIN/MERGULHO
     input: { activePointers: 4 },
     scene: [Boot, MainMenu, CareerTest, PlayerTest, CareerHub, CareerCreate, CombineHub, Combine40, Combine3Cones, CombinePasse, CombineForca, CombineResultado, DraftEspera, DraftTelefone, DraftAnuncio, DraftEscolhido, CarreiraMenu, PreJogo, CareerSlots],
+  });
+  // Trilha dos menus: toca fora da partida e dos testes do Combine (lá ela abaixa e pausa)
+  const DRILLS = new Set(['Combine40', 'Combine3Cones', 'CombinePasse', 'CombineForca']);
+  game.events.on(Phaser.Core.Events.POST_STEP, () => {
+    const inPlay = game.scene.getScenes(true).some((s) => s instanceof MatchScene || DRILLS.has(s.sys.settings.key));
+    music.setWanted(!inPlay);
   });
   // Teste (só no desenvolvimento): acesso ao jogo pelo console
   if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game;
