@@ -2308,6 +2308,9 @@ export class MatchScene extends Phaser.Scene {
     this.ball.y = yK;
     this.ball.h = 0.25;
     this.ball.spinMode = 'tumble';
+    // bola em pé no tee (todo recomeço)
+    this.ball.upright = true;
+    this.ball.tee = { x: MID, y: yK };
     this.world.targetY = Phaser.Math.Clamp(yK - 3, CAMERA.minY, CAMERA.maxY);
     this.world.field.scrimmageY = -50;
     this.world.field.firstDownY = -50;

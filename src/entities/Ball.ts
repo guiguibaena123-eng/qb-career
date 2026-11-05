@@ -31,6 +31,8 @@ export class Ball {
   spinMode: 'spiral' | 'tumble' = 'spiral';
   /** Bola em pé no chão (presa pelo segurador antes do field goal); sai sozinho quando ela começa a voar. */
   upright = false;
+  /** Kickoff: o tee no chão (fica lá depois do chute, até alguém pegar a bola). */
+  tee: { x: number; y: number } | null = null;
   /** Posição do quadro anterior (direção do voo). */
   private prev = { x: 0, y: 0, h: 0 };
 
@@ -43,6 +45,7 @@ export class Ball {
     this.state = 'held';
     this.holder = pl;
     this.throw = null;
+    this.tee = null;
     this.trail = [];
   }
 
@@ -54,6 +57,7 @@ export class Ball {
     this.trail = [];
     this.spinMode = 'spiral';
     this.upright = false;
+    this.tee = null;
   }
 
   /** Avança o voo; devolve true quando chega no ponto de queda. */
@@ -109,9 +113,20 @@ export class Ball {
     this.prev.y = this.y;
     this.prev.h = this.h;
     const d = Math.hypot(dx, dy, dh);
+    if (this.tee) {
+      // tee laranja do kickoff
+      pr.project(this.tee.x, this.tee.y, 0, g1);
+      const tu = g1.s * 10;
+      this.ground.fillStyle(0x0d0d12, 1);
+      this.ground.fillRect(g1.x - tu * 0.2, g1.y - tu * 0.14, tu * 0.4, tu * 0.16);
+      this.ground.fillStyle(0xff7a1f, 1);
+      this.ground.fillRect(g1.x - tu * 0.17, g1.y - tu * 0.12, tu * 0.34, tu * 0.12);
+      this.ground.fillStyle(0xffc27a, 1);
+      this.ground.fillRect(g1.x - tu * 0.17, g1.y - tu * 0.12, tu * 0.34, tu * 0.03);
+    }
     if (this.upright && (d < 0.004 || d > 3)) {
-      // em pé no chão, um pouco inclinada para trás (como o segurador deixa para o chutador)
-      pr.project(this.x, this.y, 0, g0);
+      // em pé (no chão com o segurador, ou no tee do kickoff), um pouco inclinada para trás
+      pr.project(this.x, this.y, this.tee ? 0.12 : 0, g0);
       this.trail = [];
       this.img.setFrame('b2').setOrigin(0.07, 0.5).setPosition(g0.x, g0.y).setScale(base * 0.52, base * 0.6).setRotation(-Math.PI / 2 - 0.12);
       return;
@@ -167,11 +182,12 @@ export class Ball {
       const sn = Math.hypot(sx2, sy2) || 1;
       sx2 /= sn;
       sy2 /= sn;
-      // meio torto: o plano do giro fica inclinado para o lado e balança (a bola nunca sai perfeita do pé)
-      const psi = 0.5 + Math.sin(this.spin * 3.1) * 0.38;
+      // meio torto: o plano do giro fica um pouco inclinado para o lado (a bola nunca sai perfeita do pé)
+      const psi = 0.32 + Math.sin(this.spin * 1.3) * 0.1;
       const cp = Math.cos(psi), sp = Math.sin(psi);
       const vx = cp * ux + sp * sx2, vy = cp * uy + sp * sy2, vh = cp * uh;
-      const th = Math.PI / 2 + this.spin * Math.PI * 2 * 1.9;
+      // rápido como uma moeda virando (~5,5 voltas por segundo)
+      const th = Math.PI / 2 + this.spin * Math.PI * 2 * 5.5;
       const c = Math.cos(th), s = Math.sin(th);
       const ax = c * fx + s * vx, ay = c * fy + s * vy, ah = c * fh + s * vh;
       const L = 0.3;
@@ -180,12 +196,11 @@ export class Ball {
       const tx = g1.x - g0.x;
       const ty = g1.y - g0.y;
       const fl = Phaser.Math.Clamp(Math.hypot(tx, ty) / (0.6 * p.s * 10), 0.6, 1);
+      // cada meia volta mostra um lado da bola (cordões / costas), como a cara e a coroa da moeda
       this.img
-        .setFrame(Math.floor((this.spin * 1.9 * 2) % 2) ? 'b1' : 'b0')
-        .setScale(base * 1.2 * fl, base * 1.2)
-        // balanço da bola chutada: ela bambeia de um lado para o outro e desvia um pouco no ar
-        .setRotation(Math.atan2(ty, tx) + Math.sin(this.spin * 5.2) * 0.55)
-        .setPosition(p.x + Math.sin(this.spin * 2.3) * p.s * 2.2, p.y);
+        .setFrame(Math.cos(th - Math.PI / 2) > 0 ? 'b0' : `b${BALL_FRAMES / 2}`)
+        .setScale(base * 1.15 * fl, base * 1.15)
+        .setRotation(Math.atan2(ty, tx) + Math.sin(this.spin * 2) * 0.06);
     }
   }
 
