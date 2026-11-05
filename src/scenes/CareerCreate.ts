@@ -7,10 +7,8 @@ import { BEARD_COUNT, FACE_COUNT, HAIR_COLORS, HAIR_COUNT, PlayerFace, SKINS } f
 import { getSave, updateSave } from '../player/PlayerSave';
 import { setupHiRes } from '../systems/hires';
 import { jerseyTexture } from '../ui/jerseyArt';
-import { UI } from '../ui/widgets';
-import { C, feed, fillPlate, inkOn, label, plate, plateShadow, scoreBug, strokePlate, title, TV, tvEnter, TvButton as GlassButton, tvText, wipeTo } from '../ui/tv';
+import { C, feed, fillPlate, inkOn, plate, plateLine, plateShadow, scoreBug, strokePlate, TV, tvEnter, TvButton as GlassButton, tvText, wipeTo } from '../ui/tv';
 
-const fgOnHex = (c: number) => (((c >> 16) & 255) * 0.299 + ((c >> 8) & 255) * 0.587 + (c & 255) * 0.114 > 150 ? '#0D0D12' : '#FFFFFF');
 
 /*
  * Criação da carreira (Etapa 3): Nome → Faculdade → Rosto → Pele → Cabelo → Barba → Confirmação.
@@ -153,9 +151,9 @@ export class CareerCreate extends Phaser.Scene {
 
   /** Posição de cada campo na tela do jogo (coordenadas do jogo). */
   private static FIELDS = {
-    first: { x: 20, y: 102, w: GAME_W - 40, h: 56 },
-    last: { x: 20, y: 168, w: GAME_W - 40, h: 56 },
-    num: { x: 20, y: 234, w: 150, h: 56 },
+    first: { x: 16, y: 88, w: GAME_W - 32, h: 62 },
+    last: { x: 16, y: 158, w: GAME_W - 32, h: 62 },
+    num: { x: 16, y: 228, w: 112, h: 76 },
   };
 
   private syncInputs() {
@@ -240,36 +238,41 @@ export class CareerCreate extends Phaser.Scene {
       const on = this.field === which;
       const f = F[which];
       const g = this.add.graphics();
-      g.fillStyle(on ? TV.ink3 : TV.ink2, 1);
-      fillPlate(g, f.x, f.y, f.w, f.h, 12);
-      g.lineStyle(on ? 2 : 1, on ? TV.yellow : TV.rule, 1);
-      strokePlate(g, f.x, f.y, f.w, f.h, 12);
+      plate(g, f.x, f.y, f.w, f.h, on ? TV.ink3 : TV.ink2, 1);
+      plateLine(g, f.x, f.y, f.w, f.h, on ? TV.yellow : TV.rule, 1, on ? 2 : 1);
       add(g);
-      add(label(this, f.x + 14, f.y + 14, name, 7, UI.muted).setOrigin(0, 0.5));
-      const blink = on && Math.floor(this.time.now / 500) % 2 === 0;
-      add(title(this, f.x + 14, f.y + 36, (val || (on ? '' : which === 'num' ? '–' : 'TOQUE PARA DIGITAR')) + (on ? '_' : ''), val || on ? 15 : 8, val || on ? '#FFFFFF' : '#6E7593').setOrigin(0, 0.5));
-      void blink;
-      add(label(this, f.x + f.w - 14, f.y + 14, `${val.length}/${max}`, 7, UI.muted).setOrigin(1, 0.5));
+      add(tvText(this, f.x + 16, f.y + 15, name, 12, on ? C.yellow : C.muted, 700, 1.4).setOrigin(0, 0.5));
+      const empty = !val && !on;
+      const big = which === 'num' ? 34 : 26;
+      const v = add(tvText(this, f.x + 16, f.y + f.h / 2 + 10, empty ? (which === 'num' ? '–' : 'TOQUE PARA DIGITAR') : val, empty && which !== 'num' ? 17 : big, empty ? C.dim : C.white, 800, 0.6).setOrigin(0, 0.5));
+      if (on) {
+        // cursor: barra amarela piscando logo depois do texto
+        const cur = add(this.add.rectangle(f.x + 16 + (val ? v.width + 4 : 0), f.y + f.h / 2 + 10, 3, big * 0.9, TV.yellow).setOrigin(0, 0.5));
+        this.tweens.add({ targets: cur, alpha: 0, duration: 420, yoyo: true, repeat: -1, ease: 'Stepped' });
+      }
+      add(tvText(this, f.x + f.w - 16, f.y + 15, `${val.length}/${max}`, 12, C.dim, 700, 1).setOrigin(1, 0.5));
     };
     const num = s.number >= 0 ? String(s.number) : '';
     draw('first', 'NOME', s.firstName, 10);
-    draw('last', 'SOBRENOME (NOME NO UNIFORME)', s.name, 12);
-    draw('num', 'NÚMERO (0 A 99)', num, 2);
-    // Números clássicos de QB (atalho)
-    add(label(this, F.num.x + F.num.w + 14, F.num.y + 12, 'NÚMEROS DE QB', 7, UI.muted).setOrigin(0, 0.5));
+    draw('last', 'SOBRENOME · VAI NAS COSTAS DA CAMISA', s.name, 12);
+    draw('num', 'NÚMERO', num, 2);
+    // Números clássicos de QB (atalho): placas grandes o bastante para o dedo
+    const px = F.num.x + F.num.w + 10;
+    add(tvText(this, px, F.num.y + 8, 'NÚMEROS CLÁSSICOS DE QB', 12, C.muted, 700, 1.2).setOrigin(0, 0.5));
     const picks = [1, 4, 7, 9, 10, 12, 15, 16, 17, 18];
-    const cw = 34;
+    const cw = (W - 16 - px - 4 * 4) / 5;
+    const chh = 28;
     picks.forEach((n, i) => {
-      const x = F.num.x + F.num.w + 14 + (i % 5) * (cw + 3);
-      const y = F.num.y + 22 + Math.floor(i / 5) * 18;
+      const x = px + (i % 5) * (cw + 4);
+      const y = F.num.y + 20 + Math.floor(i / 5) * (chh + 4);
       const on = n === s.number;
       const g = this.add.graphics();
-      g.fillStyle(on ? TV.yellow : TV.ink3, 1);
-      fillPlate(g, x, y, cw, 15, 4);
+      plate(g, x, y, cw, chh, on ? TV.yellow : TV.ink3, 1);
       add(g);
-      add(label(this, x + cw / 2, y + 7.5, String(n), 8, on ? '#0D0D12' : '#FFFFFF').setOrigin(0.5));
-      const z = this.add.zone(x, y, cw, 15).setOrigin(0).setInteractive({ useHandCursor: true });
+      add(tvText(this, x + cw / 2, y + chh / 2, String(n), 16, on ? C.ink : C.white, 800, 0).setOrigin(0.5));
+      const z = this.add.zone(x - 2, y - 2, cw + 4, chh + 4).setOrigin(0).setInteractive({ useHandCursor: true });
       z.on('pointerdown', () => {
+        navigator.vibrate?.(8);
         updateSave({ number: n });
         if (this.inputs.num) this.inputs.num.value = String(n);
         this.build();
@@ -280,11 +283,11 @@ export class CareerCreate extends Phaser.Scene {
     // Prévia: costas da camisa (arte detalhada em canvas) com o nome e o número
     const college = COLLEGES.find((c) => c.id === s.college.id) ?? COLLEGES[0];
     const jx = W / 2;
-    const jy = 318;
-    const jw = 270;
-    const jh = 288;
+    const jy = 334;
+    const jw = 280;
+    const jh = 298;
     add(this.add.image(jx, jy, jerseyTexture(this, { primary: hexNum(college.colors[0]), secondary: hexNum(college.colors[1]), name: s.name, number: num, w: jw, h: jh })).setOrigin(0.5, 0).setDisplaySize(jw, jh));
-    add(label(this, W / 2, jy + jh + 18, 'TOQUE NUM CAMPO: ABRE O TECLADO DO CELULAR', 7, UI.muted).setOrigin(0.5));
+    add(tvText(this, W / 2, jy + jh + 22, 'TOQUE NUM CAMPO PARA DIGITAR', 14, C.muted, 700, 1.4).setOrigin(0.5));
     return s.name.trim().length >= 2 && s.number >= 0 && s.number <= 99;
   }
 

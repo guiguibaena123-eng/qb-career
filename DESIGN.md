@@ -92,7 +92,7 @@ components:
 
 Fora de campo, o jogo é a transmissão dele mesmo. Cada menu é um pacote gráfico de TV esportiva colocado por cima da "imagem ao vivo" do estádio do seu time: placar no canto dizendo onde você está, tarjas que entram deslizando, vinheta entre as telas e o telestrador do comentarista marcando o que você escolheu. A densidade é de transmissão: muita informação, organizada em placas firmes, nunca em cartões flutuantes.
 
-O sistema substitui por completo o visual anterior (vidro azul, cantos arredondados, fonte pixel nos menus). Continuam do jogo: os jogadores em pixel art, os logos dos times e tudo o que acontece em campo, que não usa este sistema.
+O sistema substitui por completo o visual anterior (vidro azul, cantos arredondados, fonte pixel nos menus) em todo o caminho fora de campo: carregamento, menus, criação do QB, Combine (lista, cartões de instrução e de resultado dos testes), Draft (placas, telão, barra e botões; a arte do palco continua em pixel art), carreira e pré-jogo. Continuam do jogo: os jogadores em pixel art, os logos dos times, o palco do Draft e tudo o que acontece em campo (incluindo o placar dos testes do Combine), que não usa este sistema.
 
 **Key Characteristics:**
 - Toda placa corta na diagonal (12°); não existe canto arredondado.
@@ -126,7 +126,7 @@ Paleta contida de transmissão: tinta e branco de estúdio fazem o trabalho, um 
 
 **Display Font:** Saira Condensed (Arial Narrow, sans-serif), pesos 600/700/800, embutida (offline).
 
-**Character:** condensada e pesada como o lettering de placar de TV; tudo em caixa-alta, com respiro de letra maior nos rótulos pequenos.
+**Character:** condensada e pesada como o lettering de placar de TV; tudo em caixa-alta, com respiro de letra maior nos rótulos pequenos. Todo texto nasce de `tvText`, que mede a linha com as maiúsculas acentuadas (senão o acento de Á/Í/Ç é cortado).
 
 ### Hierarchy
 - **Display** (800, 88–98px): só a abertura (QB / CAREER) e as posições do treino (QB / RB).
@@ -164,8 +164,17 @@ Placa de tinta; a escolhida vira placa elevada com texto amarelo e um traço de 
 ### Selo de horário nobre
 Placa branca com texto em tinta e o nome em português (QUINTA À NOITE, DOMINGO À NOITE, SEGUNDA À NOITE, WILD CARD…), campo `pt` de `PRIME`. As cores próprias de cada programa ficam só na transmissão em campo.
 
+### Notas (OVR e atributos)
+Faixas fixas: verde ≥ 85, amarelo ≥ 75, laranja ≥ 65, abaixo disso cinza (`text-muted`). Vermelho não entra na escala de nota.
+
+### Destaque "é você"
+Placa elevada (ink-raised) com faixa amarela de 4px no topo e contorno amarelo de 2px (`tvCard` com cor amarela). Nunca misturar amarelo na tinta (vira oliva).
+
+### Selos de status
+Placa pequena chapada (verde = salvo/concluído, vermelho = armado para apagar) com ícone desenhado, logo acima do botão de baixo; some sozinha.
+
 ### Abas da carreira
-Fileira rolável de placas; a ativa é amarela com texto em tinta; contador de novidades em selo vermelho.
+Fileira rolável de placas; a ativa é amarela com texto em tinta; contador de novidades em selo vermelho. A borda direita esmaece para mostrar que a fileira rola.
 
 ### Vinheta (assinatura)
 Três faixas diagonais (amarelo, cor do time, tinta) varrem a tela; a tela troca por baixo da faixa de tinta (~510ms no total). Toda navegação entre telas passa por ela.
@@ -177,6 +186,8 @@ Três faixas diagonais (amarelo, cor do time, tinta) varrem a tela; a tela troca
 - **Do** marcar a escolha com o telestrador (traço de caneta sob o nome; em placas com figura, contorno amarelo + traço).
 - **Do** usar placa branca com texto em tinta para conteúdo de leitura.
 - **Do** passar pela vinheta (`wipe` / `wipeTo`) em toda troca de tela.
+- **Do** desenhar setas e marcadores (`arrowAfter`, `star`, `trophy` em `src/ui/tv.ts`); nada de ›, ▼ ou ★ escritos.
+- **Do** pedir dois toques em toda ação que não dá para desfazer (APAGAR save, PULAR teste, REINICIAR COMBINE): o primeiro arma em vermelho, o segundo confirma.
 
 ### Don't:
 - **Don't** usar cantos arredondados, vidro translúcido ou degradê com brilho.

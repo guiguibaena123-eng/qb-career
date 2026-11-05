@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { FONT_TITLE, GAME_H, GAME_W } from '../config';
 import type { CareerTeam } from '../data/TeamRepository';
-import { fgOn } from '../data/teams';
 import { setupHiRes } from '../systems/hires';
-import { GlassButton, label, title, UI } from '../ui/widgets';
+import { UI } from '../ui/widgets';
+import { C, inkOn, label, plate, plateShadow, scoreBug, title, TV, TvButton, tvText } from '../ui/tv';
 import { collarTexture, COMMISH, commissionerBody, FORE_LEN, FORE_PIVOT_Y, foreArmTexture, SHOULDER_L, STAGE_H, STAGE_W, stageTexture, UPPER_LEN, upperArmTexture } from './art';
 import { PlayerFace } from '../player/PlayerFace';
 
@@ -27,27 +27,27 @@ export function draftScene(scene: Phaser.Scene, team: CareerTeam, party = false)
   }
 }
 
-/** Telão (painel com grade fina e brilho laranja): texto grande e linha amarela embaixo. */
+/** Telão do palco: placa de tinta com grade de LED bem fraca, faixa amarela no topo e o texto grande. */
 export function board(scene: Phaser.Scene, big: string, sub: string, size = 28) {
   const g = scene.add.graphics();
-  for (let i = 8; i > 0; i--) {
-    g.fillStyle(ORANGE, 0.035);
-    g.fillRect(14 - i * 3, 84 - i * 3, 362 + i * 6, 150 + i * 6);
-  }
-  g.fillStyle(0x0d1230, 1);
-  g.fillRect(14, 84, 362, 150);
-  g.fillStyle(0xffffff, 0.05);
-  for (let x = 14; x < 376; x += 6) g.fillRect(x, 84, 1, 150);
-  for (let y = 84; y < 234; y += 6) g.fillRect(14, y, 362, 1);
-  g.lineStyle(3, 0x2a3156, 1);
-  g.strokeRect(15.5, 85.5, 359, 147);
-  // Texto grande: encolhe para caber no telão
-  const t = title(scene, GAME_W / 2, 137, big, size, '#FFFFFF').setOrigin(0.5);
-  t.setShadow(4, 4, hexStr(ORANGE), 0, false, true);
-  if (t.width > 330) t.setFontSize(Math.floor((size * 330) / t.width));
-  const s = title(scene, GAME_W / 2, 182, sub, 10, UI.yellow).setOrigin(0.5);
-  s.setLetterSpacing?.(3);
-  return { t, s };
+  const x = 14;
+  const y = 84;
+  const w = GAME_W - 28;
+  const h = 150;
+  plateShadow(g, x, y, w, h);
+  plate(g, x, y, w, h, TV.ink, 0.96);
+  g.fillStyle(0xffffff, 0.035);
+  for (let xx = x + 14; xx < x + w - 10; xx += 6) g.fillRect(xx, y + 4, 1, h - 8);
+  for (let yy = y + 6; yy < y + h; yy += 6) g.fillRect(x + 12, yy, w - 24, 1);
+  g.fillStyle(TV.yellow, 1);
+  g.fillRect(x + 12, y, w - 12, 4);
+  const t = tvText(scene, GAME_W / 2, y + 62, big, Math.round(size * 2), C.white, 800, 1.5).setOrigin(0.5);
+  if (t.width > w - 40) t.setScale((w - 40) / t.width);
+  const sl = scene.add.graphics();
+  sl.fillStyle(TV.rule, 1);
+  sl.fillRect(GAME_W / 2 - 110, y + 100, 220, 1);
+  const st = tvText(scene, GAME_W / 2, y + 122, sub, 17, C.yellow, 800, 3).setOrigin(0.5);
+  return { t, s: st };
 }
 
 /** Dois holofotes (cones de luz) balançando devagar. */
@@ -70,54 +70,36 @@ export function spotlights(scene: Phaser.Scene) {
   return [mk(10, 0), mk(230, 1200)];
 }
 
-/** Barra do topo: VOLTAR (seta), título no meio e pílula à direita. */
+/** Barra do topo: o placar da transmissão (voltar, AO VIVO, título e o passo à direita). */
 export function topBar(scene: Phaser.Scene, text: string, pillText: string, back: () => void) {
-  const b = new GlassButton(scene, 16 + 22, 40, { w: 44, h: 44, radius: 14 }).setDepth(80);
-  const arrow = scene.add.graphics();
-  arrow.lineStyle(2.5, 0xffffff, 1);
-  arrow.beginPath();
-  arrow.moveTo(2, -5);
-  arrow.lineTo(-3, 0);
-  arrow.lineTo(2, 5);
-  arrow.strokePath();
-  b.add(arrow);
-  b.onTap = () => scene.time.delayedCall(30, back);
-  scene.add.existing(b);
-  const t = title(scene, GAME_W / 2, 40, text, 12, '#FFFFFF').setOrigin(0.5).setDepth(80);
-  t.setShadow(3, 3, '#0D0D12', 0, false, true);
-  const p = title(scene, 0, 40, pillText, 9, '#FFFFFF').setOrigin(1, 0.5).setDepth(81);
-  p.setX(GAME_W - 16 - 10);
-  // Título encolhe se encostar no botão voltar ou na pílula
-  const half = Math.min(GAME_W / 2 - (16 + 44 + 8), p.x - p.width - 10 - 8 - GAME_W / 2);
-  if (t.width / 2 > half) t.setFontSize(Math.floor((12 * half * 2) / t.width));
-  const g = scene.add.graphics().setDepth(80);
-  g.fillStyle(0x2a3156, 0.7);
-  g.fillRoundedRect(p.x - p.width - 10, 40 - 15, p.width + 20, 30, 12);
-  g.lineStyle(1, 0xffffff, 0.16);
-  g.strokeRoundedRect(p.x - p.width - 10, 40 - 15, p.width + 20, 30, 12);
-  return { title: t, pill: p };
+  return scoreBug(scene, { title: text, step: pillText, onBack: back, depth: 80 });
 }
 
-/** Degradê escuro embaixo e o botão largo (cor dada) com seta. */
+/** Cor do botão no pacote da transmissão (o laranja antigo da liga vira o amarelo de primeira descida). */
+const btnColor = (c: number) => (c === ORANGE ? TV.yellow : c === 0x3ccb5a ? TV.green : c);
+
+/** Degradê escuro embaixo e o botão largo (cor dada) com seta desenhada. */
 export function bigButton(scene: Phaser.Scene, text: string, color: number, onTap: () => void) {
   const g = scene.add.graphics().setDepth(84);
   for (let i = 0; i < 60; i++) {
-    g.fillStyle(0x0a0c1a, Math.min(1, (i / 60) * 1.6));
+    g.fillStyle(TV.ink, Math.min(1, (i / 60) * 1.6));
     g.fillRect(0, GAME_H - 180 + i * 3, GAME_W, 3);
   }
-  const fg = fgOn(color);
-  const b = new GlassButton(scene, GAME_W / 2, GAME_H - 30 - 31, { w: GAME_W - 32, h: 62, radius: 18, fill: color, fillAlpha: 1, borderAlpha: 0.35, primary: true }).setDepth(85);
-  const t = title(scene, -8, 0, text, text.length > 20 ? 10 : 12, fg).setOrigin(0.5);
+  const c = btnColor(color);
+  const fg = inkOn(c);
+  const bw = GAME_W - 32;
+  const b = new TvButton(scene, GAME_W / 2, GAME_H - 46, { w: bw, h: 62, fill: c, fillAlpha: 1, primary: true }).setDepth(85);
+  const t = tvText(scene, -14, 0, text, 24, fg, 800, 1.4).setOrigin(0.5);
+  if (t.width > bw - 100) t.setScale((bw - 100) / t.width, 1);
   const a = scene.add.graphics();
-  a.lineStyle(2.5, Phaser.Display.Color.HexStringToColor(fg).color, 1);
+  a.lineStyle(3, parseInt(fg.slice(1), 16), 1);
   a.beginPath();
-  a.moveTo(t.width / 2 + 4, -5);
-  a.lineTo(t.width / 2 + 9, 0);
-  a.lineTo(t.width / 2 + 4, 5);
+  a.moveTo(bw / 2 - 34, -9);
+  a.lineTo(bw / 2 - 25, 0);
+  a.lineTo(bw / 2 - 34, 9);
   a.strokePath();
   b.add([t, a]);
   b.onTap = () => scene.time.delayedCall(30, onTap);
-  scene.add.existing(b);
   return b;
 }
 
@@ -210,15 +192,11 @@ export function teamLogo(scene: Phaser.Scene, team: CareerTeam, x: number, y: nu
   return scene.add.image(x, y, size > 48 ? team.logo.large : team.logo.small).setDisplaySize(size, size);
 }
 
-/** Cartão de vidro (como os painéis do design). */
+/** Placa de conteúdo (substitui o cartão de vidro). */
 export function glassCard(scene: Phaser.Scene, x: number, y: number, w: number, h: number) {
   const g = scene.add.graphics();
-  g.fillStyle(0x000000, 0.35);
-  g.fillRoundedRect(x, y + 8, w, h, 18);
-  g.fillStyle(0x22284a, 0.88);
-  g.fillRoundedRect(x, y, w, h, 18);
-  g.lineStyle(1, 0xffffff, 0.14);
-  g.strokeRoundedRect(x, y, w, h, 18);
+  plateShadow(g, x, y, w, h);
+  plate(g, x, y, w, h, TV.ink2, 0.97);
   return g;
 }
 

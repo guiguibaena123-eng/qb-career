@@ -64,7 +64,8 @@ export function inkOn(bg: number) {
 
 /** Texto da transmissão (Saira Condensed). */
 export function tvText(scene: Phaser.Scene, x: number, y: number, text: string, size: number, color = C.white, weight = 700, spacing = 0.2) {
-  const t = scene.add.text(x, y, text, { fontFamily: FONT_TV, fontSize: `${size}px`, fontStyle: String(weight), color });
+  // testString com as maiúsculas acentuadas: o Phaser mede a altura da linha por ela, senão o acento de Á/Í/Ç é cortado
+  const t = scene.add.text(x, y, text, { fontFamily: FONT_TV, fontSize: `${size}px`, fontStyle: String(weight), color, testString: '|ÁÉÍÓÚÂÊÔÃÕÀÇÑ_gjpqy' });
   if (spacing) t.setLetterSpacing(spacing);
   return t;
 }
@@ -557,9 +558,20 @@ export interface CardOpts {
  */
 export function tvCard(scene: Phaser.Scene, x: number, y: number, w: number, h: number, o: CardOpts) {
   const g = scene.add.graphics();
-  const base = mix(TV.ink2, o.from, Math.min(0.55, (o.fromAlpha ?? 1) * 0.5));
+  // Amarelo = "é você / está escolhido": placa elevada com contorno amarelo (misturar amarelo na tinta dá oliva)
+  const yellowish = (c: number) => ((c >> 16) & 255) > 200 && ((c >> 8) & 255) > 150 && (c & 255) < 120;
+  if (yellowish(o.from)) {
+    const s0 = Math.min(h * SLANT, 12);
+    plateShadow(g, x, y, w, h, true, true, 0.8);
+    plate(g, x, y, w, h, TV.ink3, 1);
+    g.fillStyle(TV.yellow, 1);
+    g.fillRect(x + s0, y, w - s0, 4);
+    plateLine(g, x, y, w, h, TV.yellow, 1, 2);
+    return g;
+  }
+  const base = mix(TV.ink2, o.from, Math.min(0.42, (o.fromAlpha ?? 1) * 0.4));
   plateShadow(g, x, y, w, h, true, true, 0.8);
-  plate(g, x, y, w, h, base, 0.97);
+  plate(g, x, y, w, h, base, 1);
   if (o.to !== undefined && o.to !== o.from && o.to !== 0x22284a && o.to !== 0x0d0f1f) {
     // segunda cor: metade direita mais puxada para ela (confronto)
     g.fillStyle(mix(TV.ink2, o.to, 0.45), 0.97);
@@ -583,5 +595,49 @@ export function star(g: Phaser.GameObjects.Graphics, cx: number, cy: number, r: 
   }
   g.fillStyle(color, 1);
   g.fillPoints(pts, true);
+  return g;
+}
+
+/** Troféu desenhado (taça + base), centrado em (cx, cy), altura ≈ 2s. */
+export function trophy(g: Phaser.GameObjects.Graphics, cx: number, cy: number, s: number, color: number = TV.yellow) {
+  g.fillStyle(color, 1);
+  // taça
+  g.fillPoints([new Phaser.Math.Vector2(cx - s * 0.62, cy - s), new Phaser.Math.Vector2(cx + s * 0.62, cy - s), new Phaser.Math.Vector2(cx + s * 0.4, cy - s * 0.05), new Phaser.Math.Vector2(cx - s * 0.4, cy - s * 0.05)], true);
+  g.fillCircle(cx, cy - s * 0.12, s * 0.38);
+  // alças
+  g.lineStyle(Math.max(2, s * 0.16), color, 1);
+  g.strokeRect(cx - s * 0.92, cy - s * 0.86, s * 0.34, s * 0.42);
+  g.strokeRect(cx + s * 0.58, cy - s * 0.86, s * 0.34, s * 0.42);
+  // haste e base
+  g.fillRect(cx - s * 0.1, cy + s * 0.2, s * 0.2, s * 0.42);
+  g.fillRect(cx - s * 0.46, cy + s * 0.62, s * 0.92, s * 0.3);
+  return g;
+}
+
+/**
+ * Seta desenhada logo depois de um texto (substitui "›", "▲" e "▼" escritos). Abre espaço empurrando o
+ * texto conforme a origem dele e devolve o desenho, para o chamador pôr no mesmo container.
+ */
+export function arrowAfter(scene: Phaser.Scene, t: Phaser.GameObjects.Text, color: string, dir: 'right' | 'up' | 'down' = 'right') {
+  const gap = 12;
+  t.x -= gap * t.originX;
+  const right = t.x + t.displayWidth * (1 - t.originX);
+  const cy = t.y + t.displayHeight * (0.5 - t.originY);
+  const k = Math.max(3, t.displayHeight * 0.2);
+  const g = scene.add.graphics();
+  const c = parseInt(color.slice(1), 16);
+  const x = right + 5;
+  if (dir === 'right') {
+    g.lineStyle(2.5, c, t.alpha);
+    g.beginPath();
+    g.moveTo(x, cy - k);
+    g.lineTo(x + k, cy);
+    g.lineTo(x, cy + k);
+    g.strokePath();
+  } else {
+    g.fillStyle(c, t.alpha);
+    const s = dir === 'up' ? -1 : 1;
+    g.fillTriangle(x - 1, cy - (k * s) / 1.4, x + k * 1.4 + 1, cy - (k * s) / 1.4, x + (k * 1.4) / 2, cy + (k * s) / 1.4);
+  }
   return g;
 }

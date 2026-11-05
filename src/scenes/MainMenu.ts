@@ -10,7 +10,7 @@ import { DEFAULT_LOOK, peekSlot, SLOT_COUNT } from '../player/PlayerSave';
 import { TEAM_LIST, autoUniform, teamById, uiColor, uniformsOf, type TeamDef, type Uniform } from '../data/teams';
 import { difficulty, LEVELS, type Level } from '../systems/difficulty';
 import { setupHiRes } from '../systems/hires';
-import { C, feed, inkOn, mix, onInk, underline, plate, plateShadow, scoreBug, sectionHead, slideIn, telestrate, ticker, TV, tvEnter, TvButton, tvText, wipe, wipeTo } from '../ui/tv';
+import { arrowAfter, C, feed, inkOn, onInk, underline, plate, plateShadow, scoreBug, sectionHead, slideIn, ticker, TV, tvEnter, TvButton, tvText, wipe, wipeTo } from '../ui/tv';
 import { MatchScene } from './MatchScene';
 
 /*
@@ -353,7 +353,8 @@ export class MainMenu extends Phaser.Scene {
       const ovr = tvText(this, cx + 2, top + 180, String(t.ovr), 36, fg, 800, 0).setOrigin(0, 0.5);
       v.add(tvText(this, cx - 2, top + 182, 'OVR', 14, fg, 700, 1.5).setOrigin(1, 0.5).setAlpha(0.8));
       v.add(ovr);
-      v.add(tvText(this, cx, top + ph - 12, 'TROCAR ›', 13, fg, 700, 1.5).setOrigin(0.5).setAlpha(0.75));
+      const tr = tvText(this, cx, top + ph - 12, 'TROCAR', 13, fg, 700, 1.5).setOrigin(0.5).setAlpha(0.75);
+      v.add([tr, arrowAfter(this, tr, fg)]);
       const z = this.add.zone(side === 'home' ? 0 : mid, top, W / 2, ph).setOrigin(0).setInteractive({ useHandCursor: true });
       z.on('pointerdown', () => navigator.vibrate?.(8));
       z.on('pointerup', () => this.go(side === 'home' ? 'pickHome' : 'pickAway'));
@@ -439,7 +440,9 @@ export class MainMenu extends Phaser.Scene {
     // ---- próximo
     const next = new TvButton(this, W / 2, GAME_H - 44, { w: W - 32, h: 58, fill: TV.yellow, fillAlpha: 1, primary: true });
     next.add(tvText(this, -(W - 32) / 2 + 22, 0, 'PRÓXIMO', 26, C.ink, 800, 1).setOrigin(0, 0.5));
-    next.add(tvText(this, (W - 32) / 2 - 30, 0, 'CLIMA E ESTÁDIO ›', 16, C.ink, 700, 1).setOrigin(1, 0.5));
+    const nx = tvText(this, (W - 32) / 2 - 30, 0, 'CLIMA E ESTÁDIO', 16, C.ink, 700, 1).setOrigin(1, 0.5);
+    next.add(nx);
+    next.add(arrowAfter(this, nx, C.ink));
     next.onTap = () => this.go('details');
     v.add(next);
   }
@@ -553,7 +556,8 @@ export class MainMenu extends Phaser.Scene {
     other.onTap = () => this.go('pickStand');
     v.add(other);
     if (matchConfig.standTeam) {
-      const back = tvText(this, W - 16, py + ph + 16, 'VOLTAR AO ESTÁDIO DO MANDANTE ›', 13, C.yellow, 700, 1).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
+      const back = tvText(this, W - 16, py + ph + 16, 'VOLTAR AO ESTÁDIO DO MANDANTE', 13, C.yellow, 700, 1).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
+      v.add(arrowAfter(this, back, C.yellow));
       back.on('pointerup', () => {
         matchConfig.standTeam = null;
         this.go('details');
@@ -659,7 +663,9 @@ export class MainMenu extends Phaser.Scene {
     const fg = inkOn(hc);
     play.add(this.add.image(-(W - 32) / 2 + 36, 0, logoKey(h.id, 's')).setDisplaySize(34, 34));
     play.add(tvText(this, -(W - 32) / 2 + 64, 0, 'JOGAR', 30, fg, 800, 1.5).setOrigin(0, 0.5));
-    play.add(tvText(this, (W - 32) / 2 - 30, 0, `${h.abbr} × ${teamById(matchConfig.away).abbr} ›`, 18, fg, 700, 1).setOrigin(1, 0.5));
+    const px = tvText(this, (W - 32) / 2 - 30, 0, `${h.abbr} × ${teamById(matchConfig.away).abbr}`, 18, fg, 700, 1).setOrigin(1, 0.5);
+    play.add(px);
+    play.add(arrowAfter(this, px, fg));
     play.onTap = () => {
       difficulty.set(this.level);
       applyMatchup();
@@ -818,7 +824,9 @@ export class MainMenu extends Phaser.Scene {
       const go = this.add.graphics();
       plate(go, tx - 6, bh / 2 - 62, bw / 2 - tx - 6, 44, TV.yellow);
       b.add(go);
-      b.add(tvText(this, tx + 10, bh / 2 - 40, 'TREINAR ›', 18, C.ink, 800, 1.5).setOrigin(0, 0.5));
+      const tn = tvText(this, tx + 10, bh / 2 - 40, 'TREINAR', 18, C.ink, 800, 1.5).setOrigin(0, 0.5);
+      b.add(tn);
+      b.add(arrowAfter(this, tn, C.ink));
       b.onTap = () => {
         applyMatchup();
         this.time.delayedCall(30, () => this.launch(pos));

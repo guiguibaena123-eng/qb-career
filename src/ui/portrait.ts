@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { RES } from '../config';
 import { PlayerFace, type FaceLook } from '../player/PlayerFace';
+import { plateLine, plateShadow, TV } from './tv';
 
 /*
  * Foto do jogador (retrato) numa textura própria, com cache: fundo na cor do time com luz de estúdio,
@@ -61,15 +62,13 @@ export function portraitTexture(scene: Phaser.Scene, face: FaceLook, primary: nu
   return key;
 }
 
-/** Retrato pronto em (x, y) (canto de cima), com sombra e moldura. Devolve os objetos criados. */
+/** Retrato pronto em (x, y) (canto de cima), placa com corte diagonal, sombra e contorno (amarelo = você). */
 export function portrait(scene: Phaser.Scene, x: number, y: number, size: number, face: FaceLook, primary: number, secondary: number, ring?: number) {
-  const r = Math.round(size * 0.24);
   const sh = scene.add.graphics();
-  sh.fillStyle(0x000000, 0.3);
-  sh.fillRoundedRect(x, y + 3, size, size, r);
-  const img = scene.add.image(x, y, portraitTexture(scene, face, primary, secondary, size)).setOrigin(0).setDisplaySize(size, size);
+  plateShadow(sh, x, y, size, size, true, true, 0.8);
+  const img = scene.add.image(x, y, portraitTexture(scene, face, primary, secondary, size, 'slant')).setOrigin(0).setDisplaySize(size, size);
   const o = scene.add.graphics();
-  o.lineStyle(ring ? 2 : 1, ring ?? 0xffffff, ring ? 1 : 0.22);
-  o.strokeRoundedRect(x, y, size, size, r);
+  if (ring === 0xffffff) plateLine(o, x, y, size, size, TV.rule, 1, 1);
+  else if (ring) plateLine(o, x, y, size, size, ring === 0xf26b1d ? TV.yellow : ring, 1, 2);
   return [sh, img, o] as const;
 }

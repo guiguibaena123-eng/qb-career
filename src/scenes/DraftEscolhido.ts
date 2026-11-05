@@ -3,7 +3,8 @@ import { GAME_W } from '../config';
 import { TeamRepository } from '../data/TeamRepository';
 import { suitFigure } from '../draft/art';
 import { currentDraft, money, ord } from '../draft/logic';
-import { bigButton, board, commissioner, draftScene, glassCard, label, spotlights, teamLogo, title, topBar, UI } from '../draft/ui';
+import { bigButton, board, commissioner, draftScene, spotlights, teamLogo, topBar } from '../draft/ui';
+import { C, plate, plateShadow, TV, tvEnter, tvText, wipeTo } from '../ui/tv';
 import { getSave } from '../player/PlayerSave';
 import { vibrate, VIBE } from '../systems/feedback';
 
@@ -24,7 +25,7 @@ export class DraftEscolhido extends Phaser.Scene {
     draftScene(this, team, true);
     spotlights(this);
     board(this, team.name, `PICK ${d.pick} · ${ord(d.round)} RODADA`, 34);
-    topBar(this, 'VOCÊ FOI ESCOLHIDO', `PICK ${d.pick}`, () => this.scene.start('DraftAnuncio'));
+    topBar(this, 'VOCÊ FOI ESCOLHIDO', `PICK ${d.pick}`, () => wipeTo(this, 'DraftAnuncio'));
 
     // Comissário batendo palmas (à esquerda); a cada batida, um brilho sai das mãos
     const CX = -22;
@@ -62,17 +63,26 @@ export class DraftEscolhido extends Phaser.Scene {
     }
 
     // Cartão do contrato
-    glassCard(this, 16, 664, 358, 70);
-    teamLogo(this, team, 16 + 14 + 17, 699, 36);
-    title(this, 78, 688, `${s.name} · QB · #${s.number}`, 10, '#FFFFFF').setOrigin(0, 0.5);
-    label(this, 78, 710, `${team.name} · ${d.contract.years} ANOS · ${money(d.contract.value)}`, 10, '#9AA3C0').setOrigin(0, 0.5);
-    title(this, GAME_W - 30, 699, `PICK ${d.pick}`, 11, UI.yellow).setOrigin(1, 0.5);
+    // Tarja do contrato: bloco do time + placa branca com nome e valores + selo do pick
+    const cg = this.add.graphics();
+    plateShadow(cg, 16, 660, 358, 74);
+    plate(cg, 16, 660, 358, 74, TV.plate, 1);
+    plate(cg, 16, 660, 64, 74, team.colors.primary, 1, true, true);
+    plate(cg, GAME_W - 104, 668, 80, 58, TV.yellow, 1);
+    teamLogo(this, team, 48, 697, 40);
+    const nm = tvText(this, 92, 684, `${s.name} · QB · #${s.number}`, 21, C.ink, 800, 0.4).setOrigin(0, 0.5);
+    if (nm.width > 170) nm.setScale(170 / nm.width, 1);
+    const sub = tvText(this, 92, 711, `${d.contract.years} ANOS · ${money(d.contract.value)}`, 14, C.inkSoft, 700, 0.8).setOrigin(0, 0.5);
+    if (sub.width > 170) sub.setScale(170 / sub.width, 1);
+    tvText(this, GAME_W - 64, 688, 'PICK', 12, C.ink, 800, 1.6).setOrigin(0.5);
+    tvText(this, GAME_W - 64, 708, String(d.pick), 26, C.ink, 800, 0).setOrigin(0.5);
 
     vibrate(VIBE.td);
     // Assinar: vai para o menu da carreira
     bigButton(this, 'ASSINAR CONTRATO', team.colors.primary, () => {
       vibrate(VIBE.tap);
-      this.scene.start('CarreiraMenu');
+      wipeTo(this, 'CarreiraMenu', team.colors.primary);
     });
+    tvEnter(this);
   }
 }

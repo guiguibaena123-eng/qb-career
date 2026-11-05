@@ -16,7 +16,7 @@ import { DEFAULT_LOOK, getSave, updateSave, type LookOptions } from '../player/P
 import { setupHiRes } from '../systems/hires';
 import { portrait as drawPortrait } from '../ui/portrait';
 import { weatherIcon } from '../ui/weatherIcon';
-import { C, feed, fillPlate, inkOn, label, lum, mix, onInk, plate, plateLine, plateShadow, scoreBug, sectionHead, star, strokePlate, title, TV, tvCard as gradCard, tvEnter, TvButton as GlassButton, tvText, wipeTo } from '../ui/tv';
+import { arrowAfter, C, feed, fillPlate, inkOn, label, lum, mix, plate, plateLine, plateShadow, sectionHead, star, strokePlate, trophy, title, TV, tvCard as gradCard, tvEnter, TvButton as GlassButton, tvText, wipeTo } from '../ui/tv';
 
 /*
  * CarreiraMenu — hub da carreira (como no design): cabeçalho com o jogador, time, OVR e retrospecto;
@@ -34,7 +34,8 @@ const RD = 0xff5a6a;
 const ORG = 0xff8a2a;
 const CARD = TV.ink2;
 const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
-const ovc = (v: number) => (v >= 85 ? GR : v >= 75 ? YE : v >= 65 ? ORG : RD);
+/** Faixas de nota: verde ≥ 85, amarelo ≥ 75, laranja ≥ 65, abaixo disso cinza (vermelho é só derrota/apagar). */
+const ovc = (v: number) => (v >= 85 ? GR : v >= 75 ? YE : v >= 65 ? ORG : 0x93a0b6);
 
 /** Opções do PERSONALIZAR (valor + nome mostrado), como no design. */
 type Opt<T> = [T, string][];
@@ -153,6 +154,8 @@ export class CarreiraMenu extends Phaser.Scene {
   private team!: CareerTeam;
   private top!: Phaser.GameObjects.Container;
   private tabsPane!: Pane;
+  /** Esmaecimento na borda direita das abas: mostra que a fileira rola. */
+  private tabFade!: Phaser.GameObjects.Graphics;
   private body!: Pane;
   private cards!: Pane;
   private seen = new Set<Tab>();
@@ -199,6 +202,11 @@ export class CarreiraMenu extends Phaser.Scene {
     this.cards = new Pane(this, 0, 96, GAME_W, 104, 'x', 10);
     this.drawNextGames();
     this.tabsPane = new Pane(this, 0, 208, GAME_W, 44, 'x', 11);
+    this.tabFade = this.add.graphics().setDepth(12);
+    for (let i = 0; i < 14; i++) {
+      this.tabFade.fillStyle(TV.ink, (i / 14) * 0.9);
+      this.tabFade.fillRect(GAME_W - 28 + i * 2, 0, 2, 44);
+    }
     this.body = new Pane(this, 0, 258, GAME_W, GAME_H - 76 - 258, 'y', 5);
     this.persPane = new Pane(this, PX, PV.y, GAME_W - PX - 16, GAME_H - 76 - PV.y, 'y', 5);
     this.buildPersFixed();
@@ -210,12 +218,20 @@ export class CarreiraMenu extends Phaser.Scene {
 
   /** Selo "JOGO SALVO" que aparece e some acima do botão de jogar. */
   private savedBadge() {
-    const t = tvText(this, 0, 0, 'JOGO SALVO', 14, C.ink, 800, 1.6).setOrigin(0.5);
-    const w = t.width + 30;
+    // Selo de status logo acima do botão de jogar (não cobre as abas nem o cabeçalho)
+    const t = tvText(this, 9, 0, 'JOGO SALVO', 14, C.ink, 800, 1.6).setOrigin(0.5);
+    const w = t.width + 48;
     const g = this.add.graphics();
+    plateShadow(g, -w / 2, -13, w, 26);
     plate(g, -w / 2, -13, w, 26, GR);
-    const c = this.add.container(GAME_W / 2, 66, [g, t]).setDepth(50).setAlpha(0);
-    this.tweens.add({ targets: c, alpha: 1, y: 74, duration: 260, delay: 260, ease: 'Expo.Out' });
+    g.lineStyle(3, TV.ink, 1);
+    g.beginPath();
+    g.moveTo(-w / 2 + 14, 0);
+    g.lineTo(-w / 2 + 19, 5);
+    g.lineTo(-w / 2 + 28, -5);
+    g.strokePath();
+    const c = this.add.container(GAME_W / 2, GAME_H - 86, [g, t]).setDepth(50).setAlpha(0);
+    this.tweens.add({ targets: c, alpha: 1, y: GAME_H - 96, duration: 260, delay: 260, ease: 'Expo.Out' });
     this.tweens.add({ targets: c, alpha: 0, duration: 400, delay: 1900, onComplete: () => c.destroy() });
   }
 
@@ -444,6 +460,7 @@ export class CarreiraMenu extends Phaser.Scene {
     this.top.setVisible(games);
     this.cards.setVisible(games);
     this.tabsPane.moveTo(games ? 208 : 74);
+    this.tabFade.setY(games ? 208 : 74);
     this.body.moveTo(games ? 258 : 124, GAME_H - 76 - (games ? 258 : 124));
     this.drawTabs();
     this.body.setVisible(!pers);
@@ -918,7 +935,7 @@ export class CarreiraMenu extends Phaser.Scene {
         const cols = COLS[grpOf(p.pos)];
         const sl = lp && lp.season.gp ? cols.map((c) => `${(c.fmt ?? nf)(c.v(lp.season))} ${c.k}`).join(' · ') : 'SEM JOGOS NA TEMPORADA';
         this.T(28, y + h - 30, sl, 9, hex(YE)).setOrigin(0, 0.5);
-        this.T(16 + W - 12, y + h - 30, 'FICHA ›', 10, '#FFFFFF', 'title').setOrigin(1, 0.5);
+        this.body.add(arrowAfter(this, this.T(16 + W - 12, y + h - 30, 'FICHA', 10, '#FFFFFF', 'title').setOrigin(1, 0.5) as Phaser.GameObjects.Text, C.white));
         this.body.hit(16 + W - 100, y + h - 48, 100, 40, () => this.openPlayer(p.id));
         p.attrs.forEach(([n, v], k) => {
           const cx = 28 + (k % 2) * ((W - 24) / 2 + 7);
@@ -951,7 +968,7 @@ export class CarreiraMenu extends Phaser.Scene {
       const qbs = league().players.filter((x) => x.pos === 'QB').sort((a, b) => b.season.pyds - a.season.pyds);
       this.T(110, y + 66, `${qbs.findIndex((x) => x.id === 'me') + 1}º EM JARDAS ENTRE ${qbs.length} QBS`, 9, hex(YE)).setOrigin(0, 0.5);
     } else this.T(110, y + 66, 'NOVATO · ESTREIA NA SEMANA 1', 9, hex(YE)).setOrigin(0, 0.5);
-    this.T(16 + W - 12, y + 80, 'FICHA ›', 9, '#FFFFFF', 'title').setOrigin(1, 0.5);
+    this.body.add(arrowAfter(this, this.T(16 + W - 12, y + 80, 'FICHA', 9, '#FFFFFF', 'title').setOrigin(1, 0.5) as Phaser.GameObjects.Text, C.white));
     this.body.hit(16, y, W, 92, () => this.openPlayer('me'));
     y += 104;
     y += this.chips(y, tabs, this.st, (i) => ((this.st = i), this.show('stats')), true) + 12;
@@ -1097,7 +1114,8 @@ export class CarreiraMenu extends Phaser.Scene {
         fillPlate(g, cx(i) - 22, y + 5, 44, 24, 7);
         this.body.add(g);
       }
-      this.T(cx(i), y + 17, on ? `${c.k}${this.plAsc ? '▲' : '▼'}` : c.k, 9, on ? hex(YE) : '#9AA3C0').setOrigin(0.5);
+      const hk = this.T(cx(i), y + 17, c.k, 9, on ? hex(YE) : '#9AA3C0').setOrigin(0.5) as Phaser.GameObjects.Text;
+      if (on) this.body.add(arrowAfter(this, hk, hex(YE), this.plAsc ? 'up' : 'down'));
       this.body.hit(cx(i) - 23, y, 46, 34, () => {
         if (on) this.plAsc = !this.plAsc;
         else (this.plSort = i), (this.plAsc = false);
@@ -1519,7 +1537,7 @@ export class CarreiraMenu extends Phaser.Scene {
             : m.status === 'eliminated'
               ? `ELIMINADO NO ${ROUND_INFO[m.round ?? 'wc'].name}`
               : `VOCÊ: ${m.seed}º SEED DA ${['QAC', 'QNC'][m.conf]} · ${ROUND_INFO[m.round ?? 'wc'].name}`;
-    this.body.add(gradCard(this, 16, y, W, 64, { from: 0xc8102e, fromAlpha: 0.75, mid: 0x161a33, midAlpha: 0.9, to: 0x5b2a9e, toAlpha: 0.85, radius: 16, glow: true, stroke: 0xffd23f, strokeAlpha: 0.7, strokeWidth: 2 }));
+    this.body.add(gradCard(this, 16, y, W, 64, { from: TV.yellow }));
     this.body.add(this.add.image(46, y + 32, 'logoQflBowlS').setDisplaySize(50, 50));
     this.T(80, y + 22, `PLAYOFFS ${seasonYear()}`, 11, '#FFFFFF', 'title').setOrigin(0, 0.5);
     this.T(80, y + 44, sit, 8, m.status === 'champion' ? hex(YE) : '#E8EAF2').setOrigin(0, 0.5);
@@ -1789,10 +1807,42 @@ export class CarreiraMenu extends Phaser.Scene {
     const awards = seasonAwards();
     let y = 4;
     if (!awards.length) {
-      this.card(16, y, W, 96);
-      this.T(GAME_W / 2, y + 36, `PRÊMIOS DA TEMPORADA ${seasonYear()}`, 10, '#FFFFFF', 'title').setOrigin(0.5);
-      this.T(GAME_W / 2, y + 62, 'SAEM QUANDO A TEMPORADA REGULAR TERMINAR', 9, '#9AA3C0').setOrigin(0.5);
-      return y + 104;
+      // Antes do fim da temporada regular: o que vai ser entregue e quanto falta
+      const games = schedule().filter((g) => g.opp && !g.round);
+      const done = games.filter((g) => g.result).length;
+      y += 12;
+      this.body.add(sectionHead(this, 16, y, `PRÊMIOS DA TEMPORADA ${seasonYear()}`, `${done}/${games.length} JOGOS`));
+      y += 18;
+      const g0 = this.add.graphics();
+      plate(g0, 16, y, W, 74, TV.ink2, 1);
+      plateLine(g0, 16, y, W, 74, TV.rule, 1, 1);
+      this.body.add(g0);
+      this.body.add(tvText(this, 32, y + 22, 'OS VENCEDORES SAEM NO FIM DA TEMPORADA REGULAR', 14, C.white, 800, 0.8).setOrigin(0, 0.5));
+      this.bar(32, y + 44, W - 32, 8, games.length ? done / games.length : 0, YE);
+      this.body.add(tvText(this, 32, y + 62, done ? `FALTAM ${games.length - done} JOGOS` : 'A TEMPORADA AINDA NÃO COMEÇOU', 12, C.muted, 600, 1).setOrigin(0, 0.5));
+      y += 92;
+      const LIST: [string, string][] = [
+        ['MVP DA LIGA', 'O MELHOR JOGADOR DA TEMPORADA'],
+        ['JOGADOR OFENSIVO DO ANO', 'MAIOR PRODUÇÃO NO ATAQUE'],
+        ['JOGADOR DEFENSIVO DO ANO', 'TACKLES, SACKS E INTERCEPTAÇÕES'],
+        ['NOVATO OFENSIVO DO ANO', 'O MELHOR CALOURO DO ATAQUE'],
+        ['NOVATO DEFENSIVO DO ANO', 'O MELHOR CALOURO DA DEFESA'],
+        ['RETORNO DO ANO', 'O MAIOR SALTO DE PRODUÇÃO'],
+        ['TÉCNICO DO ANO', 'QUEM MAIS SUPEROU A EXPECTATIVA'],
+        ['MVP DA FINAL', 'ESCOLHIDO DEPOIS DO QFL BOWL'],
+      ];
+      LIST.forEach(([n, d]) => {
+        const g = this.add.graphics();
+        plate(g, 16, y, W, 58, TV.ink2, 0.96);
+        plate(g, 16, y, 52, 58, TV.ink3, 1, true, true);
+        trophy(g, 42, y + 28, 11, mix(TV.ink3, TV.yellow, 0.75));
+        this.body.add(g);
+        this.body.add(tvText(this, 82, y + 20, n, 16, C.white, 800, 0.6).setOrigin(0, 0.5));
+        this.body.add(tvText(this, 82, y + 40, d, 13, C.muted, 600, 0.6).setOrigin(0, 0.5));
+        this.body.add(tvText(this, 16 + W - 16, y + 29, 'A DEFINIR', 12, C.dim, 700, 1.2).setOrigin(1, 0.5));
+        y += 62;
+      });
+      return y;
     }
     y += this.section(y, `PRÊMIOS DA TEMPORADA ${seasonYear()}`, 'TEMPORADA REGULAR') + 6;
     for (const a of awards) y += this.awardCard(y, a.name, a.winner, a.runners) + 8;

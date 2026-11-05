@@ -3,8 +3,9 @@ import { GAME_H, GAME_W } from '../config';
 import { CombineStage } from './stage';
 import { getSave, updateSave, type TestId } from '../player/PlayerSave';
 import { setupHiRes } from '../systems/hires';
-import { GlassButton, label, title, UI } from '../ui/widgets';
-import { grade, gradeColor, QB_AVG, rng, TESTS } from './scoring';
+import { C, plate, plateShadow, scoreBug, TV, TvButton, tvText, wipeTo } from '../ui/tv';
+import { gradeTv } from '../scenes/CombineHub';
+import { grade, QB_AVG, rng, TESTS } from './scoring';
 
 /*
  * Base dos 4 testes do Combine: cartão de instrução (pula com toque), contagem 3-2-1, teste,
@@ -62,7 +63,8 @@ export abstract class CombineBase extends Phaser.Scene {
     setupHiRes(this);
     this.world();
     if (import.meta.env.DEV) (window as unknown as { __qb: unknown }).__qb = this; // gancho de teste automático
-    this.add.existing(title(this, GAME_W / 2, 30, this.heading, 13, UI.yellow).setOrigin(0.5).setDepth(50));
+    // Placar do topo: nome do teste, tentativa e a saída para a lista do Combine
+    scoreBug(this, { title: this.heading, step: `TENTATIVA ${Math.min(this.tries + 1, this.attempts)}/${this.attempts}`, onBack: () => wipeTo(this, 'CombineHub'), depth: 50 });
     if (this.tries > 0) this.countdown();
     else this.instructionCard();
   }
@@ -75,7 +77,8 @@ export abstract class CombineBase extends Phaser.Scene {
   }
 
   protected popText(x: number, y: number, text: string, color: string) {
-    const t = title(this, x, y, text, 16, color).setOrigin(0.5).setDepth(40);
+    const t = tvText(this, x, y, text, 26, color, 800, 0.6).setOrigin(0.5).setDepth(40);
+    t.setStroke('#0B0E14', 6);
     this.tweens.add({ targets: t, y: y - 36, alpha: 0, duration: 800, onComplete: () => t.destroy() });
   }
 
@@ -87,18 +90,34 @@ export abstract class CombineBase extends Phaser.Scene {
   private instructionCard() {
     const W = GAME_W;
     const c = this.add.container(0, 0).setDepth(60);
-    c.add(this.add.rectangle(0, 0, W, GAME_H, 0x000000, 0.7).setOrigin(0));
+    c.add(this.add.rectangle(0, 0, W, GAME_H, TV.ink, 0.78).setOrigin(0));
+    const idx = TESTS.findIndex((t) => t.id === this.testId);
+    // As instruções vêm com linhas vazias de espaçamento; no cartão viram passos numerados
+    const steps = this.instructions.filter((l) => l.trim());
+    const h = 86 + 26 + steps.length * 52 + 64;
+    const top = Math.round((GAME_H - h) / 2) - 10;
     const card = this.add.graphics();
-    card.fillStyle(0x2a3156, 1);
-    card.fillRoundedRect(24, 220, W - 48, 330, 18);
-    card.lineStyle(2, 0xffd23f, 0.8);
-    card.strokeRoundedRect(24, 220, W - 48, 330, 18);
+    plateShadow(card, 20, top, W - 40, h);
+    plate(card, 20, top, W - 40, h, TV.ink2, 1);
+    plate(card, 20, top, W - 40, 86, TV.plate, 1);
+    plate(card, 20, top, 76, 86, TV.yellow, 1, true, true);
     c.add(card);
-    c.add(title(this, W / 2, 252, this.heading, 14, UI.yellow).setOrigin(0.5));
-    this.instructions.forEach((l, i) => c.add(label(this, W / 2, 300 + i * 34, l, 9, '#FFFFFF').setOrigin(0.5).setAlign('center')));
-    const tip = label(this, W / 2, 520, 'TOQUE PARA COMEÇAR', 9, UI.muted).setOrigin(0.5);
+    c.add(tvText(this, 58, top + 36, String(idx + 1), 44, C.ink, 800, 0).setOrigin(0.5));
+    c.add(tvText(this, 58, top + 70, 'TESTE', 11, C.ink, 800, 1.4).setOrigin(0.5));
+    const hd = tvText(this, 112, top + 43, this.heading, 28, C.ink, 800, 0.6).setOrigin(0, 0.5);
+    if (hd.width > W - 40 - 112) hd.setScale((W - 40 - 112) / hd.width, 1);
+    c.add(hd);
+    steps.forEach((l, i) => {
+      const y = top + 122 + i * 52;
+      const nb = this.add.graphics();
+      plate(nb, 40, y - 15, 30, 30, TV.ink3, 1);
+      c.add(nb);
+      c.add(tvText(this, 55, y, String(i + 1), 16, C.yellow, 800, 0).setOrigin(0.5));
+      c.add(tvText(this, 84, y, l, 16, C.white, 700, 0.4).setOrigin(0, 0.5).setWordWrapWidth(W - 40 - 84).setLineSpacing(-2));
+    });
+    const tip = tvText(this, W / 2, top + h - 30, 'TOQUE PARA COMEÇAR', 16, C.yellow, 800, 2).setOrigin(0.5);
     c.add(tip);
-    this.tweens.add({ targets: tip, alpha: 0.3, yoyo: true, repeat: -1, duration: 500 });
+    this.tweens.add({ targets: tip, alpha: 0.35, yoyo: true, repeat: -1, duration: 600 });
     let gone = false;
     const zone = this.add.zone(0, 0, W, GAME_H).setOrigin(0).setInteractive().setDepth(61);
     const go = () => {
@@ -109,12 +128,12 @@ export abstract class CombineBase extends Phaser.Scene {
       this.countdown();
     };
     zone.once('pointerup', go);
-    this.time.delayedCall(3500, go);
   }
 
   private countdown() {
     let n = 3;
-    const t = title(this, GAME_W / 2, 300, '3', 60, '#FFFFFF').setOrigin(0.5).setDepth(60);
+    const t = tvText(this, GAME_W / 2, 300, '3', 150, C.yellow, 800, 0).setOrigin(0.5).setDepth(60);
+    t.setStroke('#0B0E14', 10);
     const tick = () => {
       if (n === 0) {
         t.destroy();
@@ -145,33 +164,46 @@ export abstract class CombineBase extends Phaser.Scene {
   private resultCard(raw: number, extra: number | undefined, score: number) {
     const W = GAME_W;
     const g = grade(score);
+    const gc = gradeTv(g);
     const c = this.add.container(0, 0).setDepth(70);
-    c.add(this.add.rectangle(0, 0, W, GAME_H, 0x000000, 0.75).setOrigin(0));
+    c.add(this.add.rectangle(0, 0, W, GAME_H, TV.ink, 0.82).setOrigin(0));
+    const top = 150;
     const card = this.add.graphics();
-    card.fillStyle(0x2a3156, 1);
-    card.fillRoundedRect(24, 170, W - 48, 440, 18);
-    card.lineStyle(2, 0xffd23f, 0.8);
-    card.strokeRoundedRect(24, 170, W - 48, 440, 18);
+    plateShadow(card, 20, top, W - 40, 300);
+    plate(card, 20, top, W - 40, 300, TV.ink2, 1);
+    plate(card, 20, top, W - 40, 64, TV.plate, 1);
     c.add(card);
-    c.add(label(this, W / 2, 200, 'RESULTADO', 9, UI.yellow).setOrigin(0.5));
-    c.add(title(this, W / 2, 252, this.show(raw, extra), 20, '#FFFFFF').setOrigin(0.5));
-    c.add(title(this, W / 2, 330, String(score), 40, gradeColor(g)).setOrigin(0.5));
-    c.add(title(this, W / 2, 384, `NOTA ${g}`, 16, gradeColor(g)).setOrigin(0.5));
+    c.add(tvText(this, 40, top + 22, 'RESULTADO', 13, C.inkSoft, 800, 1.6).setOrigin(0, 0.5));
+    const res = tvText(this, 40, top + 44, this.show(raw, extra).toUpperCase(), 24, C.ink, 800, 0.6).setOrigin(0, 0.5);
+    if (res.width > W - 80) res.setScale((W - 80) / res.width, 1);
+    c.add(res);
+    // nota: bloco chapado na cor da nota
+    const nb = this.add.graphics();
+    plate(nb, 40, top + 86, 132, 118, gc, 1);
+    c.add(nb);
+    const fg = gc === TV.yellow ? C.ink : C.white;
+    c.add(tvText(this, 106, top + 134, String(score), 64, fg, 800, 0).setOrigin(0.5));
+    c.add(tvText(this, 106, top + 184, `NOTA ${g}`, 16, fg, 800, 1.6).setOrigin(0.5));
     const test = TESTS.find((t) => t.id === this.testId)!;
     const avg = QB_AVG[this.testId];
-    c.add(label(this, W / 2, 428, `MÉDIA DOS QBs: ${test.id === 'passing' ? avg + ' pts' : avg + (test.unit === 's' ? ' s' : ' mph')}`, 9, UI.muted).setOrigin(0.5));
-    if (this.best && this.attempts > 1) c.add(label(this, W / 2, 452, `MELHOR NOTA: ${this.best.score}  ·  TENTATIVA ${this.tries}/${this.attempts}`, 8, UI.muted).setOrigin(0.5));
-    let y = 520;
+    c.add(tvText(this, 192, top + 104, 'MÉDIA DOS QBs', 12, C.muted, 700, 1.2).setOrigin(0, 0.5));
+    c.add(tvText(this, 192, top + 128, test.id === 'passing' ? `${avg} PTS` : `${avg}${test.unit === 's' ? ' S' : ' MPH'}`, 22, C.white, 800, 0.4).setOrigin(0, 0.5));
+    if (this.best && this.attempts > 1) {
+      c.add(tvText(this, 192, top + 160, 'MELHOR NOTA', 12, C.muted, 700, 1.2).setOrigin(0, 0.5));
+      c.add(tvText(this, 192, top + 184, `${this.best.score} · TENT. ${this.tries}/${this.attempts}`, 18, C.white, 800, 0.4).setOrigin(0, 0.5));
+    }
+    c.add(tvText(this, W / 2, top + 260, 'A MELHOR TENTATIVA É A QUE VALE', 13, C.dim, 700, 1.2).setOrigin(0.5));
+    let y = top + 340;
     if (this.tries < this.attempts) {
-      const again = new GlassButton(this, W / 2, y, { w: W - 80, h: 46, radius: 14 });
-      again.add(title(this, 0, 0, 'TENTAR DE NOVO', 11, '#FFFFFF').setOrigin(0.5));
+      const again = new TvButton(this, W / 2, y, { w: W - 40, h: 52, fill: TV.ink3, fillAlpha: 1 });
+      again.add(tvText(this, 0, 0, 'TENTAR DE NOVO', 19, C.white, 800, 1.4).setOrigin(0.5));
       again.onTap = () => this.time.delayedCall(30, () => this.scene.restart({ tries: this.tries, best: this.best }));
       c.add(again);
-      y += 54;
+      y += 62;
     }
-    const ok = new GlassButton(this, W / 2, y, { w: W - 80, h: 46, radius: 14, fill: 0xffd23f, fillAlpha: 1, borderAlpha: 0.35, primary: true });
-    ok.add(title(this, 0, 0, 'CONTINUAR', 12, '#1a1a1a').setOrigin(0.5));
-    ok.onTap = () => this.time.delayedCall(30, () => this.scene.start('CombineHub'));
+    const ok = new TvButton(this, W / 2, y, { w: W - 40, h: 56, fill: TV.yellow, fillAlpha: 1, primary: true });
+    ok.add(tvText(this, 0, 0, 'CONTINUAR', 22, C.ink, 800, 1.6).setOrigin(0.5));
+    ok.onTap = () => wipeTo(this, 'CombineHub', TV.yellow);
     c.add(ok);
   }
 }

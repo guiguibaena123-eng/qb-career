@@ -27,10 +27,10 @@ Carreira completa de um QB, feita à mão: tudo (campo, arquibancadas, clima, pl
 ## Capabilities and Constraints
 
 - Stack: Phaser 3 + TypeScript + Vite. As interfaces são objetos do Phaser (Graphics, Text, Container) num canvas, não HTML/CSS.
-- Fontes atuais empacotadas: Press Start 2P e Silkscreen (@fontsource). Podem ser trocadas.
+- Fontes empacotadas: Saira Condensed (menus) e Press Start 2P / Silkscreen (jogo em campo), via @fontsource.
 - Assets reais: logos dos 32 times (3 tamanhos), fotos de estádios (pixelizadas por código), logo da liga e do QFL Bowl, sprites em camadas do jogador, miniaturas de arquibancada.
 - Nomes de times e cidades remetem à NFL; a liga se chama QFL e os nomes dos times são fictícios.
-- Escopo da repaginação (2026-11-04): menu inicial, Partida Rápida (confronto, detalhes, grade de times), Treino Livre, escolha de save, criação do QB, menu da carreira (todas as abas) e pré-jogo. Fora do escopo: o jogo em campo, Combine, Draft.
+- Escopo da repaginação (2026-11-04): menu inicial, Partida Rápida (confronto, detalhes, grade de times), Treino Livre, escolha de save, criação do QB, menu da carreira (todas as abas) e pré-jogo. Ampliado em 2026-11-05 (polimento): tela de carregamento, Combine (lista, instruções e resultados) e as quatro telas do Draft. Fora do escopo: o jogo em campo (e o placar dentro dos testes do Combine).
 
 ## Brand Commitments
 
