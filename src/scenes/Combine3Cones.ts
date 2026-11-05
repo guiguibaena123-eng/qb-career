@@ -4,8 +4,7 @@ import { scoreCones } from '../combine/scoring';
 import { Actor, CombineStage, MID, playerLook } from '../combine/stage';
 import { GAME_W } from '../config';
 import { getSave, type TestId } from '../player/PlayerSave';
-import { title } from '../ui/widgets';
-import { bottomShade, infoPanel } from '../combine/ui';
+import { bottomShade, fieldText, infoPanel } from '../combine/ui';
 
 /*
  * Teste 2 — 3 cones, no campo da partida (visto de costas). O corredor vai sozinho de ponto em ponto
@@ -54,7 +53,7 @@ export class Combine3Cones extends CombineBase {
     this.stage = new CombineStage(this, Y0);
     [2, 3, 4].forEach((i) => this.stage.cone(P[i][0], P[i][1]));
     this.runner = this.stage.actor(P[0][0], P[0][1], playerLook());
-    this.clock = title(this, GAME_W / 2, 80, '0.00', 26, '#FFFFFF').setOrigin(0.5).setDepth(50);
+    this.clock = fieldText(this, GAME_W / 2, 92, 48).setText('0.00');
     bottomShade(this, 190);
     this.panel = infoPanel(this, 'CORTES', 'DESLIZE NA DIREÇÃO DA SETA');
     this.panel.set(0, `0/${CUT.length}`);

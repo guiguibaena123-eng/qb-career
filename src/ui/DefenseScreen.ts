@@ -1,16 +1,17 @@
 import Phaser from 'phaser';
 import { GAME_H, GAME_W, TEAMS } from '../config';
 import type { DriveResult } from '../systems/oppdrive';
-import { GlassButton, label, title, UI } from './widgets';
+import { C, inkOn, plate, plateLine, plateShadow, TV, TvButton, tvText } from './tv';
 
 /*
- * Tela "Defesa" do design: o jogo fica borrado ao fundo e a campanha deles
- * aparece jogada a jogada (feed), com a barra CAMPANHA (campo em miniatura),
- * e no fim o card "SUA VEZ!" com 2X e ENTRAR EM CAMPO.
+ * Campanha do adversário (simulada), no pacote da transmissão: o jogo fica borrado ao fundo e a campanha
+ * deles aparece jogada a jogada (feed), com a placa CAMPANHA (campo em miniatura). A velocidade (1X/2X)
+ * fica no topo durante toda a simulação; no fim, a tarja "SUA VEZ!" com ENTRAR EM CAMPO.
  * O desfoque é feito sem filtros (reduz a imagem e amplia de novo), funciona em qualquer celular.
  */
 
-const ROW_H = 40;
+const ROW_H = 46;
+const ROW_GAP = 6;
 const MAX_ROWS = 6;
 
 export interface DefenseOpts {
@@ -25,6 +26,15 @@ export interface DefenseOpts {
   onEnter: () => void;
   /** Chamado quando a campanha termina (placar e relógio atualizam aqui). */
   onFinish?: () => void;
+}
+
+/** Bola de futebol americano desenhada. */
+function football(g: Phaser.GameObjects.Graphics, x: number, y: number, k = 1) {
+  g.fillStyle(0x8a4a22, 1);
+  g.fillEllipse(x, y, 20 * k, 12 * k);
+  g.lineStyle(1.5, 0xffffff, 1);
+  g.lineBetween(x - 5 * k, y, x + 5 * k, y);
+  for (const d of [-3, 0, 3]) g.lineBetween(x + d * k, y - 2.5 * k, x + d * k, y + 2.5 * k);
 }
 
 export class DefenseScreen {
@@ -44,6 +54,8 @@ export class DefenseScreen {
   private stripW = 0;
   private stripY = 0;
   private dots: Phaser.GameObjects.Rectangle[] = [];
+  private status!: Phaser.GameObjects.Text;
+  private speedBtn: TvButton | null = null;
   private done = false;
 
   constructor(private scene: Phaser.Scene) {}
@@ -87,77 +99,83 @@ export class DefenseScreen {
 
     const root = (this.root = sc.add.container(0, 0).setDepth(99));
     const bg = sc.add.image(0, 0, this.bgKey).setOrigin(0);
-    const dim = sc.add.rectangle(0, 0, W, H, 0x0a0c1a, 0.45).setOrigin(0);
+    const dim = sc.add.rectangle(0, 0, W, H, TV.ink, 0.58).setOrigin(0);
     root.add([bg, dim]);
 
-    const L = 14;
-    const R = W - 14;
-    const panel = (y: number, h: number, border = 0xffffff, ba = 0.14) => {
-      const g = sc.add.graphics();
-      g.fillStyle(0x000000, 0.3);
-      g.fillRoundedRect(L, y + 6, R - L, h, 12);
-      g.fillStyle(0x22284a, 0.82);
-      g.fillRoundedRect(L, y, R - L, h, 12);
-      g.lineStyle(1, border, ba);
-      g.strokeRoundedRect(L, y, R - L, h, 12);
-      return g;
-    };
-    // Cabeçalho "TOUROS COM A BOLA · SIMULANDO..."
-    let y = 76;
-    const sq = sc.add.graphics();
-    sq.fillStyle(0xffffff, 1);
-    sq.fillRoundedRect(L + 10, y + 14, 18, 18, 5);
-    sq.fillStyle(o.oppColor, 1);
-    sq.fillRoundedRect(L + 12, y + 16, 14, 14, 4);
-    const ht = title(sc, L + 36, y + 23, `${o.awayName} COM A BOLA`, 9).setOrigin(0, 0.5);
-    const sim = label(sc, R - 34, y + 23, 'SIMULANDO', 9, UI.muted).setOrigin(1, 0.5);
-    root.add([panel(y, 46), sq, ht, sim]);
+    const L = 16;
+    const R = W - 16;
+    // ---- tarja de cima: quem está com a bola, status e a velocidade
+    let y = 82;
+    const hg = sc.add.graphics();
+    plateShadow(hg, L, y, R - L, 54);
+    plate(hg, L, y, R - L, 54, TV.ink, 0.96);
+    plate(hg, L, y, 58, 54, o.oppColor, 1, true, true);
+    football(hg, L + 30, y + 27, 1.1);
+    root.add(hg);
+    const ht = tvText(sc, L + 72, y + 18, `${o.awayName} COM A BOLA`, 18, C.white, 800, 0.6).setOrigin(0, 0.5);
+    if (ht.width > R - L - 72 - 80) ht.setScale((R - L - 72 - 80) / ht.width, 1);
+    this.status = tvText(sc, L + 72, y + 38, 'CAMPANHA DO ADVERSÁRIO · SIMULANDO', 12, C.muted, 700, 1.2).setOrigin(0, 0.5);
+    root.add([ht, this.status]);
     this.dots = [0, 1, 2].map((i) => {
-      const d = sc.add.rectangle(R - 28 + i * 7, y + 21, 4, 4, 0xffd23f).setOrigin(0);
+      const d = sc.add.rectangle(L + 72 + this.status.width + 8 + i * 7, y + 36, 4, 4, TV.yellow).setOrigin(0);
       sc.tweens.add({ targets: d, alpha: 0.2, yoyo: true, repeat: -1, duration: 500, delay: i * 200 });
       return d;
     });
     root.add(this.dots);
+    // velocidade da simulação (vale para as próximas também)
+    const sb = (this.speedBtn = new TvButton(sc, R - 36, y + 27, { w: 56, h: 38, fill: DefenseScreen.fast ? TV.yellow : TV.ink3, fillAlpha: 1 }));
+    const sbt = tvText(sc, 0, 0, DefenseScreen.fast ? '2X' : '1X', 18, DefenseScreen.fast ? C.ink : C.white, 800, 1).setOrigin(0.5);
+    sb.add(sbt);
+    sb.onTap = () => {
+      DefenseScreen.fast = !DefenseScreen.fast;
+      sb.setFill(DefenseScreen.fast ? TV.yellow : TV.ink3, 1);
+      sbt.setText(DefenseScreen.fast ? '2X' : '1X').setColor(DefenseScreen.fast ? C.ink : C.white);
+    };
+    root.add(sb);
 
-    // CAMPANHA: campo em miniatura
-    y += 56;
+    // ---- CAMPANHA: campo em miniatura
+    y += 64;
     const plays = o.drive.rows.length;
     const secs = o.drive.seconds;
-    root.add(panel(y, 58));
-    root.add(label(sc, L + 12, y + 14, 'CAMPANHA', 9, UI.muted).setOrigin(0, 0.5));
-    root.add(label(sc, R - 12, y + 14, `${plays} JOGADAS · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`, 9, UI.muted).setOrigin(1, 0.5));
-    const sx = L + 12;
-    const sw = R - L - 24;
-    const sy = y + 28;
+    const cg = sc.add.graphics();
+    plate(cg, L, y, R - L, 64, TV.ink2, 0.96);
+    plateLine(cg, L, y, R - L, 64, TV.rule, 1, 1);
+    root.add(cg);
+    root.add(tvText(sc, L + 16, y + 15, 'CAMPANHA', 13, C.white, 800, 1.6).setOrigin(0, 0.5));
+    root.add(tvText(sc, R - 16, y + 15, `${plays} JOGADAS · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`, 13, C.muted, 700, 1).setOrigin(1, 0.5));
+    const sx = L + 16;
+    const sw = R - L - 32;
+    const sy = y + 30;
     const ez = sw * 0.09;
     const strip = sc.add.graphics();
-    strip.fillStyle(UI.dark, 1);
-    strip.fillRoundedRect(sx - 2, sy - 2, sw + 4, 24, 4);
+    strip.fillStyle(TV.ink, 1);
+    strip.fillRect(sx - 2, sy - 2, sw + 4, 26);
     strip.fillStyle(o.teamColor, 1);
-    strip.fillRect(sx, sy, ez, 20);
+    strip.fillRect(sx, sy, ez, 22);
     strip.fillStyle(0x3f8e39, 1);
-    strip.fillRect(sx + ez, sy, sw - 2 * ez, 20);
+    strip.fillRect(sx + ez, sy, sw - 2 * ez, 22);
+    strip.fillStyle(0x000000, 0.12);
+    for (let k = 0; k < 10; k += 2) strip.fillRect(sx + ez + ((sw - 2 * ez) * k) / 10, sy, (sw - 2 * ez) / 10, 22);
     strip.fillStyle(o.oppColor, 1);
-    strip.fillRect(sx + sw - ez, sy, ez, 20);
-    strip.fillStyle(0xffffff, 0.35);
-    for (let k = 1; k < 10; k++) strip.fillRect(sx + ez + ((sw - 2 * ez) * k) / 10, sy, 1, 20);
+    strip.fillRect(sx + sw - ez, sy, ez, 22);
+    strip.fillStyle(0xffffff, 0.4);
+    for (let k = 1; k < 10; k++) strip.fillRect(sx + ez + ((sw - 2 * ez) * k) / 10, sy, 1, 22);
     root.add([
       strip,
-      label(sc, sx + ez / 2, sy + 10, o.homeAbbr, 8, '#0D0D12').setOrigin(0.5),
-      label(sc, sx + sw - ez / 2, sy + 10, o.awayAbbr, 8, '#FFFFFF').setOrigin(0.5),
+      tvText(sc, sx + ez / 2, sy + 11, o.homeAbbr, 11, inkOn(o.teamColor), 800, 0.6).setOrigin(0.5),
+      tvText(sc, sx + sw - ez / 2, sy + 11, o.awayAbbr, 11, inkOn(o.oppColor), 800, 0.6).setOrigin(0.5),
     ]);
     this.stripX = sx + ez;
     this.stripW = sw - 2 * ez;
     this.stripY = sy;
     this.trail = sc.add.graphics();
-    this.ball = sc.add.ellipse(this.yToX(o.drive.start), sy + 10, 10, 8, 0x8a4b1f).setStrokeStyle(1, UI.dark);
+    this.ball = sc.add.ellipse(this.yToX(o.drive.start), sy + 11, 12, 8, 0x8a4b1f).setStrokeStyle(1.5, TV.ink);
     sc.tweens.add({ targets: this.ball, scale: 1.25, yoyo: true, repeat: -1, duration: 500 });
     root.add([this.trail, this.ball]);
 
-    y += 68;
+    y += 76;
     this.rowsC = sc.add.container(0, y);
     root.add(this.rowsC);
-
   }
 
   /** Toque na tela (a cena repassa): pula a espera da próxima jogada. */
@@ -174,36 +192,38 @@ export class DefenseScreen {
     const o = this.o!;
     const r = o.drive.rows[i];
     const W = GAME_W;
-    const L = 14;
-    const R = W - 14;
+    const L = 16;
+    const R = W - 16;
     // Rola para cima quando passa do limite
     const idx = Math.min(i, MAX_ROWS - 1);
     if (i >= MAX_ROWS) {
       const first = this.rowsC.list[0] as Phaser.GameObjects.Container;
       first.destroy();
-      this.rowsC.list.forEach((c) => sc.tweens.add({ targets: c, y: (c as Phaser.GameObjects.Container).y - (ROW_H + 8), duration: 200 }));
+      this.rowsC.list.forEach((c) => sc.tweens.add({ targets: c, y: (c as Phaser.GameObjects.Container).y - (ROW_H + ROW_GAP), duration: 200 }));
     }
-    const c = sc.add.container(0, idx * (ROW_H + 8)).setAlpha(0);
+    const c = sc.add.container(0, idx * (ROW_H + ROW_GAP)).setAlpha(0);
     const g = sc.add.graphics();
-    g.fillStyle(0x22284a, 0.82);
-    g.fillRoundedRect(L, 0, R - L, ROW_H, 12);
-    const bc = r.tone === 'good' ? 0x3ccb5a : r.tone === 'bad' ? 0xe5484d : r.tone === 'end' ? 0xffd23f : 0xffffff;
-    g.lineStyle(1, bc, r.tone === 'normal' ? 0.14 : 0.9);
-    g.strokeRoundedRect(L, 0, R - L, ROW_H, 12);
-    const col = r.tone === 'good' ? '#3CCB5A' : r.tone === 'bad' ? '#FF7B80' : r.tone === 'end' ? '#FFD23F' : '#FFFFFF';
+    // tom da jogada: verde = boa para você, vermelho = ruim, amarelo = fim da campanha
+    const tc = r.tone === 'good' ? TV.green : r.tone === 'bad' ? TV.red : r.tone === 'end' ? TV.yellow : TV.ink3;
+    plate(g, L, 0, R - L, ROW_H, TV.ink2, 0.96);
+    plate(g, L, 0, 78, ROW_H, tc, 1, true, true);
+    if (r.tone !== 'normal') plateLine(g, L, 0, R - L, ROW_H, tc, 1, 1.5);
+    const fg = r.tone === 'normal' ? C.white : tc === TV.yellow ? C.ink : C.white;
+    const tx = tvText(sc, L + 92, ROW_H / 2, r.text, 15, C.white, 700, 0.4).setOrigin(0, 0.5);
+    if (tx.width > R - L - 104) tx.setScale((R - L - 104) / tx.width, 1);
     c.add([
       g,
-      title(sc, L + 10, 13, r.down, 8, UI.yellow).setOrigin(0, 0.5),
-      label(sc, L + 10, 28, r.spot, 9, UI.muted).setOrigin(0, 0.5),
-      label(sc, L + 92, ROW_H / 2, r.text, 10, col).setOrigin(0, 0.5),
+      tvText(sc, L + 42, 15, r.down, 13, fg, 800, 0.8).setOrigin(0.5),
+      tvText(sc, L + 40, 32, r.spot, 11, r.tone === 'normal' ? C.muted : fg, 700, 0.6).setOrigin(0.5).setAlpha(r.tone === 'normal' ? 1 : 0.85),
+      tx,
     ]);
     this.rowsC.add(c);
-    sc.tweens.add({ targets: c, alpha: 1, x: { from: 16, to: 0 }, duration: 300, ease: 'Quad.Out' });
+    sc.tweens.add({ targets: c, alpha: 1, x: { from: -24, to: 0 }, duration: 320, ease: 'Expo.Out' });
     // Bola anda na miniatura
     const from = this.ball.x;
     const to = this.yToX(Math.max(0, r.y));
     this.trail.lineStyle(2, 0xffffff, 0.9);
-    for (let x = Math.min(from, to); x < Math.max(from, to); x += 6) this.trail.lineBetween(x, this.stripY + 10, Math.min(x + 3, Math.max(from, to)), this.stripY + 10);
+    for (let x = Math.min(from, to); x < Math.max(from, to); x += 6) this.trail.lineBetween(x, this.stripY + 11, Math.min(x + 3, Math.max(from, to)), this.stripY + 11);
     sc.tweens.add({ targets: this.ball, x: to, duration: 350 });
     if (r.tone === 'good') navigator.vibrate?.(15);
   }
@@ -214,42 +234,43 @@ export class DefenseScreen {
     this.done = true;
     o.onFinish?.();
     this.dots.forEach((d) => d.setVisible(false));
+    this.status.setText('CAMPANHA ENCERRADA').setColor(C.yellow);
+    this.speedBtn?.setVisible(false);
     const W = GAME_W;
     const H = GAME_H;
-    const L = 14;
-    const R = W - 14;
-    const bh = 140;
-    const y = H - bh - 22;
+    const L = 16;
+    const R = W - 16;
+    const bh = 156;
+    const y = H - bh - 20;
     const c = sc.add.container(0, 0).setAlpha(0);
     const g = sc.add.graphics();
-    g.fillStyle(0x000000, 0.3);
-    g.fillRoundedRect(L, y + 6, R - L, bh, 12);
-    g.fillStyle(0x22284a, 0.92);
-    g.fillRoundedRect(L, y, R - L, bh, 12);
-    g.lineStyle(1, 0xffd23f, 0.7);
-    g.strokeRoundedRect(L, y, R - L, bh, 12);
-    const t = sc.add
-      .text(W / 2, y + 26, 'SUA VEZ!', { fontFamily: '"Press Start 2P", monospace', fontSize: '20px', color: '#FFD23F', shadow: { offsetX: 3, offsetY: 3, color: '#0D0D12', fill: true } })
-      .setOrigin(0.5);
-    const s = label(sc, W / 2, y + 54, o.head, 11, '#E8EAF2').setOrigin(0.5);
-    const b2 = new GlassButton(sc, L + 14 + 40, y + bh - 14 - 26, { w: 80, h: 52, radius: 16 });
-    const b2t = title(sc, 0, 0, DefenseScreen.fast ? '1X' : '2X', 10).setOrigin(0.5);
-    b2.add(b2t);
-    b2.onTap = () => {
-      DefenseScreen.fast = !DefenseScreen.fast;
-      b2t.setText(DefenseScreen.fast ? '1X' : '2X');
-    };
-    const wGo = R - L - 28 - 90;
-    const go = new GlassButton(sc, R - 14 - wGo / 2, y + bh - 14 - 26, { w: wGo, h: 52, radius: 16, fill: o.teamColor, fillAlpha: 1, borderAlpha: 0.35, primary: true });
-    go.add(title(sc, 0, 0, 'ENTRAR EM CAMPO', 10, TEAMS.home.fg).setOrigin(0.5));
+    plateShadow(g, L, y, R - L, bh);
+    plate(g, L, y, R - L, bh, TV.ink, 0.97);
+    g.fillStyle(TV.yellow, 1);
+    g.fillRect(L + 12, y, R - L - 12, 4);
+    const chip = sc.add.graphics();
+    plate(chip, W / 2 - 66, y - 12, 132, 24, TV.yellow);
+    const ct = tvText(sc, W / 2, y, 'SUA VEZ!', 15, C.ink, 800, 2.4).setOrigin(0.5);
+    const s = tvText(sc, W / 2, y + 40, o.head, 17, C.white, 800, 0.6).setOrigin(0.5);
+    if (s.width > R - L - 32) s.setScale((R - L - 32) / s.width, 1);
+    const go = new TvButton(sc, W / 2, y + bh - 50, { w: R - L - 32, h: 62, fill: o.teamColor, fillAlpha: 1, primary: true });
+    const gt = tvText(sc, -10, 0, 'ENTRAR EM CAMPO', 24, TEAMS.home.fg, 800, 1.4).setOrigin(0.5);
+    const ar = sc.add.graphics();
+    ar.lineStyle(3, parseInt(TEAMS.home.fg.slice(1), 16), 1);
+    ar.beginPath();
+    ar.moveTo((R - L - 32) / 2 - 32, -9);
+    ar.lineTo((R - L - 32) / 2 - 23, 0);
+    ar.lineTo((R - L - 32) / 2 - 32, 9);
+    ar.strokePath();
+    go.add([gt, ar]);
     go.onTap = () => {
       const cb = this.o?.onEnter;
       this.close();
       cb?.();
     };
-    c.add([g, t, s, b2, go]);
+    c.add([g, chip, ct, s, go]);
     this.root!.add(c);
-    sc.tweens.add({ targets: c, alpha: 1, y: { from: 14, to: 0 }, duration: 400, ease: 'Quad.Out' });
+    sc.tweens.add({ targets: c, alpha: 1, y: { from: 18, to: 0 }, duration: 420, ease: 'Expo.Out' });
   }
 
   update(dt: number) {
@@ -264,6 +285,7 @@ export class DefenseScreen {
 
   close() {
     this.o = null;
+    this.speedBtn = null;
     this.root?.destroy();
     this.root = null;
   }

@@ -5,8 +5,7 @@ import { Actor, CombineStage, MID, playerLook } from '../combine/stage';
 import { GAME_H, GAME_W } from '../config';
 import { getSave, type TestId } from '../player/PlayerSave';
 import { makeThrow } from '../systems/passing';
-import { title } from '../ui/widgets';
-import { bottomShade, MeterBar, pill, primaryButton } from '../combine/ui';
+import { bottomShade, fieldText, MeterBar, pill, primaryButton } from '../combine/ui';
 
 /*
  * Teste 4 — força de braço, no campo da partida. 3 lançamentos de potência: segure o botão para
@@ -56,7 +55,7 @@ export class CombineForca extends CombineBase {
     this.stage.makeBall();
     // Marcas de distância a partir do QB: 55, 60, 65, 70 e 75 jardas
     for (const yd of [55, 60, 65, 70, 75]) this.stage.mark(`${yd}`, 4, QB_Y + yd, 16, '#FFD23F');
-    this.radar = title(this, GAME_W / 2, 170, '', 22, '#FFD23F').setOrigin(0.5).setDepth(50);
+    this.radar = fieldText(this, GAME_W / 2, 170, 38, '#FFC400');
     this.info = pill(this, 116);
   }
 

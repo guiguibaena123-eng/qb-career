@@ -4,8 +4,7 @@ import { score40 } from '../combine/scoring';
 import { Actor, CombineStage, MID, playerLook } from '../combine/stage';
 import { GAME_H, GAME_W } from '../config';
 import { getSave, type TestId } from '../player/PlayerSave';
-import { title } from '../ui/widgets';
-import { bottomShade, MeterBar, sideButtons } from '../combine/ui';
+import { bottomShade, fieldText, MeterBar, sideButtons } from '../combine/ui';
 
 /*
  * Teste 1 — 40 jardas, no mesmo campo e câmera da partida (visto de costas, a câmera acompanha o
@@ -45,8 +44,8 @@ export class Combine40 extends CombineBase {
     this.stage = new CombineStage(this, START - 8);
     this.runner = this.stage.actor(MID, START, playerLook());
     for (const y of [10, 20, 30, 40]) this.stage.mark(y === 40 ? 'META' : `${y}`, MID - 11, START + y, 24, '#FFD23F');
-    this.clock = title(this, GAME_W / 2, 80, '0.00', 30, '#FFFFFF').setOrigin(0.5).setDepth(50);
-    this.banner = title(this, GAME_W / 2, 200, '', 26, '#FFD23F').setOrigin(0.5).setDepth(50);
+    this.clock = fieldText(this, GAME_W / 2, 92, 52).setText('0.00');
+    this.banner = fieldText(this, GAME_W / 2, 200, 46, '#FFC400');
     bottomShade(this, 300);
     this.cadence = new MeterBar(this, GAME_H - 150);
     this.drawCadence(0);

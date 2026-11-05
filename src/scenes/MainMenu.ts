@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { isDome, STAND_NAMES, stadiumOf } from '../data/stadiums';
 import { pixelPhoto } from '../ui/pixelPhoto';
 import { type SkyWeather, type TimeChoice, type TimeOfDay } from '../systems/daytime';
-import { GAME_H, GAME_W, applyMatchup, broadcast, finalGame, logoKey, matchRecords, playoffLogo, matchConfig, saveMatchConfig, venue, type PrimeKey, type WeatherChoice } from '../config';
+import { GAME_H, GAME_W, applyMatchup, broadcast, finalGame, getFavorite, logoKey, matchRecords, setFavorite, playoffLogo, matchConfig, saveMatchConfig, venue, type PrimeKey, type WeatherChoice } from '../config';
 import { PRIME } from '../career/season';
 import { ROUND_INFO } from '../career/playoffs';
 import { TeamRepository, type KitDef } from '../data/TeamRepository';
@@ -28,7 +28,7 @@ let matchCounter = 0;
 let booted = false;
 
 const hexOf = (css: string) => parseInt(css.slice(1), 16);
-type View = 'home' | 'setup' | 'details' | 'pickHome' | 'pickAway' | 'pickStand' | 'practice';
+type View = 'home' | 'setup' | 'details' | 'pickHome' | 'pickAway' | 'pickStand' | 'practice' | 'favorite';
 
 export class MainMenu extends Phaser.Scene {
   private view: Phaser.GameObjects.Container | null = null;
@@ -63,7 +63,8 @@ export class MainMenu extends Phaser.Scene {
     this.bg = null;
     this.bgTeam = '';
     // ?tela=partida|detalhes|times|treino abre direto numa tela (para testes)
-    const start = ({ partida: 'setup', detalhes: 'details', times: 'pickHome', treino: 'practice' } as Record<string, View>)[q.get('tela') ?? ''] ?? 'home';
+    // Primeira abertura: escolher o time do coração antes da página inicial
+    const start = ({ partida: 'setup', detalhes: 'details', times: 'pickHome', treino: 'practice', favorito: 'favorite' } as Record<string, View>)[q.get('tela') ?? ''] ?? (getFavorite() ? 'home' : 'favorite');
     this.render(start);
     tvEnter(this);
   }
@@ -98,6 +99,7 @@ export class MainMenu extends Phaser.Scene {
       pickAway: () => this.picker('away'),
       pickStand: () => this.picker('stand'),
       practice: () => this.practiceMenu(),
+      favorite: () => this.picker('fav'),
     };
     draw[v]();
   }
@@ -133,6 +135,30 @@ export class MainMenu extends Phaser.Scene {
     lock.add(tvText(this, 22, 300, 'DO COMBINE AO QFL BOWL', 16, C.white, 700, 2.4).setOrigin(0, 0.5));
     v.add(lock);
     slideIn(this, [lock], 0, 60);
+
+    // Time do coração: tocar troca (ele vem pronto na Partida Rápida)
+    const fv = teamById(getFavorite() ?? matchConfig.home);
+    const fc = uiColor(fv);
+    const favB = new TvButton(this, 20 + 116, 352, { w: 232, h: 48, fill: TV.ink, fillAlpha: 0.92 });
+    const fb = this.add.graphics();
+    plate(fb, -116, -24, 48, 48, fc, 1, true, true);
+    favB.add(fb);
+    favB.add(this.add.image(-92, 0, logoKey(fv.id, 's')).setDisplaySize(30, 30));
+    favB.add(tvText(this, -56, -10, 'SEU TIME', 11, C.muted, 700, 1.6).setOrigin(0, 0.5));
+    const fn = tvText(this, -56, 9, fv.name, 18, C.white, 800, 0.6).setOrigin(0, 0.5);
+    if (fn.width > 140) fn.setScale(140 / fn.width, 1);
+    favB.add(fn);
+    const fa = this.add.graphics();
+    fa.lineStyle(2.5, TV.yellow, 1);
+    fa.beginPath();
+    fa.moveTo(96, -7);
+    fa.lineTo(103, 0);
+    fa.lineTo(96, 7);
+    fa.strokePath();
+    favB.add(fa);
+    favB.onTap = () => this.go('favorite');
+    v.add(favB);
+    slideIn(this, [favB], 0, 120);
 
     // O astro da transmissão: o QB com o uniforme do seu time
     const u = uniformsOf(h)[matchConfig.homeUni];
@@ -735,17 +761,25 @@ export class MainMenu extends Phaser.Scene {
 
   // ------------------------------------------------------------ escolher time (grade com os 32)
 
-  private picker(side: 'home' | 'away' | 'stand') {
+  private picker(side: 'home' | 'away' | 'stand' | 'fav') {
     const W = GAME_W;
     const v = this.view!;
+    const fav = side === 'fav';
+    const favNow = getFavorite();
     const other = side === 'home' ? matchConfig.away : side === 'away' ? matchConfig.home : '';
-    const cur = side === 'home' ? matchConfig.home : side === 'away' ? matchConfig.away : this.hostId();
-    const back: View = side === 'stand' ? 'details' : 'setup';
-    v.add(scoreBug(this, { title: side === 'home' ? 'SEU TIME' : side === 'away' ? 'ADVERSÁRIO' : 'ESTÁDIO DE QUAL TIME?', step: side === 'stand' ? '' : 'NOTA GERAL (OVR)', onBack: () => this.go(back) }));
+    const cur = fav ? (favNow ?? '') : side === 'home' ? matchConfig.home : side === 'away' ? matchConfig.away : this.hostId();
+    const back: View = side === 'stand' ? 'details' : fav ? 'home' : 'setup';
+    const ttl = fav ? 'SEU TIME DO CORAÇÃO' : side === 'home' ? 'SEU TIME' : side === 'away' ? 'ADVERSÁRIO' : 'ESTÁDIO DE QUAL TIME?';
+    // Na primeira abertura não há para onde voltar: escolher é o primeiro passo
+    v.add(scoreBug(this, { title: ttl, step: side === 'stand' ? '' : fav ? (favNow ? 'TROCAR' : 'BEM-VINDO') : 'NOTA GERAL (OVR)', onBack: fav && !favNow ? undefined : () => this.go(back) }));
     const cols = 4;
     const cw = (W - 24) / cols;
-    const chh = 94;
-    const y0 = 66;
+    const chh = fav ? 88 : 94;
+    const y0 = fav ? 114 : 66;
+    if (fav) {
+      v.add(tvText(this, 16, 74, 'ESCOLHA O TIME QUE VOCÊ TORCE', 19, C.white, 800, 0.6).setOrigin(0, 0.5));
+      v.add(tvText(this, 16, 96, 'ELE JÁ VEM PRONTO NA PARTIDA RÁPIDA · DÁ PARA TROCAR DEPOIS', 12, C.muted, 700, 0.8).setOrigin(0, 0.5));
+    }
     TEAM_LIST.forEach((t, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
@@ -764,8 +798,20 @@ export class MainMenu extends Phaser.Scene {
       }
       b.onTap = () => {
         b.setBorder(TV.yellow, 1);
-        v.add(underline(this, x, y + 41, 52));
+        v.add(underline(this, x, y + chh / 2 - 6, 52));
         this.time.delayedCall(260, () => {
+          if (fav) {
+            setFavorite(t.id);
+            matchConfig.home = t.id;
+            matchConfig.homeUni = 0;
+            matchConfig.awayUni = null;
+            matchConfig.standTeam = null;
+            if (matchConfig.away === t.id) matchConfig.away = TEAM_LIST.find((x) => x.id !== t.id)!.id;
+            applyMatchup();
+            saveMatchConfig();
+            this.go('home');
+            return;
+          }
           if (side === 'stand') {
             // estádio de outro time = campo neutro (o mandante volta a ser o padrão escolhendo o próprio)
             const local = matchConfig.side === 'away' ? matchConfig.away : matchConfig.home;
@@ -784,7 +830,7 @@ export class MainMenu extends Phaser.Scene {
       v.add(b);
       if (on) {
         b.setBorder(TV.yellow, 1);
-        v.add(underline(this, x, y + 41, 52, 200));
+        v.add(underline(this, x, y + chh / 2 - 6, 52, 200));
       }
     });
     this.tweens.add({ targets: v, alpha: { from: 0.4, to: 1 }, duration: 260 });

@@ -111,6 +111,24 @@ export const hostTeam = () => (venue.id && venue.id === TEAMS.away.id ? TEAMS.aw
 /** Time visitante no estádio (o seu, nos jogos fora de casa). */
 export const guestTeam = () => (hostTeam() === TEAMS.away ? TEAMS.home : TEAMS.away);
 
+/** Time do coração: escolhido na primeira abertura; já vem selecionado na Partida Rápida. */
+const FAV_KEY = 'qb-career-fav';
+export function getFavorite(): string | null {
+  try {
+    const id = localStorage.getItem(FAV_KEY);
+    return id && teamById(id).id === id ? id : null;
+  } catch {
+    return null;
+  }
+}
+export function setFavorite(id: string) {
+  try {
+    localStorage.setItem(FAV_KEY, id);
+  } catch {
+    /* ignora */
+  }
+}
+
 export function saveMatchConfig() {
   try {
     localStorage.setItem('qb-career-match', JSON.stringify(matchConfig));

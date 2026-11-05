@@ -51,6 +51,7 @@ import { ROUND_INFO } from '../career/playoffs';
 import { TeamRepository } from '../data/TeamRepository';
 import { getSave } from '../player/PlayerSave';
 import { bottomGradient, GlassButton, label, Tag, title, UI } from '../ui/widgets';
+import { C, plate, plateShadow, TV, TvButton, tvText } from '../ui/tv';
 
 const KEYS: RecvKey[] = ['A', 'B', 'C', 'D', 'E'];
 const MID = FIELD.width / 2;
@@ -380,15 +381,14 @@ export class MatchScene extends Phaser.Scene {
   // ------------------------------------------------------------ pause
 
   private paused = false;
-  private pauseBtn!: GlassButton;
+  private pauseBtn!: TvButton;
   private pauseUi: Phaser.GameObjects.GameObject[] = [];
-  private restartArmed = false;
 
-  /** Botão de pause (canto direito, abaixo do placar) + menu de pausa. */
+  /** Botão de pause (canto direito, abaixo do placar) + menu de pausa (pacote da transmissão). */
   private buildPause() {
     const W = GAME_W;
     const H = GAME_H;
-    const btn = (this.pauseBtn = new GlassButton(this, W - 12 - 20, 142, { w: 40, h: 40, radius: 20 }));
+    const btn = (this.pauseBtn = new TvButton(this, W - 12 - 24, 142, { w: 48, h: 40, fill: TV.ink, fillAlpha: 0.9 }));
     btn.setDepth(98);
     const ic = this.add.graphics();
     ic.fillStyle(0xffffff, 1);
@@ -398,55 +398,69 @@ export class MatchScene extends Phaser.Scene {
     btn.onTap = () => this.setPaused(true);
 
     // Menu
-    const dim = this.add.rectangle(0, 0, W, H, 0x0a0c1a, 0.82).setOrigin(0).setDepth(200).setInteractive();
-    const t = this.add
-      .text(W / 2, 250, 'PAUSADO', { fontFamily: FONT_TITLE, fontSize: '26px', color: UI.yellow, stroke: '#0D0D12', strokeThickness: 7, shadow: { offsetX: 4, offsetY: 6, color: '#0D0D12', fill: true, stroke: true } })
-      .setOrigin(0.5)
-      .setAngle(-4)
-      .setDepth(201);
-    const s = this.state;
-    const info = label(this, W / 2, 304, `${TEAMS.home.abbr} ${s.score.home} x ${s.score.away} ${TEAMS.away.abbr} · ${s.quarterText} · ${s.clockText}`, 11, '#C9CEE0').setOrigin(0.5).setDepth(201);
-    this.pauseUi = [dim, t, info];
+    const dim = this.add.rectangle(0, 0, W, H, TV.ink, 0.88).setOrigin(0).setDepth(200).setInteractive();
+    const D = 201;
+    // chamada: PAUSA numa placa amarela, igual à abertura do jogo
+    const lg = this.add.graphics().setDepth(D);
+    plateShadow(lg, 20, 150, 196, 76);
+    plate(lg, 20, 150, 196, 76, TV.yellow, 1, false, true);
+    const t = tvText(this, 34, 189, 'PAUSA', 72, C.ink, 800, 0).setOrigin(0, 0.5).setDepth(D);
+    if (t.width > 170) t.setScale(170 / t.width);
+    // mini placar: os dois times, o placar, o quarto e o relógio
+    const sb = this.add.graphics().setDepth(D);
+    const sy = 250;
+    plateShadow(sb, 20, sy, W - 40, 64);
+    plate(sb, 20, sy, W - 40, 64, TV.ink2, 1);
+    plate(sb, 20, sy, 70, 64, TEAMS.home.color, 1, true, true);
+    plate(sb, W - 90, sy, 70, 64, TEAMS.away.color, 1, true, true);
+    const ha = tvText(this, 55, sy + 32, TEAMS.home.abbr, 22, TEAMS.home.fg, 800, 1).setOrigin(0.5).setDepth(D);
+    const aa = tvText(this, W - 55, sy + 32, TEAMS.away.abbr, 22, TEAMS.away.fg, 800, 1).setOrigin(0.5).setDepth(D);
+    const info = tvText(this, W / 2, sy + 24, '', 34, C.white, 800, 1).setOrigin(0.5).setDepth(D);
+    const sub = tvText(this, W / 2, sy + 50, '', 13, C.muted, 700, 1.4).setOrigin(0.5).setDepth(D);
+    this.pauseUi = [dim, lg, t, sb, ha, aa, info, sub];
     const mk = (y: number, text: string, onTap: () => void, primary = false) => {
-      const b = new GlassButton(this, W / 2, y, { w: W - 60, h: 56, radius: 16, ...(primary ? { fill: TEAMS.home.color, fillAlpha: 1, borderAlpha: 0.35, primary: true } : {}) }).setDepth(201);
-      const tx = title(this, 0, 0, text, 11, primary ? TEAMS.home.fg : '#FFFFFF').setOrigin(0.5);
+      const b = new TvButton(this, W / 2, y, { w: W - 40, h: 60, fill: primary ? TEAMS.home.color : TV.ink3, fillAlpha: 1, primary }).setDepth(D);
+      const tx = tvText(this, 0, 0, text, 21, primary ? TEAMS.home.fg : C.white, 800, 1.4).setOrigin(0.5);
       b.add(tx);
       b.onTap = onTap;
       this.pauseUi.push(b);
-      return tx;
+      return { b, tx };
+    };
+    // Ações sem volta pedem dois toques: o primeiro arma em vermelho
+    const arm = (o: { b: TvButton; tx: Phaser.GameObjects.Text }, text: string, fire: () => void) => {
+      let armed = false;
+      return () => {
+        if (!armed) {
+          armed = true;
+          o.b.setFill(TV.red, 1);
+          o.tx.setText('TOQUE DE NOVO PARA CONFIRMAR');
+          setTimeout(() => {
+            armed = false;
+            if (o.tx.active) {
+              o.b.setFill(TV.ink3, 1);
+              o.tx.setText(text);
+            }
+          }, 2500);
+          return;
+        }
+        armed = false;
+        o.b.setFill(TV.ink3, 1);
+        o.tx.setText(text);
+        fire();
+      };
     };
     // A dificuldade só se escolhe no menu, antes da partida
     mk(400, 'CONTINUAR', () => this.setPaused(false), true);
-    const rtx = mk(470, 'REINICIAR PARTIDA', () => {
-      if (!this.restartArmed) {
-        this.restartArmed = true;
-        rtx.setText('TOQUE DE NOVO').setColor('#FF7B80');
-        setTimeout(() => {
-          this.restartArmed = false;
-          if (rtx.active) rtx.setText('REINICIAR PARTIDA').setColor('#FFFFFF');
-        }, 2500);
-        return;
-      }
-      this.restartArmed = false;
-      rtx.setText('REINICIAR PARTIDA').setColor('#FFFFFF');
+    const rs = mk(472, 'REINICIAR PARTIDA', () => {});
+    rs.b.onTap = arm(rs, 'REINICIAR PARTIDA', () => {
       this.setPaused(false);
       this.newGame();
     });
-    let menuArmed = false;
     const menuText = this.career ? 'SAIR (NÃO CONTA)' : 'MENU PRINCIPAL';
-    const mtx = mk(540, menuText, () => {
-      if (!menuArmed) {
-        menuArmed = true;
-        mtx.setText('TOQUE DE NOVO').setColor('#FF7B80');
-        setTimeout(() => {
-          menuArmed = false;
-          if (mtx.active) mtx.setText(menuText).setColor('#FFFFFF');
-        }, 2500);
-        return;
-      }
-      this.toMenu();
-    });
+    const mm = mk(544, menuText, () => {});
+    mm.b.onTap = arm(mm, menuText, () => this.toMenu());
     this.pauseInfo = info;
+    this.pauseSub = sub;
     this.pauseUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false));
     // Pausa sozinho se o jogador sair do app/aba no meio do lance
     const onHidden = () => {
@@ -455,6 +469,7 @@ export class MatchScene extends Phaser.Scene {
     this.game.events.on(Phaser.Core.Events.HIDDEN, onHidden);
     this.events.once('shutdown', () => this.game.events.off(Phaser.Core.Events.HIDDEN, onHidden));
   }
+  private pauseSub!: Phaser.GameObjects.Text;
 
   /** Abertura da carreira: semana, o seu QB (nome, OVR, pontos fortes) e o estádio do mandante. */
   private careerIntro() {
@@ -494,7 +509,8 @@ export class MatchScene extends Phaser.Scene {
     this.pauseUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(on));
     if (on) {
       const s = this.state;
-      this.pauseInfo.setText(`${TEAMS.home.abbr} ${s.score.home} x ${s.score.away} ${TEAMS.away.abbr} · ${s.quarterText} · ${s.clockText}`);
+      this.pauseInfo.setText(`${s.score.home}  ×  ${s.score.away}`);
+      this.pauseSub.setText(`${s.quarterText} · ${s.clockText}`);
       this.liveUi.joystick.reset();
       if (this.ctl) this.ctl.sprint = false;
       this.aim.active = false;
