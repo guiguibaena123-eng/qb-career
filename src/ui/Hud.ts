@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { GAME_W, TEAMS, broadcast, logoKey, matchRecords } from '../config';
 import type { GameState } from '../state/GameState';
-import { buildPrimeBoard } from './primeBoard';
+import { buildPrimeBoard, type PrimeBoard } from './primeBoard';
+import { tvText } from './tv';
 import { label, title, UI } from './widgets';
 
 /*
@@ -47,16 +48,20 @@ export class Hud {
       logoH = scene.add.image(pb.logoH.x, pb.logoH.y, logoKey(TEAMS.home.id)).setOrigin(0).setDisplaySize(pb.logoH.s, pb.logoH.s);
       logoA = scene.add.image(pb.logoA.x, pb.logoA.y, logoKey(TEAMS.away.id)).setOrigin(0).setDisplaySize(pb.logoA.s, pb.logoA.s);
       const put = (k: string, s: { x: number; y: number; ox: number }, o: Phaser.GameObjects.Text) => t(k, o.setOrigin(s.ox, 0.5).setPosition(s.x, s.y));
-      put('homeAbbr', pb.homeAbbr, title(scene, 0, 0, TEAMS.home.abbr, pb.size.abbr, pb.colors.home));
-      put('awayAbbr', pb.awayAbbr, title(scene, 0, 0, TEAMS.away.abbr, pb.size.abbr, pb.colors.away));
+      // Fonte de transmissão (as transmissões especiais não usam a pixel do placar comum)
+      const T = (txt: string, size: number, color: string, w = 800, sp = 0.6) => tvText(scene, 0, 0, txt, size, color, w, sp);
+      put('homeAbbr', pb.homeAbbr, T(TEAMS.home.abbr, pb.size.abbr, pb.colors.home, 800, 1));
+      put('awayAbbr', pb.awayAbbr, T(TEAMS.away.abbr, pb.size.abbr, pb.colors.away, 800, 1));
       if (rec) {
-        put('homeRec', pb.homeRec, label(scene, 0, 0, matchRecords.home, 9, pb.colors.home).setAlpha(0.9));
-        put('awayRec', pb.awayRec, label(scene, 0, 0, matchRecords.away, 9, pb.colors.away).setAlpha(0.9));
+        put('homeRec', pb.homeRec, T(matchRecords.home, pb.size.rec, pb.colors.homeRec, 700, 1).setAlpha(0.85));
+        put('awayRec', pb.awayRec, T(matchRecords.away, pb.size.rec, pb.colors.awayRec, 700, 1).setAlpha(0.85));
       }
-      put('homeScore', pb.homeScore, title(scene, 0, 0, '', pb.size.score, pb.colors.homeScore));
-      put('awayScore', pb.awayScore, title(scene, 0, 0, '', pb.size.score, pb.colors.awayScore));
-      put('quarter', pb.quarter, label(scene, 0, 0, '', pb.size.quarter, pb.colors.quarter));
-      put('clock', pb.clock, title(scene, 0, 0, '', pb.size.clock, pb.colors.clock));
+      put('homeScore', pb.homeScore, T('', pb.size.score, pb.colors.homeScore, 800, 0));
+      put('awayScore', pb.awayScore, T('', pb.size.score, pb.colors.awayScore, 800, 0));
+      put('quarter', pb.quarter, T('', pb.size.quarter, pb.colors.quarter, 800, 1.6));
+      put('clock', pb.clock, T('', pb.size.clock, pb.colors.clock, 800, 1));
+      if (pb.glow) for (const k of ['homeScore', 'awayScore', 'clock']) this.texts[k].setShadow(0, 0, pb.glow, 10, false, true);
+      this.primeUpdate = pb.update;
     } else {
       g.fillStyle(UI.dark, 1);
       g.fillRect(L - 3, top - 3, R - L + 6, h + 6);
@@ -143,6 +148,8 @@ export class Hud {
   }
 
   private layoutBar: () => void;
+  /** Atualização do placar especial (posse de bola, quartos). */
+  private primeUpdate: PrimeBoard['update'] | null = null;
   private playRect: [number, number, number, number] = [0, 0, 0, 0];
   private confX = 0;
   private confY = 0;
@@ -279,6 +286,7 @@ export class Hud {
     this.texts.awayScore.setText(String(s.score.away));
     this.texts.quarter.setText(s.quarterText);
     this.texts.clock.setText(s.clockText);
+    this.primeUpdate?.(s, this.texts);
     this.texts.spot.setText(s.spotText);
     this.layoutBar();
     this.setPlayClock(s.playClock);

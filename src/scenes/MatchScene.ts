@@ -2125,6 +2125,9 @@ export class MatchScene extends Phaser.Scene {
     const where = los < 50 ? `NA SUA ${los}` : los === 50 ? 'NO MEIO' : `NA ${TEAMS.away.abbr} ${100 - los}`;
     this.phase = 'defense';
     this.hud.setBar('none');
+    // posse do adversário durante a campanha simulada (o placar mostra a bola do lado dele)
+    s.possession = 'away';
+    this.hud.refresh();
     this.defenseScreen.open({
       drive,
       teamColor: TEAMS.home.color,
@@ -2145,6 +2148,7 @@ export class MatchScene extends Phaser.Scene {
         s.los = los;
         s.down = 1;
         s.distance = Math.min(10, 100 - los);
+        s.possession = 'home';
         this.hud.refresh();
       },
       onEnter: () => {

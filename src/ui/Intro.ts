@@ -54,7 +54,7 @@ export class Intro {
   // ------------------------------------------------------------ 1) apresentação
 
   /** Abertura de horário nobre: faixa na cor da transmissão, estrelas, nome do jogo com brilho. */
-  private primeBanner(pr: { name: string; color: number; glow: number }) {
+  private primeBanner(pr: { name: string; short: string; pt?: string; color: number; glow: number }) {
     const sc = this.scene;
     const W = GAME_W;
     const glowHex = '#' + pr.glow.toString(16).padStart(6, '0');
@@ -77,12 +77,14 @@ export class Intro {
     const words = pr.name.split(' ');
     const big = this.add(
       sc.add
-        .text(W / 2, 64, `${words[0]} ${words[1]}`, { fontFamily: FONT_TITLE, fontSize: '19px', color: '#FFFFFF', stroke: '#0D0D12', strokeThickness: 6, shadow: { offsetX: 3, offsetY: 4, color: '#' + pr.color.toString(16).padStart(6, '0'), fill: true, stroke: true } })
+        .text(W / 2, 64, pr.pt ?? `${words[0]} ${words[1]}`, { fontFamily: FONT_TITLE, fontSize: '19px', color: '#FFFFFF', stroke: '#0D0D12', strokeThickness: 6, shadow: { offsetX: 3, offsetY: 4, color: '#' + pr.color.toString(16).padStart(6, '0'), fill: true, stroke: true } })
         .setOrigin(0.5)
         .setScale(0.6)
         .setAlpha(0),
     );
-    const sub = this.add(title(sc, W / 2, 92, words.slice(2).join(' ') || (pr.name.includes('BOWL') ? 'A GRANDE FINAL' : 'GAME'), 11, glowHex).setOrigin(0.5).setAlpha(0));
+    const playoff = !['THURSDAY', 'SUNDAY', 'MONDAY'].some((d) => pr.short.startsWith(d));
+    const subText = pr.pt ? (pr.name.includes('BOWL') ? 'A GRANDE FINAL' : playoff ? 'PLAYOFFS · MATA-MATA' : 'TRANSMISSÃO ESPECIAL') : words.slice(2).join(' ') || 'GAME';
+    const sub = this.add(title(sc, W / 2, 92, subText, 11, glowHex).setOrigin(0.5).setAlpha(0));
     sc.tweens.add({ targets: big, scale: 1, alpha: 1, duration: 420, ease: 'Back.Out' });
     sc.tweens.add({ targets: sub, alpha: 1, duration: 300, delay: 250 });
     sc.tweens.add({ targets: big, scale: 1.04, duration: 900, yoyo: true, repeat: -1, delay: 500, ease: 'Sine.InOut' });

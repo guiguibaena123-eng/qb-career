@@ -2,8 +2,9 @@ import Phaser from 'phaser';
 import { isDome, STAND_NAMES, stadiumOf } from '../data/stadiums';
 import { pixelPhoto } from '../ui/pixelPhoto';
 import { type SkyWeather, type TimeChoice, type TimeOfDay } from '../systems/daytime';
-import { GAME_H, GAME_W, applyMatchup, broadcast, finalGame, logoKey, playoffLogo, matchConfig, saveMatchConfig, venue, type WeatherChoice } from '../config';
+import { GAME_H, GAME_W, applyMatchup, broadcast, finalGame, logoKey, matchRecords, playoffLogo, matchConfig, saveMatchConfig, venue, type WeatherChoice } from '../config';
 import { PRIME } from '../career/season';
+import { ROUND_INFO } from '../career/playoffs';
 import { TeamRepository, type KitDef } from '../data/TeamRepository';
 import { PlayerBody } from '../player/PlayerBody';
 import { DEFAULT_LOOK, peekSlot, SLOT_COUNT } from '../player/PlayerSave';
@@ -851,6 +852,15 @@ export class MainMenu extends Phaser.Scene {
     finalGame.on = fin;
     playoffLogo.key = fin ? 'logoQflBowl' : null;
     broadcast.prime = fin ? PRIME.QFL : null;
+    // Teste (só no desenvolvimento): ?prime=TNF|SNF|MNF|WC|DIV|CONF|QFL força o placar de uma transmissão
+    const qp = import.meta.env.DEV ? (new URLSearchParams(location.search).get('prime') as keyof typeof PRIME | null) : null;
+    if (qp && PRIME[qp]) {
+      broadcast.prime = PRIME[qp];
+      const rk = ({ WC: 'wc', DIV: 'div', CONF: 'conf', QFL: 'final' } as const)[qp as 'WC' | 'DIV' | 'CONF' | 'QFL'];
+      playoffLogo.key = rk ? ROUND_INFO[rk].logo : null;
+      matchRecords.home = '7-2';
+      matchRecords.away = '6-3';
+    }
     const key = `Match${++matchCounter}`;
     this.game.scene.add(key, new MatchScene(key, practice), false);
     this.scene.start(key);

@@ -97,7 +97,7 @@ export const finalGame = { on: false };
 export const playoffLogo: { key: string | null } = { key: null };
 
 /** Transmissão de horário nobre (carreira): placar e abertura especiais. null = jogo comum. */
-export const broadcast: { prime: { name: string; short: string; color: number; glow: number } | null } = { prime: null };
+export const broadcast: { prime: { name: string; short: string; pt?: string; color: number; glow: number } | null } = { prime: null };
 
 /** Retrospecto dos times no placar (carreira): "7-2" ou "7-2-1". Vazio = jogo comum, sem retrospecto. */
 export const matchRecords = { home: '', away: '' };
