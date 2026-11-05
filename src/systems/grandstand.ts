@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { FONT_TITLE, MATCH_SEED, TEAMS, finalGame, guestTeam, hostTeam, matchConfig, venue } from '../config';
 import { isDome, stadiumOf, type StandModelId } from '../data/stadiums';
 import { wallQuad } from './ground';
-import { hex, shade } from './pixelart';
+import { hex, shade, shadeNum } from './pixelart';
 import type { Projection, ScreenPoint } from './projection';
 import { Rng } from './rng';
 import { TOD, type SkyWeather, type TimeOfDay } from './daytime';
@@ -33,6 +33,8 @@ const BAND_RISE = 1.7; // quanto cada fileira de fachada (faixa/teto) sobe
 const BAND_DEPTH = 0.15;
 const TPY = 8; // texels por jarda na textura das fileiras
 const ROW_TEX_H = 14;
+/** Camada da torcida: mais alta que o degrau (espaço para os braços erguidos e as bandeiras). */
+const CROWD_TEX_H = 20;
 const WALL_H = 1.6;
 const ARC_SEGS = 12; // pedaços de cada arco
 const STAIR_W = 1.8;
@@ -158,7 +160,46 @@ const SKIN = ['#f1c7a5', '#d9a07a', '#c68b59', '#8d5524', '#6b3f1f'];
 const HAIR = ['#2a1a10', '#5a3a1a', '#111111', '#b8862e', '#3b2412', '#8a8a8a'];
 const OTHER = ['#f2f2f2', '#1d1d24', '#6b6f7a', '#2a9d8f', '#b33a3a', '#e6c34a', '#5c2a86'];
 
-/** Desenha a textura de uma fileira: degrau, cadeiras, torcedores, escadas e saídas. */
+interface Fan {
+  px: number;
+  shirt: string;
+  skin: string;
+  hat: string;
+  tall: boolean;
+  arms: boolean;
+  /** Cor da bandeira/cachecol que ergue na comemoração (null = só os braços). */
+  flag: string | null;
+  hop: number;
+}
+
+/** Torcedores de uma fileira, numa textura transparente: parados (pose 0) ou comemorando (pose 1, braços para cima). */
+function drawFans(ctx: CanvasRenderingContext2D, fans: Fan[], party: boolean) {
+  const H = CROWD_TEX_H;
+  for (const f of fans) {
+    const bodyH = f.tall ? 6 : 4;
+    const top = H - 3 - bodyH - (party ? f.hop : 0);
+    const px = f.px;
+    ctx.fillStyle = f.shirt;
+    ctx.fillRect(px - 2, top, 5, bodyH + (party ? f.hop : 0));
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; // luz do refletor no ombro
+    ctx.fillRect(px - 2, top, 5, 1);
+    ctx.fillStyle = f.skin;
+    ctx.fillRect(px - 1, top - 3, 3, 3);
+    ctx.fillStyle = f.hat;
+    ctx.fillRect(px - 1, top - 4, 3, 1);
+    if (party || f.arms) {
+      ctx.fillStyle = f.skin; // braços para cima
+      ctx.fillRect(px - 3, top - (party ? 6 : 3), 1, party ? 6 : 3);
+      ctx.fillRect(px + 3, top - (party ? 6 : 3), 1, party ? 6 : 3);
+      if (party && f.flag) {
+        ctx.fillStyle = f.flag; // cachecol esticado entre as mãos
+        ctx.fillRect(px - 3, top - 8, 7, 2);
+      }
+    }
+  }
+}
+
+/** Desenha a textura de uma fileira (degrau, escadas e saídas) e as duas da torcida dela. */
 function makeRowTexture(scene: Phaser.Scene, key: string, spec: RowSpec, m: StandModel, rng: Rng) {
   const row = spec.inTier;
   const r = spec.r;
@@ -181,15 +222,19 @@ function makeRowTexture(scene: Phaser.Scene, key: string, spec: RowSpec, m: Stan
   /** As escadas sobem o anel inteiro; só são interrompidas pelo túnel da saída (e pela placa em cima dele). */
   const inExit = row >= m.exitRow && row <= m.exitRow + EXIT_ROWS;
 
-  // Degrau azul-acinzentado + encosto das cadeiras
-  ctx.fillStyle = row % 2 ? '#3e4560' : '#394058';
+  // Degrau (mais claro, com brilho na quina) + encosto das cadeiras na cor do time
+  ctx.fillStyle = row % 2 ? '#4b5577' : '#454f70';
   ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#4a5270';
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.fillRect(0, 0, W, 1);
+  ctx.fillStyle = shade(hostTeam().color, -0.15);
   ctx.fillRect(0, H - 6, W, 3);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fillRect(0, H - 6, W, 1);
   ctx.fillStyle = '#262a3d';
   ctx.fillRect(0, H - 3, W, 3);
   if (awayRow) {
-    ctx.fillStyle = shade(guestTeam().color, -0.3);
+    ctx.fillStyle = shade(guestTeam().color, -0.15);
     ctx.fillRect(tx(awayA), H - 6, tx(awayB) - tx(awayA), 3);
   }
 
@@ -201,6 +246,7 @@ function makeRowTexture(scene: Phaser.Scene, key: string, spec: RowSpec, m: Stan
     });
 
   // Torcedores (cada um sorteado)
+  const fans: Fan[] = [];
   for (let px = 3; px < W - 4; px += rng.int(6, 8)) {
     if (standOptions.empty) break;
     const u = px / TPY;
@@ -209,31 +255,23 @@ function makeRowTexture(scene: Phaser.Scene, key: string, spec: RowSpec, m: Stan
     const rr = rng.next();
     const shirt = rr < 0.68 ? rng.pick(team) : rr < 0.8 ? '#f2f2f2' : rng.pick(OTHER);
     const skin = rng.pick(SKIN);
-    const bodyH = rng.chance(0.3) ? 6 : 4;
-    const top = H - 3 - bodyH;
-    ctx.fillStyle = shirt;
-    ctx.fillRect(px - 2, top, 5, bodyH);
-    ctx.fillStyle = skin;
-    ctx.fillRect(px - 1, top - 3, 3, 3);
-    ctx.fillStyle = rng.chance(0.3) ? rng.pick([...team, '#1d1d24']) : rng.pick(HAIR);
-    ctx.fillRect(px - 1, top - 4, 3, 1);
-    if (rng.chance(0.07)) {
-      ctx.fillStyle = skin; // braços para cima
-      ctx.fillRect(px - 3, top - 3, 1, 3);
-      ctx.fillRect(px + 3, top - 3, 1, 3);
-    }
+    const tall = rng.chance(0.3);
+    const hat = rng.chance(0.3) ? rng.pick([...team, '#1d1d24']) : rng.pick(HAIR);
+    const arms = rng.chance(0.07);
+    const flag = rng.chance(0.3) ? rng.pick([...team, '#ffffff', '#ffd23f']) : null;
+    fans.push({ px, shirt, skin, hat, tall, arms, flag, hop: rng.int(0, 2) });
   }
 
-  // Escadas: cinza com degrau escuro e bordas claras (corrimão)
+  // Escadas: cinza claro com degrau escuro e bordas claras (corrimão)
   stairs.forEach((s) => {
     if (inExit) return;
     const a = tx(s - STAIR_W / 2);
     const b = tx(s + STAIR_W / 2);
-    ctx.fillStyle = '#6e7389';
+    ctx.fillStyle = '#7d8299';
     ctx.fillRect(a, 0, b - a, H);
-    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    ctx.fillStyle = 'rgba(0,0,0,0.34)';
     ctx.fillRect(a, H - 4, b - a, 3);
-    ctx.fillStyle = '#a9aec2';
+    ctx.fillStyle = '#c3c8da';
     ctx.fillRect(a - 1, 0, 1, H);
     ctx.fillRect(b, 0, 1, H);
   });
@@ -244,15 +282,15 @@ function makeRowTexture(scene: Phaser.Scene, key: string, spec: RowSpec, m: Stan
     const a = tx(ua);
     const b = tx(ub);
     if (row >= m.exitRow && row < m.exitRow + EXIT_ROWS) {
-      ctx.fillStyle = '#8c91a8';
+      ctx.fillStyle = '#9a9fb6';
       ctx.fillRect(a, 0, b - a, H);
       ctx.fillStyle = '#07080d';
       ctx.fillRect(a + 2, 0, b - a - 4, row === m.exitRow ? H - 2 : H);
     }
     if (row === m.exitRow + EXIT_ROWS) {
-      ctx.fillStyle = '#8c91a8';
+      ctx.fillStyle = '#9a9fb6';
       ctx.fillRect(a, H - 3, b - a, 3);
-      ctx.fillStyle = '#1f9d55';
+      ctx.fillStyle = '#22b863';
       ctx.fillRect(a + 1, 1, b - a - 2, H - 5);
       ctx.fillStyle = '#ffffff';
       ctx.font = '7px Silkscreen';
@@ -261,7 +299,16 @@ function makeRowTexture(scene: Phaser.Scene, key: string, spec: RowSpec, m: Stan
       ctx.fillText('SAÍDA', (a + b) / 2, (H - 4) / 2 + 1);
     }
   }
-  return finishTexture(tex, r);
+  const pieces = finishTexture(tex, r, H);
+  if (!fans.length) return { pieces, crowd: null };
+  // Torcida: parada e comemorando (mesmos cortes da fileira)
+  const crowd: [string, string] = [`${key}_c0`, `${key}_c1`];
+  crowd.forEach((ck, i) => {
+    const ct = scene.textures.createCanvas(ck, W, CROWD_TEX_H)!;
+    drawFans(ct.getContext(), fans, i === 1);
+    finishTexture(ct, r, CROWD_TEX_H);
+  });
+  return { pieces, crowd };
 }
 
 /** Textura de uma fileira de fachada: corredor com janelas acesas (band) ou teto escuro (roof). */
@@ -291,7 +338,7 @@ function makeBandTexture(scene: Phaser.Scene, key: string, spec: RowSpec, rng: R
     }
     for (let u = 3; u < len - 1; u += 2.4) {
       if (Math.floor(u) % 9 < 1) continue;
-      ctx.fillStyle = rng.chance(0.55) ? '#ffd98a' : '#2b3150';
+      ctx.fillStyle = rng.chance(0.7) ? (rng.chance(0.3) ? '#fff1c4' : '#ffd98a') : '#2b3150';
       ctx.fillRect(tx(u), 4, 7, 5);
     }
     if (spec.inTier === 0) {
@@ -303,13 +350,12 @@ function makeBandTexture(scene: Phaser.Scene, key: string, spec: RowSpec, rng: R
       ctx.fillRect(0, 0, W, 2);
     }
   }
-  return finishTexture(tex, r);
+  return finishTexture(tex, r, H);
 }
 
 /** Atualiza a textura e a corta em pedaços: arcos em vários pedaços, a reta inteira. */
-function finishTexture(tex: Phaser.Textures.CanvasTexture, r: number) {
+function finishTexture(tex: Phaser.Textures.CanvasTexture, r: number, H: number) {
   const W = tex.width;
-  const H = ROW_TEX_H;
   const tx = (u: number) => Math.round(u * TPY);
   tex.refresh();
   tex.setFilter(Phaser.Textures.FilterMode.NEAREST);
@@ -335,6 +381,9 @@ const pb: ScreenPoint = { x: 0, y: 0, s: 0 };
 
 interface Piece {
   img: Phaser.GameObjects.Image;
+  /** Torcida desta peça (só ela pula na comemoração). */
+  crowd: Phaser.GameObjects.Image | null;
+  frame: string;
   k: number;
   r: number;
   u0: number;
@@ -346,7 +395,21 @@ export class Grandstand {
   private specs: RowSpec[];
   private pieces: Piece[] = [];
   private phases: number[] = [];
+  private crowdKeys: ([string, string] | null)[] = [];
+  /** Pose atual da torcida de cada fileira (0 parada, 1 comemorando). */
+  private crowdPose: number[] = [];
+  private jumps: number[] = [];
+  /** Explosão do touchdown: fogos, labaredas no muro, confete e o letreiro piscando. */
+  private boom: {
+    t: number;
+    color: number;
+    rockets: { delay: number; x: number; y: number; h0: number; h1: number; col: number; sparks: { a: number; v: number }[] }[];
+    pyro: { x: number; y: number; delay: number }[];
+    confetti: { x: number; y: number; h: number; vh: number; ph: number; col: number }[];
+  } | null = null;
   private g: Phaser.GameObjects.Graphics; // muro da frente + flashes
+  /** Luz da explosão (soma com o que está atrás: fogos e labaredas brilham de verdade). */
+  private bg!: Phaser.GameObjects.Graphics;
   private sg: Phaser.GameObjects.Graphics; // telão
   private wallText: Phaser.GameObjects.Text;
   private screenText: Phaser.GameObjects.Text | null = null;
@@ -369,10 +432,12 @@ export class Grandstand {
     this.specs = buildRows(this.model);
     this.specs.forEach((spec, k) => {
       const key = `stand_row_${k}`;
-      const pieces = spec.kind === 'seat' ? makeRowTexture(scene, key, spec, this.model, rng) : makeBandTexture(scene, key, spec, rng);
-      for (const p of pieces) {
+      const made = spec.kind === 'seat' ? makeRowTexture(scene, key, spec, this.model, rng) : { pieces: makeBandTexture(scene, key, spec, rng), crowd: null };
+      this.crowdKeys.push(made.crowd);
+      for (const p of made.pieces) {
         const img = scene.add.image(0, 0, key, p.frame).setOrigin(0, 1);
-        this.pieces.push({ img, k, r: spec.r, u0: p.u0, u1: p.u1 });
+        const crowd = made.crowd ? scene.add.image(0, 0, made.crowd[0], p.frame).setOrigin(0, 1) : null;
+        this.pieces.push({ img, crowd, frame: p.frame, k, r: spec.r, u0: p.u0, u1: p.u1 });
       }
       this.phases.push(rng.range(0, Math.PI * 2));
     });
@@ -403,6 +468,7 @@ export class Grandstand {
       }
     }
     this.g = scene.add.graphics().setDepth(3.9);
+    this.bg = scene.add.graphics().setDepth(3.97).setBlendMode(Phaser.BlendModes.ADD);
     this.sg = scene.add.graphics().setDepth(3.5);
     this.wallText = scene.add
       .text(0, 0, 'QB CAREER :: QB CAREER :: QB CAREER', { fontFamily: FONT_TITLE, fontSize: '32px', color: hostTeam().colorHex })
@@ -417,7 +483,36 @@ export class Grandstand {
   }
 
   cheer(amount = 1) {
-    this.excite = Math.min(1, this.excite + amount);
+    this.excite = Math.max(this.excite, Math.min(1, this.excite + amount));
+  }
+
+  /** Touchdown: a arquibancada explode (torcida pulando com braços e cachecóis, fogos, labaredas, confete). */
+  erupt(color: number) {
+    this.excite = 1.7; // fica no máximo por mais tempo antes de acalmar
+    const top = this.specs[this.specs.length - 1];
+    const rng = this.fx;
+    const golds = [0xffd23f, 0xffffff, 0xfff1c4];
+    const cols = [color, shadeNum(color, 0.35), ...golds];
+    const geom = rowGeom(top.r);
+    // altura dos estouros: acima do topo nas arquibancadas baixas; dentro da parte visível na clássica
+    // a parte visível da arquibancada é baixa (o placar cobre o alto): os fogos saem do muro e estouram na frente da torcida
+    const hTop = Math.min(top.h, 9);
+    const wg = rowGeom(R0);
+    const rockets = Array.from({ length: 12 }, (_, i) => {
+      const [x, y] = pointAt(R0, wg.arc * 0.5 + ((wg.len - wg.arc) * (i % 6 + rng.range(0.15, 0.85))) / 6);
+      const sparks = Array.from({ length: 30 }, (_, j) => ({ a: (j / 30) * Math.PI * 2 + rng.range(-0.08, 0.08), v: rng.range(4.5, 7) }));
+      return { delay: Math.floor(i / 2) * 0.42 + rng.range(0, 0.25), x, y, h0: WALL_H, h1: WALL_H + rng.range(3.5, 7.5), col: rng.pick(cols), sparks };
+    });
+    const wl = rowGeom(R0).len;
+    const pyro = Array.from({ length: 10 }, (_, i) => {
+      const [x, y] = pointAt(R0, (wl * (i + 0.5)) / 10);
+      return { x, y, delay: (i % 2) * 0.12 };
+    });
+    const confetti = Array.from({ length: 160 }, () => {
+      const [x, y] = pointAt(R0 + rng.range(0, 10), rng.range(0, geom.len));
+      return { x, y, h: rng.range(2, hTop + 4), vh: rng.range(1.2, 2.6), ph: rng.range(0, 6.28), col: rng.pick([color, ...golds, 0xff4fd8, 0x3fd0ff]) };
+    });
+    this.boom = { t: 0, color, rockets, pyro, confetti };
   }
 
   private rowH(k: number) {
@@ -469,6 +564,94 @@ export class Grandstand {
     const hpx = Math.abs(proj.project((x0 + x1) / 2, y, h1, pb).y - proj.project((x0 + x1) / 2, y, h0, pb).y);
     const sc = Math.min((wpx * 0.8) / Math.max(1, t.width), (hpx * 0.42) / 32);
     t.setPosition(pa.x, pa.y).setScale(sc).setVisible(pa.y > -60 && pa.y < proj.h + 60);
+  }
+
+  /** Explosão do touchdown desenhada por cima da arquibancada: labaredas no muro, fogos subindo e estourando, confete caindo. */
+  private drawBoom(cg: Phaser.GameObjects.Graphics, dt: number) {
+    const b = this.boom!;
+    const g = this.bg;
+    b.t += dt;
+    const proj = this.proj;
+    const near = proj.nearY;
+    if (b.t > 5.5) {
+      this.boom = null;
+      return;
+    }
+    // Labaredas no alto do muro (duas ondas)
+    for (const f of b.pyro) {
+      for (const wave of [0, 1.3]) {
+        const t = b.t - f.delay - wave;
+        if (t < 0 || t > 1.1 || f.y < near) continue;
+        proj.project(f.x, f.y, WALL_H + 0.4, pa);
+        const u = pa.s * 10;
+        const grow = Math.min(1, t / 0.12) * (1 - Math.max(0, (t - 0.7) / 0.4));
+        const fl = 1 + Math.sin(this.time * 47 + f.x) * 0.12;
+        const hh = u * 7 * grow * fl;
+        const ww = u * 1.6 * Math.max(0.3, grow);
+        g.fillStyle(0xff7a2a, 0.22 * grow); // halo
+        g.fillCircle(pa.x, pa.y - hh * 0.35, ww * 2.2);
+        g.fillStyle(0xff5a1f, 0.75 * grow);
+        g.fillEllipse(pa.x, pa.y - hh / 2, ww * 1.5, hh);
+        g.fillStyle(0xffb21f, 0.9 * grow);
+        g.fillEllipse(pa.x, pa.y - hh * 0.4, ww, hh * 0.75);
+        g.fillStyle(0xfff6d6, grow);
+        g.fillEllipse(pa.x, pa.y - hh * 0.28, ww * 0.45, hh * 0.45);
+      }
+    }
+    // Fogos: sobem com rastro e estouram em faíscas que caem
+    for (const r of b.rockets) {
+      const t = b.t - r.delay;
+      if (t < 0 || r.y < near) continue;
+      const rise = 0.42;
+      if (t < rise) {
+        const k = t / rise;
+        proj.project(r.x, r.y, r.h0 + (r.h1 - r.h0) * k, pa);
+        proj.project(r.x, r.y, r.h0 + (r.h1 - r.h0) * Math.max(0, k - 0.25), pb);
+        g.lineStyle(Math.max(1, pa.s * 2), 0xfff1c4, 0.8);
+        g.lineBetween(pb.x, pb.y, pa.x, pa.y);
+        g.fillStyle(0xffffff, 1);
+        g.fillCircle(pa.x, pa.y, Math.max(1.2, pa.s * 2));
+        continue;
+      }
+      const bt = t - rise;
+      const life = 1.5;
+      if (bt > life) continue;
+      proj.project(r.x, r.y, r.h1, pa);
+      const u = pa.s * 10;
+      const fade = 1 - bt / life;
+      if (bt < 0.25) {
+        g.fillStyle(r.col, 0.5 * (1 - bt / 0.25)); // clarão do estouro
+        g.fillCircle(pa.x, pa.y, u * 5);
+        g.fillStyle(0xffffff, 0.7 * (1 - bt / 0.25));
+        g.fillCircle(pa.x, pa.y, u * 1.8);
+      }
+      const spread = ((1 - Math.exp(-bt * 3.2)) / 3.2) * 1.8;
+      const fall = 0.9 * bt * bt;
+      for (const s of r.sparks) {
+        const d = s.v * spread * u;
+        const x = pa.x + Math.cos(s.a) * d;
+        const y = pa.y + Math.sin(s.a) * d * 0.9 + fall * u;
+        const d2 = s.v * Math.max(0, spread - 0.05) * u;
+        g.lineStyle(Math.max(1.2, u * 0.22), r.col, 0.7 * fade);
+        g.lineBetween(pa.x + Math.cos(s.a) * d2, pa.y + Math.sin(s.a) * d2 * 0.9 + fall * u * 0.9, x, y);
+        g.fillStyle(bt < 0.5 ? 0xffffff : r.col, fade);
+        g.fillCircle(x, y, Math.max(1, u * 0.2));
+      }
+    }
+    // Confete caindo sobre a arquibancada
+    for (const c of b.confetti) {
+      const t = b.t - 0.3;
+      if (t < 0 || c.y < near) continue;
+      const h = c.h - c.vh * t;
+      if (h < 0) continue;
+      const sway = Math.sin(this.time * 3 + c.ph) * 0.5;
+      proj.project(c.x + sway, c.y, h, pa);
+      if (pa.y < -10 || pa.x < -10 || pa.x > proj.w + 10) continue;
+      const u = pa.s * 10;
+      const flip = Math.abs(Math.sin(this.time * 9 + c.ph));
+      cg.fillStyle(c.col, Math.min(1, (5.5 - b.t) / 1));
+      cg.fillRect(pa.x, pa.y, Math.max(1, u * 0.32), Math.max(0.8, u * 0.2 * flip + 0.4));
+    }
   }
 
   /** Refletores: 4 torres de luz saindo do topo da arquibancada (cantos e fundo), acesas conforme o horário. */
@@ -532,6 +715,14 @@ export class Grandstand {
     this.excite = Math.max(0, this.excite - dt * 0.45);
     const proj = this.proj;
     const near = proj.nearY;
+    // Pulo e pose de cada fileira: cada uma no seu tempo; empolgada, a torcida ergue braços e cachecóis
+    const ex = Math.min(1, this.excite);
+    for (let k = 0; k < this.specs.length; k++) {
+      const ph = this.phases[k];
+      const s = Math.sin(this.time * 10 + ph);
+      this.jumps[k] = ex > 0.01 ? Math.max(0, s) * 0.62 * ex : 0;
+      this.crowdPose[k] = ex > 0.35 ? (s > -0.4 ? 1 : 0) : ex > 0.12 ? (Math.sin(this.time * 4 + ph * 3) > 0.6 ? 1 : 0) : 0;
+    }
 
     // Cada pedaço: ponta esquerda projetada, largura até a ponta direita, altura pela profundidade
     for (const p of this.pieces) {
@@ -541,9 +732,7 @@ export class Grandstand {
         p.img.setVisible(false);
         continue;
       }
-      const seat = this.specs[p.k].kind === 'seat';
-      const jump = seat && this.excite > 0.01 ? Math.max(0, Math.sin(this.time * 11 + this.phases[p.k])) * 0.35 * this.excite : 0;
-      const h = this.rowH(p.k) + jump;
+      const h = this.rowH(p.k);
       proj.project(x0, y0, h, pa);
       proj.project(x1, y1, h, pb);
       const w = p.img.frame.width;
@@ -551,11 +740,20 @@ export class Grandstand {
       const sx = Math.max(0.0001, (pb.x - pa.x) / w);
       // Mais perto da câmera (y menor) na frente; fileira de fora atrás
       const ymid = (y0 + y1) / 2;
-      p.img
-        .setVisible(pa.y > -40 && pa.x < proj.w + 20 && pb.x > -20)
-        .setPosition(pa.x, Math.max(pa.y, pb.y))
-        .setScale(sx, sy)
-        .setDepth(3 + (300 - ymid) * 0.001 - p.k * 0.00001);
+      const vis = pa.y > -40 && pa.x < proj.w + 20 && pb.x > -20;
+      const depth = 3 + (300 - ymid) * 0.001 - p.k * 0.00001;
+      const by = Math.max(pa.y, pb.y);
+      p.img.setVisible(vis).setPosition(pa.x, by).setScale(sx, sy).setDepth(depth);
+      const c = p.crowd;
+      if (!c) continue;
+      // Só a torcida pula (o degrau, as escadas e as saídas ficam parados)
+      const jump = this.jumps[p.k];
+      c.setVisible(vis);
+      if (!vis) continue;
+      const pose = this.crowdPose[p.k];
+      const ck = this.crowdKeys[p.k]![pose];
+      if (c.texture.key !== ck) c.setTexture(ck, p.frame);
+      c.setPosition(pa.x, by - jump * pa.s * 10).setScale(sx, sy).setDepth(depth + 0.000005);
     }
 
     this.drawScreen();
@@ -568,14 +766,24 @@ export class Grandstand {
     const wr = R0;
     const wl = rowGeom(wr).len;
     const N = 40;
+    const boom = this.boom;
+    const blink = boom && boom.t < 3.2 ? Math.floor(boom.t / 0.16) % 2 : -1;
+    const ledBase = blink === 1 ? 0xffd23f : blink === 0 ? hostTeam().color : shadeNum(hostTeam().color, -0.62);
     for (let i = 0; i < N; i++) {
       const [ax, ay] = pointAt(wr, (wl * i) / N);
       const [bx, by] = pointAt(wr, (wl * (i + 1)) / N);
       wallQuad(g, proj, ax, ay, bx, by, 0, WALL_H + 0.4, 0x0d0d12);
-      wallQuad(g, proj, ax, ay, bx, by, WALL_H + 0.25, WALL_H + 0.4, 0x555b73);
+      wallQuad(g, proj, ax, ay, bx, by, 0.25, WALL_H + 0.1, ledBase); // letreiro de LED
+      wallQuad(g, proj, ax, ay, bx, by, WALL_H - 0.05, WALL_H + 0.1, 0xffffff, 0.18);
+      wallQuad(g, proj, ax, ay, bx, by, WALL_H + 0.25, WALL_H + 0.4, 0x7a809a);
     }
-    proj.project((CX_L + CX_R) / 2, CY + wr, WALL_H * 0.5, pa);
+    proj.project((CX_L + CX_R) / 2, CY + wr, WALL_H * 0.55, pa);
+    const wtxt = blink >= 0 ? 'TOUCHDOWN!  TOUCHDOWN!  TOUCHDOWN!' : 'QB CAREER :: QB CAREER :: QB CAREER';
+    if (this.wallText.text !== wtxt) this.wallText.setText(wtxt);
+    this.wallText.setColor(blink === 1 ? hex(hostTeam().color) : '#ffffff');
     this.wallText.setPosition(pa.x, pa.y).setScale((WALL_H * 0.55 * pa.s * 10) / 32);
+    this.bg.clear();
+    if (boom) this.drawBoom(g, dt);
 
     // Flashes de câmera aleatórios na torcida (só nas cadeiras)
     if (this.fx.next() < (2 + this.excite * 16) * dt) {

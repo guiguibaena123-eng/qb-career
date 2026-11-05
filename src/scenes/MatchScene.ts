@@ -1475,6 +1475,7 @@ export class MatchScene extends Phaser.Scene {
       if (kind === 'td') {
         this.ui.pop('TOUCHDOWN!', UI.yellow, 26, 200, 1300);
         this.ui.burst(80);
+        this.world.stand.erupt(TEAMS.home.color);
         this.feedback.shake(0.012, 400);
         vibrate(VIBE.td);
         if (c) this.startTdRun(c, 1, ranIn);
@@ -1561,6 +1562,7 @@ export class MatchScene extends Phaser.Scene {
       s.confidence = Math.min(5, s.confidence + 1);
       this.ui.pop('TOUCHDOWN!', UI.yellow, 26, 200, 1300);
       this.ui.burst(80);
+      this.world.stand.erupt(TEAMS.home.color);
       this.feedback.shake(0.012, 400);
       vibrate(VIBE.td);
       this.world.stand.cheer(1);
@@ -2455,7 +2457,8 @@ export class MatchScene extends Phaser.Scene {
           this.ui.burst(80);
           this.feedback.shake(0.012, 400);
           vibrate(VIBE.td);
-          this.world.stand.cheer(ko.receive ? 1 : 0.4);
+          if (ko.receive) this.world.stand.erupt(TEAMS.home.color);
+          else this.world.stand.cheer(0.4);
         } else if (ko.stage === 'end') {
           returner.vx = returner.vy = 0;
           this.feedback.shake(0.01, 200);
