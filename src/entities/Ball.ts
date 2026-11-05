@@ -128,7 +128,7 @@ export class Ball {
       // em pé (no chão com o segurador, ou no tee do kickoff), um pouco inclinada para trás
       pr.project(this.x, this.y, this.tee ? 0.12 : 0, g0);
       this.trail = [];
-      this.img.setFrame('b2').setOrigin(0.07, 0.5).setPosition(g0.x, g0.y).setScale(base * 0.52, base * 0.6).setRotation(-Math.PI / 2 - 0.12);
+      this.img.setFrame('b2').setOrigin(0.07, 0.5).setPosition(g0.x, g0.y).setScale(base * 0.74, base * 0.84).setRotation(-Math.PI / 2 - 0.12);
       return;
     }
     this.img.setOrigin(0.5);
