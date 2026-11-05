@@ -17,7 +17,7 @@ import { DEFAULT_LOOK, getSave, recordText, updateSave, type LookOptions } from 
 import { setupHiRes } from '../systems/hires';
 import { portrait as drawPortrait } from '../ui/portrait';
 import { weatherIcon } from '../ui/weatherIcon';
-import { arrowAfter, C, feed, fillPlate, inkOn, label, lum, mix, plate, plateLine, plateShadow, sectionHead, star, strokePlate, trophy, title, TV, tvCard as gradCard, tvEnter, TvButton as GlassButton, tvText, wipeTo } from '../ui/tv';
+import { arrowAfter, C, fillPlate, inkOn, label, lum, mix, plate, plateLine, plateShadow, sectionHead, star, strokePlate, trophy, title, TV, tvCard as gradCard, tvEnter, TvButton as GlassButton, tvText, wipeTo } from '../ui/tv';
 
 /*
  * CarreiraMenu — hub da carreira (como no design): cabeçalho com o jogador, time, OVR e retrospecto;
@@ -253,8 +253,32 @@ export class CarreiraMenu extends Phaser.Scene {
   // ------------------------------------------------------------ moldura
 
   private drawBackground() {
-    // Imagem ao vivo: o estádio do seu time, bem escurecido (o conteúdo vem por cima)
-    feed(this, this.team.id, 0.84).setDepth(-10);
+    // Fundo na cor do seu time (escurecida só quando é clara demais para o texto branco),
+    // com o escudo grande em marca-d'água e a base mais escura onde ficam os botões
+    const W = GAME_W;
+    const H = GAME_H;
+    const pc = this.team.colors.primary;
+    const l = lum(pc);
+    const base = l > 150 ? mix(pc, TV.ink, 0.5) : l > 100 ? mix(pc, TV.ink, 0.3) : pc;
+    const g = this.add.graphics().setDepth(-12);
+    g.fillStyle(base, 1);
+    g.fillRect(0, 0, W, H);
+    // faixas diagonais na cor secundária (textura de transmissão, bem discretas)
+    g.fillStyle(this.team.colors.secondary, 0.07);
+    for (let i = -2; i < 8; i++) {
+      const x0 = i * 90;
+      g.fillPoints([new Phaser.Math.Vector2(x0, 0), new Phaser.Math.Vector2(x0 + 34, 0), new Phaser.Math.Vector2(x0 + 34 - H * 0.25, H), new Phaser.Math.Vector2(x0 - H * 0.25, H)], true);
+    }
+    const steps = 30;
+    for (let i = 0; i < steps; i++) {
+      const t = i / steps;
+      g.fillStyle(TV.ink, 0.1 + t * t * 0.55);
+      g.fillRect(0, H * 0.3 + t * H * 0.7, W, (H * 0.7) / steps + 1);
+    }
+    if (this.textures.exists(this.team.logo.large)) {
+      const img = this.add.image(W - 40, H * 0.6, this.team.logo.large).setDepth(-11).setAlpha(0.08);
+      img.setScale(300 / Math.max(img.width, img.height));
+    }
   }
 
   private drawHeader() {
@@ -639,15 +663,6 @@ export class CarreiraMenu extends Phaser.Scene {
     sl.setX(34);
     this.body.add(sg);
     this.body.add(sl);
-    const mb = label(this, 0, y + 186, 'MELHORAR', 9, '#0D0D12').setOrigin(0, 0.5);
-    const mg = this.add.graphics();
-    mg.fillStyle(YE, 1);
-    const mx = 16 + W - 10 - mb.width - 16;
-    fillPlate(mg, mx, y + 176, mb.width + 16, 20, 8);
-    mb.setX(mx + 8);
-    this.body.add(mg);
-    this.body.add(mb);
-    this.body.hit(mx, y + 176, mb.width + 16, 20, () => this.toast('MELHORIAS DO ESTÁDIO EM BREVE'));
     y += 212;
 
     // Relações: torcida, equipe e técnico (+ o técnico e o que ele espera)
@@ -1240,7 +1255,7 @@ export class CarreiraMenu extends Phaser.Scene {
     y += this.backChip(y, 'VOLTAR', () => ((this.plSel = null), this.show(this.tab))) + 12;
     // Herói: foto grande, nome, número, posição, time
     const hh = 168;
-    this.body.add(gradCard(this, 16, y, W, hh, { from: t.colors.primary, to: CARD, mid: t.colors.primary, midAlpha: 0.55, toAlpha: 0.92, radius: 18, glow: true, strokeAlpha: 0.22 }));
+    this.body.add(gradCard(this, 16, y, W, hh, { from: t.colors.primary, solid: true }));
     this.body.add(this.add.image(16 + W - 50, y + 44, t.logo.large).setDisplaySize(80, 80).setAlpha(0.2));
     this.portrait(30, y + 16, 136, p.face, t, p.me ? OR : 0xffffff);
     this.T(180, y + 22, `#${p.num} · ${p.pos}`, 10, '#E8EAF2', 'title');
@@ -1354,12 +1369,12 @@ export class CarreiraMenu extends Phaser.Scene {
         g.fillStyle(0x000000, 0.3);
         fillPlate(g, cx, cy + 4, cw, 78, 14);
         this.body.add(g);
-        this.body.add(gradCard(this, cx, cy, cw, 78, { from: x.team.colors.primary, fromAlpha: 0.95, to: CARD, toAlpha: 0.9, radius: 14, glow: true, stroke: mine ? OR : 0xffffff, strokeAlpha: mine ? 1 : 0.18, strokeWidth: mine ? 2 : 1 }));
+        this.body.add(gradCard(this, cx, cy, cw, 78, { from: x.team.colors.primary, solid: true, stroke: mine ? OR : 0xffffff, strokeAlpha: mine ? 1 : 0.18, strokeWidth: mine ? 2 : 1 }));
         this.body.add(this.add.image(cx + 30, cy + 39, x.team.logo.small).setDisplaySize(42, 42));
         const nm = this.T(cx + 58, cy + 22, x.team.name, 8, '#FFFFFF', 'title').setOrigin(0, 0.5);
         if (nm.width > cw - 64) nm.setFontSize(6);
         this.T(cx + 58, cy + 42, `${x.w}-${x.l}${x.t ? `-${x.t}` : ''} · ${i + 1}º`, 10, '#E8EAF2').setOrigin(0, 0.5);
-        this.T(cx + 58, cy + 60, `OVR ${x.team.ovr}`, 8, hex(ovc(x.team.ovr))).setOrigin(0, 0.5);
+        this.T(cx + 58, cy + 60, `OVR ${x.team.ovr}`, 8, "#E8EAF2").setOrigin(0, 0.5);
         const ts = teamTitles(x.team.id).qflTotal;
         if (ts) {
           const tn = this.body.add(tvText(this, cx + cw - 12, cy + 60, String(ts), 15, C.yellow, 800, 0).setOrigin(1, 0.5)) as Phaser.GameObjects.Text;
@@ -1387,7 +1402,7 @@ export class CarreiraMenu extends Phaser.Scene {
     y += this.backChip(y, 'TODOS OS TIMES', () => ((this.teamSel = null), this.show('times'))) + 12;
     // Herói
     const hh = 176;
-    this.body.add(gradCard(this, 16, y, W, hh, { from: t.colors.primary, to: CARD, mid: t.colors.primary, midAlpha: 0.7, toAlpha: 0.92, radius: 18, glow: true, strokeAlpha: 0.22 }));
+    this.body.add(gradCard(this, 16, y, W, hh, { from: t.colors.primary, solid: true }));
     const g = this.add.graphics();
     g.fillStyle(t.colors.secondary, 1);
     g.fillRect(16, y + hh - 34, W, 3);

@@ -551,6 +551,8 @@ export interface CardOpts {
   strokeWidth?: number;
   sheen?: number;
   glow?: boolean;
+  /** Placa inteira na cor (cartão de time): sem meia placa e sem tinta por cima. */
+  solid?: boolean;
 }
 /**
  * Cartão em destaque (substitui o degradê com brilho): placa sólida tingida com a cor, faixa da cor no
@@ -558,6 +560,20 @@ export interface CardOpts {
  */
 export function tvCard(scene: Phaser.Scene, x: number, y: number, w: number, h: number, o: CardOpts) {
   const g = scene.add.graphics();
+  if (o.solid) {
+    // Cor do time na placa toda; escurece um pouco só quando é clara demais para o texto branco
+    const l = lum(o.from);
+    const base = l > 150 ? mix(o.from, TV.ink, 0.45) : l > 110 ? mix(o.from, TV.ink, 0.25) : o.from;
+    const s0 = Math.min(h * SLANT, 12);
+    plateShadow(g, x, y, w, h, true, true, 0.8);
+    plate(g, x, y, w, h, base, 1);
+    // leve sombra na base (profundidade, sem mudar a cor)
+    g.fillStyle(TV.ink, 0.18);
+    g.fillPoints([new Phaser.Math.Vector2(x + s0 * 0.45, y + h * 0.55), new Phaser.Math.Vector2(x + w, y + h * 0.55), new Phaser.Math.Vector2(x + w - s0, y + h), new Phaser.Math.Vector2(x, y + h)], true);
+    if (o.stroke !== undefined && (o.strokeAlpha ?? 0) >= 0.5 && o.stroke !== 0xffffff) plateLine(g, x, y, w, h, o.stroke === 0xf26b1d ? TV.yellow : o.stroke, o.strokeAlpha!, o.strokeWidth ?? 2);
+    else plateLine(g, x, y, w, h, 0xffffff, 0.16, 1);
+    return g;
+  }
   // Amarelo = "é você / está escolhido": placa elevada com contorno amarelo (misturar amarelo na tinta dá oliva)
   const yellowish = (c: number) => ((c >> 16) & 255) > 200 && ((c >> 8) & 255) > 150 && (c & 255) < 120;
   if (yellowish(o.from)) {
