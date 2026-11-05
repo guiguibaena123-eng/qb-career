@@ -12,7 +12,7 @@ import type { FaceLook } from '../player/PlayerFace';
 import { getSave, updateSave } from '../player/PlayerSave';
 import { setupHiRes } from '../systems/hires';
 import { portraitTexture } from '../ui/portrait';
-import { C, feed, inkOn, lum, onInk, plate, plateShadow, underline, scoreBug, sectionHead, slideIn, TV, tvEnter, TvButton, tvText, wipeTo } from '../ui/tv';
+import { C, feed, inkOn, mix, onInk, plate, plateShadow, underline, scoreBug, sectionHead, slideIn, TV, tvEnter, TvButton, tvText, wipeTo } from '../ui/tv';
 import { weatherIcon, WX_NAME } from '../ui/weatherIcon';
 
 /*
@@ -64,7 +64,7 @@ export class PreJogo extends Phaser.Scene {
       const x = lg.teams.get(t.id)!;
       return `${x.w}-${x.l}${x.t ? `-${x.t}` : ''}`;
     };
-    const ph = 160;
+    const ph = 150;
     const mid = W / 2;
     const sk = 18;
     const panel = (t: CareerTeam, left: boolean) => {
@@ -77,10 +77,10 @@ export class PreJogo extends Phaser.Scene {
       pg.fillStyle(col, 1);
       pg.fillPoints(pts.map(([x, y]) => new Phaser.Math.Vector2(x, y)), true);
       const cx = left ? W * 0.25 - 6 : W * 0.75 + 6;
-      this.add.image(cx, top + 54, t.logo.large).setDisplaySize(76, 76);
-      const n = tvText(this, cx, top + 112, t.name, 20, fg, 800, 0.6).setOrigin(0.5);
+      this.add.image(cx, top + 52, t.logo.large).setDisplaySize(76, 76);
+      const n = tvText(this, cx, top + 106, t.name, 20, fg, 800, 0.6).setOrigin(0.5);
       if (n.width > W / 2 - 44) n.setScale((W / 2 - 44) / n.width, 1);
-      tvText(this, cx, top + 138, `${rec(t)} · OVR ${t.ovr}`, 15, fg, 700, 1).setOrigin(0.5).setAlpha(0.85);
+      tvText(this, cx, top + 130, `${rec(t)} · OVR ${t.ovr}`, 15, fg, 700, 1).setOrigin(0.5).setAlpha(0.85);
     };
     panel(me, true);
     panel(opp, false);
@@ -96,119 +96,129 @@ export class PreJogo extends Phaser.Scene {
     ig.fillRect(0, top + ph, W, 28);
     tvText(this, W / 2, top + ph + 14, sameDiv ? `CLÁSSICO DA ${divisionOf(me).full}` : `${divisionOf(opp).full} · TÉC. ${coachOf(opp).name}`, 14, sameDiv ? C.yellow : C.muted, 700, 1.2).setOrigin(0.5);
 
-    // ---- força lado a lado
-    const y2 = top + ph + 28;
-    const cg = this.add.graphics();
-    cg.fillStyle(TV.ink2, 0.94);
-    cg.fillRect(0, y2, W, 96);
+    // Cartão escuro padrão das faixas de informação (mesma margem, mesma cor, traço amarelo no topo)
+    const infoCard = (y: number, h: number, accent: number = TV.yellow) => {
+      const cg = this.add.graphics();
+      plateShadow(cg, 16, y, W - 32, h, true, true, 0.8);
+      plate(cg, 16, y, W - 32, h, TV.ink2, 1);
+      const s0 = Math.min(h * 0.2126, 12);
+      cg.fillStyle(accent, 1);
+      cg.fillRect(16 + s0, y, W - 32 - s0, 3);
+      return cg;
+    };
+
+    // ---- força lado a lado (barras saem do meio; quem é melhor fica aceso)
+    const fy = top + ph + 36;
+    const fh = 84;
+    infoCard(fy, fh, TV.rule);
     const a = teamById(me.id);
     const b = teamById(opp.id);
     const rows: [string, number, number][] = [
-      ['OVR', me.ovr, opp.ovr],
       ['ATAQUE', a.atk, b.atk],
       ['DEFESA', a.def, b.def],
       ['ESPECIAIS', a.esp, b.esp],
     ];
+    const trackL = mid - 50 - 64;
     rows.forEach(([n, va, vb], i) => {
-      const yy = y2 + 15 + i * 22;
-      const len = (v: number) => Math.max(4, ((v - 50) / 50) * (W / 2 - 96));
+      const yy = fy + 20 + i * 23;
+      const len = (v: number) => Math.max(6, Math.min(1, (v - 50) / 50) * trackL);
       const bars = this.add.graphics();
-      bars.fillStyle(onInk(me.colors.primary), va >= vb ? 1 : 0.45);
-      bars.fillRect(mid - 46 - len(va), yy - 4, len(va), 8);
-      bars.fillStyle(onInk(opp.colors.primary), vb >= va ? 1 : 0.45);
-      bars.fillRect(mid + 46, yy - 4, len(vb), 8);
-      tvText(this, mid, yy, n, 12, C.muted, 700, 1.4).setOrigin(0.5);
-      tvText(this, 14, yy, String(va), 17, va >= vb ? C.white : C.dim, 800).setOrigin(0, 0.5);
-      tvText(this, W - 14, yy, String(vb), 17, vb >= va ? C.white : C.dim, 800).setOrigin(1, 0.5);
+      bars.fillStyle(TV.ink, 1);
+      bars.fillRect(64, yy - 4, trackL, 8);
+      bars.fillRect(mid + 50, yy - 4, trackL, 8);
+      bars.fillStyle(onInk(me.colors.primary), va >= vb ? 1 : 0.4);
+      bars.fillRect(mid - 50 - len(va), yy - 4, len(va), 8);
+      bars.fillStyle(onInk(opp.colors.primary), vb >= va ? 1 : 0.4);
+      bars.fillRect(mid + 50, yy - 4, len(vb), 8);
+      tvText(this, mid, yy, n, 12, C.muted, 700, 1.2).setOrigin(0.5);
+      tvText(this, 32, yy, String(va), 17, va >= vb ? C.white : C.dim, 800).setOrigin(0, 0.5);
+      tvText(this, W - 32, yy, String(vb), 17, vb >= va ? C.white : C.dim, 800).setOrigin(1, 0.5);
     });
 
-    // ---- tarja do estádio e do clima
-    const y3 = y2 + 106;
-    const tarjaBg = (y: number, h: number) => {
-      const tg = this.add.graphics();
-      plateShadow(tg, 16, y, W - 32, h);
-      plate(tg, 16, y, W - 32, h, TV.plate, 1);
-      return tg;
-    };
-    const sh = 62;
-    tarjaBg(y3, sh);
-    const tw = 104;
+    // ---- estádio e clima
+    const y3 = fy + fh + 10;
+    const sh = 70;
+    infoCard(y3, sh);
+    const tw = 100;
     if (g.final) {
       const tg = this.add.graphics();
       plate(tg, 16, y3, tw, sh, 0x10163a, 1, true, true);
-      this.add.image(16 + tw / 2, y3 + sh / 2, 'logoQflBowl').setDisplaySize(sh - 8, sh - 8);
+      this.add.image(16 + tw / 2, y3 + sh / 2, 'logoQflBowl').setDisplaySize(sh - 10, sh - 10);
     } else if (host.stadium.image && this.textures.exists(host.stadium.image)) {
-      this.add.image(16 + 8, y3, host.stadium.image).setOrigin(0).setDisplaySize(tw - 8, sh);
-      const cut = this.add.graphics();
-      cut.fillStyle(TV.plate, 1);
-      const s = Math.min(sh * 0.2126, 12);
-      cut.fillTriangle(16 + tw - s, y3 + sh, 16 + tw + 1, y3 + sh, 16 + tw + 1, y3);
-      cut.fillTriangle(16, y3, 16 + 8 + s, y3, 16 + 8, y3 + sh);
-      cut.fillRect(14, y3, 10, sh);
+      // foto recortada na placa inclinada (máscara geométrica)
+      const img = this.add.image(16, y3, host.stadium.image).setOrigin(0).setDisplaySize(tw, sh);
+      const mk = this.make.graphics({ x: 0, y: 0 }, false);
+      plate(mk, 16, y3, tw, sh, 0xffffff, 1, true, true);
+      img.setMask(mk.createGeometryMask());
       if (g.tod === 'night') {
-        cut.fillStyle(0x0a1030, 0.42);
-        cut.fillRect(24, y3, tw - 12, sh);
+        const nt = this.add.graphics();
+        plate(nt, 16, y3, tw, sh, 0x0a1030, 0.42, true, true);
       }
     }
-    const tx = 16 + tw + 10;
-    const sn = tvText(this, tx, y3 + 16, g.final ? 'QFL BOWL' : host.stadium.name, 17, C.ink, 800, 0.6).setOrigin(0, 0.5);
-    if (sn.width > W - 16 - tx - 92) sn.setScale((W - 16 - tx - 92) / sn.width, 1);
-    tvText(this, tx, y3 + 38, `${g.final ? 'CAMPO NEUTRO' : `${host.stadium.capacity.toLocaleString('pt-BR')} LUGARES`} · ${g.tod === 'night' ? 'NOITE' : g.tod === 'dusk' ? 'FIM DE TARDE' : 'DIA'}`, 13, C.inkSoft, 600, 0.6).setOrigin(0, 0.5);
-    tvText(this, tx, y3 + sh - 10, g.when, 12, C.inkSoft, 600, 0.8).setOrigin(0, 0.5);
-    weatherIcon(this, W - 104, y3 + 22, g.weather, 22, g.tod === 'night');
-    const wn = tvText(this, W - 88, y3 + 22, WX_NAME[g.weather], 14, C.ink, 800, 0.8).setOrigin(0, 0.5);
-    if (wn.width > 62) wn.setScale(62 / wn.width, 1);
-    const tp = tvText(this, W - 28, y3 + 44, `${g.temp}°C`, 18, C.ink, 800).setOrigin(1, 0.5);
+    const tx = 16 + tw + 12;
+    const colR = W - 16 - 104;
+    const sn = tvText(this, tx, y3 + 18, g.final ? 'QFL BOWL' : host.stadium.name, 17, C.white, 800, 0.6).setOrigin(0, 0.5);
+    if (sn.width > colR - tx - 8) sn.setScale((colR - tx - 8) / sn.width, 1);
+    const cap = tvText(this, tx, y3 + 39, g.final ? 'CAMPO NEUTRO' : `${host.stadium.capacity.toLocaleString('pt-BR')} LUGARES`, 13, C.muted, 700, 0.6).setOrigin(0, 0.5);
+    if (cap.width > colR - tx - 8) cap.setScale((colR - tx - 8) / cap.width, 1);
+    tvText(this, tx, y3 + 57, `${g.tod === 'night' ? 'NOITE' : g.tod === 'dusk' ? 'FIM DE TARDE' : 'DIA'} · ${g.when}`, 12, C.muted, 700, 0.8).setOrigin(0, 0.5);
+    // coluna do clima (separada por um fio)
+    const sep = this.add.graphics();
+    sep.fillStyle(TV.rule, 1);
+    sep.fillRect(colR, y3 + 12, 1, sh - 24);
+    weatherIcon(this, colR + 20, y3 + 21, g.weather, 20, g.tod === 'night');
+    const wn = tvText(this, colR + 36, y3 + 21, WX_NAME[g.weather], 13, C.white, 800, 0.8).setOrigin(0, 0.5);
+    if (wn.width > W - 28 - colR - 36) wn.setScale((W - 28 - colR - 36) / wn.width, 1);
+    tvText(this, colR + 14, y3 + 44, `${g.temp}°C`, 20, C.white, 800).setOrigin(0, 0.5);
     if (g.weather === 'snow' || g.weather === 'rain') {
-      // condição do campo à esquerda da temperatura, sem encostar
-      // condição do campo: selo de tinta na borda de cima da tarja (como o FIQUE DE OLHO)
-      const ct = tvText(this, 0, y3 - 1, g.weather === 'snow' ? 'CAMPO PESADO' : 'CAMPO MOLHADO', 12, C.white, 800, 1.2).setOrigin(0.5).setDepth(2);
-      const cw = ct.width + 26;
-      const cg = this.add.graphics().setDepth(1);
-      plate(cg, W - 16 - cw, y3 - 11, cw, 20, TV.ink);
-      ct.setX(W - 16 - cw / 2);
+      tvText(this, colR + 14, y3 + 60, g.weather === 'snow' ? 'CAMPO PESADO' : 'CAMPO MOLHADO', 11, C.yellow, 800, 0.8).setOrigin(0, 0.5);
     }
 
-    // ---- fique de olho
-    const y4 = y3 + sh + 18;
-    const wh = 62;
-    tarjaBg(y4, wh);
+    // ---- fique de olho (QB rival + os últimos 5 jogos dele)
+    const y4 = y3 + sh + 10;
+    const wh = 66;
+    infoCard(y4, wh, onInk(opp.colors.primary));
     const qb = lg.players.find((p) => p.team.id === opp.id && p.pos === 'QB')!;
     const pt = this.add.graphics();
-    plate(pt, 16, y4, 62, wh, opp.colors.primary, 1, true, true);
-    this.add.image(22, y4 + 4, portraitTexture(this, qb.face, opp.colors.primary, opp.colors.secondary, 54, 'slant')).setOrigin(0).setDisplaySize(54, 54);
-    const fx = 90;
-    const chip = this.add.graphics();
-    plate(chip, fx - 4, y4 - 9, 104, 20, TV.yellow);
-    tvText(this, fx + 48, y4 + 1, 'FIQUE DE OLHO', 12, C.ink, 800, 1.2).setOrigin(0.5);
-    const qn = tvText(this, fx, y4 + 26, `${qb.name} · QB`, 17, C.ink, 800, 0.6).setOrigin(0, 0.5);
-    if (qn.width > W - fx - 120) qn.setScale((W - fx - 120) / qn.width, 1);
-    const s = qb.season;
-    tvText(this, fx, y4 + 46, s.gp ? `${s.pyds.toLocaleString('pt-BR')} JD · ${s.ptd} TD · ${s.int} INT · OVR ${qb.ovr}` : `OVR ${qb.ovr} · ${qb.age} ANOS · ${qb.tag}`, 13, C.inkSoft, 600, 0.6).setOrigin(0, 0.5);
+    plate(pt, 16, y4, 66, wh, opp.colors.primary, 1, true, true);
+    this.add.image(22, y4 + 6, portraitTexture(this, qb.face, opp.colors.primary, opp.colors.secondary, 56, 'slant')).setOrigin(0).setDisplaySize(56, 56);
+    const fx = 94;
     const last = lg.teams.get(opp.id)!.last;
-    last.forEach((r, i) => {
-      const x = W - 32 - (last.length - 1 - i) * 20;
-      const rg = this.add.graphics();
-      plate(rg, x - 9, y4 + 34, 18, 18, r === 'V' ? TV.green : r === 'D' ? TV.red : TV.ink3);
-      tvText(this, x, y4 + 43, r, 12, r === 'E' ? C.white : C.ink, 800).setOrigin(0.5);
-    });
+    const lastW = last.length ? last.length * 20 + 4 : 0;
+    const maxW = W - 32 - fx - lastW - 10;
+    tvText(this, fx, y4 + 16, 'FIQUE DE OLHO', 12, C.yellow, 800, 1.6).setOrigin(0, 0.5);
+    const qn = tvText(this, fx, y4 + 36, `${qb.name} · QB`, 17, C.white, 800, 0.6).setOrigin(0, 0.5);
+    if (qn.width > maxW) qn.setScale(maxW / qn.width, 1);
+    const s = qb.season;
+    const st = tvText(this, fx, y4 + 54, s.gp ? `${s.pyds.toLocaleString('pt-BR')} JD · ${s.ptd} TD · ${s.int} INT · OVR ${qb.ovr}` : `OVR ${qb.ovr} · ${qb.age} ANOS · ${qb.tag}`, 12, C.muted, 700, 0.6).setOrigin(0, 0.5);
+    if (st.width > maxW) st.setScale(maxW / st.width, 1);
+    if (last.length) {
+      tvText(this, W - 30, y4 + 16, 'ÚLTIMOS JOGOS', 11, C.muted, 700, 1.2).setOrigin(1, 0.5);
+      last.forEach((r, i) => {
+        const x = W - 30 - 9 - (last.length - 1 - i) * 20;
+        const rg = this.add.graphics();
+        plate(rg, x - 9, y4 + 32, 18, 20, r === 'V' ? TV.green : r === 'D' ? TV.red : TV.ink3);
+        tvText(this, x, y4 + 42, r, 12, r === 'E' ? C.white : C.ink, 800).setOrigin(0.5);
+      });
+    }
 
     // ---- uniforme
-    const y5 = y4 + wh + 26;
+    const y5 = y4 + wh + 24;
     sectionHead(this, 16, y5, 'UNIFORME', 'O RIVAL USA O QUE MAIS CONTRASTA');
     const save = getSave();
     const face: FaceLook = { face: save.face, skin: save.skin, hair: save.hair, hairColor: save.hairColor, beard: save.beard };
     const cw = (W - 32 - 8) / 3;
     const ky = y5 + 16;
-    const ch = GAME_H - 96 - ky;
+    const ch = GAME_H - 92 - ky;
     KIT_IDS.forEach((id, i) => {
       const x = 16 + cw / 2 + i * (cw + 4);
       const kit = me.kits[id];
-      // placa de tinta; atrás do jogador, um fundo chapado: branco para o kit escuro, tinta elevada para os claros
-      const dark = lum(kit.jersey) < 60;
+      // placa de tinta; atrás do jogador, o mesmo fundo claro nos três (o kit escuro também aparece)
       const bg = new TvButton(this, x, ky + ch / 2, { w: cw, h: ch, fill: TV.ink2, fillAlpha: 1 });
       const back = this.add.graphics();
-      plate(back, -cw / 2 + 6, -ch / 2 + 6, cw - 12, ch - 40, dark ? TV.plate : TV.ink3, 1);
+      plate(back, -cw / 2 + 6, -ch / 2 + 6, cw - 12, ch - 40, mix(TV.ink3, 0xffffff, 0.2), 1);
+      back.fillStyle(0xffffff, 0.08);
+      back.fillRect(-cw / 2 + 14, -ch / 2 + 6, cw - 28, (ch - 40) * 0.45);
       bg.add(back);
       const fl = this.add.graphics();
       fl.fillStyle(0x000000, 0.4);

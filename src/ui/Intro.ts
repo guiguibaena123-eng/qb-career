@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { FONT_TITLE, GAME_H, GAME_W, TEAMS, broadcast, logoKey } from '../config';
+import { GAME_H, GAME_W, TEAMS, broadcast, logoKey } from '../config';
 import type { Rng } from '../systems/rng';
-import { TvButton, tvText } from './tv';
-import { label, title, UI } from './widgets';
+import { C, onInk, plate, plateShadow, TV, TvButton, tvText } from './tv';
+import { UI } from './widgets';
 
 /*
  * Abertura da partida:
@@ -54,42 +54,43 @@ export class Intro {
 
   // ------------------------------------------------------------ 1) apresentação
 
-  /** Abertura de horário nobre: faixa na cor da transmissão, estrelas, nome do jogo com brilho. */
+  /** Linha "AO VIVO" do topo (ponto vermelho piscando + modo da partida). */
+  private liveLine() {
+    const sc = this.scene;
+    const W = GAME_W;
+    const t = this.add(tvText(sc, W / 2 + 8, 18, `QB CAREER · ${this.info.mode} · AO VIVO`, 12, C.muted, 700, 1.4).setOrigin(0.5));
+    const dot = this.add(sc.add.circle(t.x - t.width / 2 - 10, 18, 4, TV.red));
+    sc.tweens.add({ targets: dot, alpha: 0.25, duration: 600, yoyo: true, repeat: -1 });
+  }
+
+  /** Abertura de horário nobre: faixa na cor da transmissão, estrelas e o nome do jogo. */
   private primeBanner(pr: { name: string; short: string; pt?: string; color: number; glow: number }) {
     const sc = this.scene;
     const W = GAME_W;
-    const glowHex = '#' + pr.glow.toString(16).padStart(6, '0');
     const band = this.add(sc.add.graphics());
-    band.fillStyle(pr.color, 0.18);
-    band.fillRect(0, 22, W, 100);
+    band.fillStyle(pr.color, 0.35);
+    band.fillRect(0, 34, W, 76);
     band.fillStyle(pr.color, 1);
     band.fillRect(0, 34, W, 4);
     band.fillRect(0, 106, W, 4);
     band.fillStyle(pr.glow, 1);
     band.fillRect(0, 38, W, 2);
     band.fillRect(0, 104, W, 2);
-    // estrelas que piscam
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 12; i++) {
       const x = 14 + ((i * 97) % (W - 28));
-      const y = 48 + ((i * 37) % 52);
+      const y = 46 + ((i * 37) % 52);
       const st = this.add(sc.add.star(x, y, 4, 1.5, i % 3 ? 3 : 5, 0xffffff, 1).setAlpha(0.2));
-      sc.tweens.add({ targets: st, alpha: 0.95, duration: 500 + (i % 5) * 160, yoyo: true, repeat: -1, delay: i * 90 });
+      sc.tweens.add({ targets: st, alpha: 0.9, duration: 500 + (i % 5) * 160, yoyo: true, repeat: -1, delay: i * 90 });
     }
     const words = pr.name.split(' ');
-    const big = this.add(
-      sc.add
-        .text(W / 2, 64, pr.pt ?? `${words[0]} ${words[1]}`, { fontFamily: FONT_TITLE, fontSize: '19px', color: '#FFFFFF', stroke: '#0D0D12', strokeThickness: 6, shadow: { offsetX: 3, offsetY: 4, color: '#' + pr.color.toString(16).padStart(6, '0'), fill: true, stroke: true } })
-        .setOrigin(0.5)
-        .setScale(0.6)
-        .setAlpha(0),
-    );
+    const big = this.add(tvText(sc, W / 2, 64, pr.pt ?? `${words[0]} ${words[1]}`, 40, C.white, 800, 2).setOrigin(0.5).setAlpha(0));
+    if (big.width > W - 40) big.setScale((W - 40) / big.width, 1);
+    big.setShadow(3, 3, '#' + pr.color.toString(16).padStart(6, '0'), 0, false, true);
     const playoff = !['THURSDAY', 'SUNDAY', 'MONDAY'].some((d) => pr.short.startsWith(d));
     const subText = pr.pt ? (pr.name.includes('BOWL') ? 'A GRANDE FINAL' : playoff ? 'PLAYOFFS · MATA-MATA' : 'TRANSMISSÃO ESPECIAL') : words.slice(2).join(' ') || 'GAME';
-    const sub = this.add(title(sc, W / 2, 92, subText, 11, glowHex).setOrigin(0.5).setAlpha(0));
-    sc.tweens.add({ targets: big, scale: 1, alpha: 1, duration: 420, ease: 'Back.Out' });
+    const sub = this.add(tvText(sc, W / 2, 93, subText, 15, '#' + pr.glow.toString(16).padStart(6, '0'), 800, 3).setOrigin(0.5).setAlpha(0));
+    sc.tweens.add({ targets: big, alpha: 1, duration: 360 });
     sc.tweens.add({ targets: sub, alpha: 1, duration: 300, delay: 250 });
-    sc.tweens.add({ targets: big, scale: 1.04, duration: 900, yoyo: true, repeat: -1, delay: 500, ease: 'Sine.InOut' });
-    this.add(label(sc, W / 2, 12, `QB CAREER · ${this.info.mode} · AO VIVO`, 8, '#C9CEE0').setOrigin(0.5));
   }
 
   private presentation(next: () => void) {
@@ -97,89 +98,104 @@ export class Intro {
     const W = GAME_W;
     const H = GAME_H;
     this.clear();
+    this.liveLine();
     const pr = broadcast.prime;
     if (pr) this.primeBanner(pr);
     else {
-      this.add(label(sc, W / 2, 62, `QB CAREER · ${this.info.mode}`, 10, UI.muted).setOrigin(0.5));
-      this.add(title(sc, W / 2, 92, 'HOJE NO ESTÁDIO', 12, '#FFFFFF').setOrigin(0.5));
+      this.add(tvText(sc, W / 2, 62, 'HOJE NO ESTÁDIO', 36, C.white, 800, 2).setOrigin(0.5));
+      const u = this.add(sc.add.graphics());
+      u.fillStyle(TV.yellow, 1);
+      u.fillRect(W / 2 - 40, 86, 80, 4);
     }
 
+    // Cartão de cada time: bloco na cor do time com o escudo + nome, papel e a força em barras
+    const CH = 148;
     const card = (side: 'home' | 'away', y: number) => {
       const t = TEAMS[side];
       const fromLeft = side === 'home';
-      const c = this.add(sc.add.container(fromLeft ? -W : W * 2, y));
+      const c = this.add(sc.add.container(fromLeft ? -W : W, y));
       const g = sc.add.graphics();
-      const x0 = 14;
-      const w = W - 28;
-      g.fillStyle(0x000000, 0.3);
-      g.fillRoundedRect(x0, 6, w, 150, 14);
-      g.fillStyle(0x22284a, 0.9);
-      g.fillRoundedRect(x0, 0, w, 150, 14);
-      g.lineStyle(2, t.color, 0.9);
-      g.strokeRoundedRect(x0, 0, w, 150, 14);
-      // bloco da cor do time com a logo
-      g.fillStyle(t.color, 1);
-      g.fillRoundedRect(x0 + 8, 8, 112, 134, 10);
-      g.fillStyle(0x0a0c1a, 0.35);
-      g.fillRoundedRect(x0 + 8, 8, 112, 134, 10);
+      const x0 = 16;
+      const w = W - 32;
+      const bw0 = 116;
+      plateShadow(g, x0, 0, w, CH);
+      plate(g, x0, 0, w, CH, TV.ink2, 1);
+      plate(g, x0, 0, bw0, CH, t.color, 1, true, true);
+      g.fillStyle(onInk(t.color), 1);
+      g.fillRect(x0 + bw0, 0, w - bw0 - 12, 3);
       c.add(g);
-      c.add(sc.add.image(x0 + 64, 75, logoKey(t.id, 'l')).setDisplaySize(100, 100));
-      const tx = x0 + 136;
-      c.add(title(sc, tx, 22, t.name, 14, '#FFFFFF').setOrigin(0, 0.5));
-      c.add(label(sc, tx, 44, `${fromLeft === this.info.homeHosts ? 'MANDANTE' : 'VISITANTE'} · OVR ${t.rating.ovr}`, 10, UI.muted).setOrigin(0, 0.5));
+      c.add(sc.add.image(x0 + bw0 / 2, CH / 2, logoKey(t.id, 'l')).setDisplaySize(92, 92));
+      const tx = x0 + bw0 + 14;
+      const nm = tvText(sc, tx, 24, t.name, 28, C.white, 800, 0.6).setOrigin(0, 0.5);
+      if (nm.width > w - bw0 - 30) nm.setScale((w - bw0 - 30) / nm.width, 1);
+      c.add(nm);
+      const host = fromLeft === this.info.homeHosts;
+      c.add(tvText(sc, tx, 50, `${host ? 'MANDANTE' : 'VISITANTE'} · OVR ${t.rating.ovr}`, 13, host ? C.yellow : C.muted, 700, 1.2).setOrigin(0, 0.5));
       const R = t.rating;
-      [['ATAQUE', R.atk], ['DEFESA', R.def], ['ESPECIAIS', R.esp]].forEach(([n, v], i) => {
-        const yy = 70 + i * 26;
-        c.add(label(sc, tx, yy, n as string, 9, '#C9CEE0').setOrigin(0, 0.5));
-        const bx = tx + 74;
-        const bw = w - 136 - 74 - 40;
+      const bx = tx + 76;
+      const bw = x0 + w - 16 - 28 - bx;
+      ([['ATAQUE', R.atk], ['DEFESA', R.def], ['ESPECIAIS', R.esp]] as [string, number][]).forEach(([n, v], i) => {
+        const yy = 80 + i * 22;
+        c.add(tvText(sc, tx, yy, n, 13, C.muted, 700, 1).setOrigin(0, 0.5));
         const bg = sc.add.graphics();
-        bg.fillStyle(UI.dark, 1);
-        bg.fillRect(bx, yy - 5, bw, 10);
-        bg.fillStyle(0x3a4060, 1);
-        bg.fillRect(bx + 1, yy - 4, bw - 2, 8);
+        bg.fillStyle(TV.ink, 1);
+        bg.fillRect(bx, yy - 4, bw, 8);
         c.add(bg);
-        const fill = sc.add.rectangle(bx + 1, yy - 4, 0, 8, t.color).setOrigin(0, 0);
+        const fill = sc.add.rectangle(bx, yy - 4, 0, 8, onInk(t.color)).setOrigin(0, 0);
         c.add(fill);
-        sc.tweens.add({ targets: fill, width: ((bw - 2) * (v as number)) / 100, delay: 650 + i * 120, duration: 600, ease: 'Quad.Out' });
-        c.add(title(sc, bx + bw + 6, yy, String(v), 8, '#FFFFFF').setOrigin(0, 0.5));
+        sc.tweens.add({ targets: fill, width: (bw * v) / 100, delay: 650 + i * 120, duration: 600, ease: 'Quad.Out' });
+        c.add(tvText(sc, x0 + w - 16, yy, String(v), 16, C.white, 800, 0).setOrigin(1, 0.5));
       });
-      sc.tweens.add({ targets: c, x: 0, duration: 520, delay: fromLeft ? 150 : 450, ease: 'Back.Out' });
+      sc.tweens.add({ targets: c, x: 0, duration: 480, delay: fromLeft ? 150 : 420, ease: 'Expo.Out' });
       return c;
     };
-    card('home', 130);
+    card('home', 132);
     card('away', 336);
 
-    // VS
-    const vs = this.add(
-      sc.add
-        .text(W / 2, 300, 'VS', { fontFamily: FONT_TITLE, fontSize: '26px', color: UI.yellow, stroke: '#0D0D12', strokeThickness: 7, shadow: { offsetX: 4, offsetY: 6, color: '#0D0D12', fill: true, stroke: true } })
-        .setOrigin(0.5)
-        .setAngle(-6)
-        .setScale(0)
-        .setAlpha(0),
-    );
-    sc.tweens.add({ targets: vs, scale: 1, alpha: 1, duration: 360, delay: 800, ease: 'Back.Out' });
+    // VS entre os cartões
+    const vs = this.add(sc.add.container(W / 2, 308).setScale(0).setAlpha(0));
+    const vg = sc.add.graphics();
+    plateShadow(vg, -34, -20, 68, 40);
+    plate(vg, -34, -20, 68, 40, TV.yellow);
+    vs.add([vg, tvText(sc, 0, 0, this.info.homeHosts ? 'VS' : '@', 28, C.ink, 800, 1).setOrigin(0.5)]);
+    sc.tweens.add({ targets: vs, scale: 1, alpha: 1, duration: 320, delay: 800, ease: 'Back.Out' });
 
-    // Seu QB + estádio
+    // Seu QB (nome, características e o OVR em destaque) + estádio
     const info = this.add(sc.add.container(0, 0).setAlpha(0));
+    const qy = 522;
+    const qh = 96;
     const g2 = sc.add.graphics();
-    g2.fillStyle(0x22284a, 0.85);
-    g2.fillRoundedRect(14, 516, W - 28, 92, 14);
-    g2.lineStyle(1, 0xffffff, 0.14);
-    g2.strokeRoundedRect(14, 516, W - 28, 92, 14);
+    plateShadow(g2, 16, qy, W - 32, qh);
+    plate(g2, 16, qy, W - 32, qh, TV.ink2, 1);
+    const s0 = Math.min(qh * 0.2126, 12);
+    g2.fillStyle(TV.yellow, 1);
+    g2.fillRect(16 + s0, qy, W - 32 - s0, 3);
+    // bloco do OVR à direita
+    plate(g2, W - 16 - 96, qy, 96, qh, TV.yellow, 1, true, true);
+    info.add(g2);
+    const qn = tvText(sc, 36, qy + 44, this.info.qb, 26, C.white, 800, 0.6).setOrigin(0, 0.5);
+    if (qn.width > W - 32 - 96 - 40) qn.setScale((W - 32 - 96 - 40) / qn.width, 1);
+    const tr = tvText(sc, 36, qy + 72, this.info.traits, 13, C.muted, 700, 0.8).setOrigin(0, 0.5);
+    if (tr.width > W - 32 - 96 - 40) tr.setScale((W - 32 - 96 - 40) / tr.width, 1);
     info.add([
-      g2,
-      label(sc, 28, 534, 'SEU QUARTERBACK', 9, UI.muted).setOrigin(0, 0.5),
-      title(sc, 28, 558, this.info.qb, 12, UI.yellow).setOrigin(0, 0.5),
-      label(sc, 28, 584, `OVR ${this.info.ovr} · ${this.info.traits}`, 10, '#E8EAF2').setOrigin(0, 0.5),
-      title(sc, W - 28, 558, `OVR ${this.info.ovr}`, 11, '#FFFFFF').setOrigin(1, 0.5),
+      tvText(sc, 36, qy + 18, 'SEU QUARTERBACK', 12, C.yellow, 800, 1.6).setOrigin(0, 0.5),
+      qn,
+      tr,
+      tvText(sc, W - 16 - 48, qy + 40, String(this.info.ovr), 44, C.ink, 800, 0).setOrigin(0.5),
+      tvText(sc, W - 16 - 48, qy + 74, 'OVR', 14, C.ink, 800, 2).setOrigin(0.5),
     ]);
     sc.tweens.add({ targets: info, alpha: 1, duration: 400, delay: 1100 });
-    const arena = this.add(label(sc, W / 2, 640, this.info.arena, 10, UI.muted).setOrigin(0.5).setAlpha(0));
+    const arena = this.add(sc.add.container(0, 0).setAlpha(0));
+    const at = tvText(sc, W / 2, 662, this.info.arena, 15, C.white, 800, 1.6).setOrigin(0.5);
+    if (at.width > W - 120) at.setScale((W - 120) / at.width, 1);
+    const ag = sc.add.graphics();
+    ag.fillStyle(TV.rule, 1);
+    ag.fillRect(16, 662, W / 2 - at.displayWidth / 2 - 30, 1);
+    ag.fillRect(W / 2 + at.displayWidth / 2 + 14, 662, W / 2 - at.displayWidth / 2 - 30, 1);
+    arena.add([ag, at, tvText(sc, W / 2, 684, 'ONDE A BOLA VAI ROLAR', 11, C.muted, 700, 1.6).setOrigin(0.5)]);
     sc.tweens.add({ targets: arena, alpha: 1, duration: 400, delay: 1300 });
 
-    const btn = new TvButton(sc, W / 2, H - 60, { w: W - 40, h: 60, fill: TEAMS.home.color, fillAlpha: 1, primary: true });
+    const btn = new TvButton(sc, W / 2, H - 60, { w: W - 32, h: 62, fill: TEAMS.home.color, fillAlpha: 1, primary: true });
     btn.add(tvText(sc, 0, 0, 'IR PARA O SORTEIO', 26, TEAMS.home.fg, 800, 1.6).setOrigin(0.5));
     btn.setAlpha(0);
     btn.onTap = () => sc.time.delayedCall(30, next);
@@ -194,9 +210,11 @@ export class Intro {
     const W = GAME_W;
     const H = GAME_H;
     this.clear();
-    this.add(label(sc, W / 2, 70, 'SORTEIO DO COMEÇO', 10, UI.muted).setOrigin(0.5));
-    const head = this.add(title(sc, W / 2, 104, 'CARA OU COROA?', 16, UI.yellow).setOrigin(0.5));
-    const sub = this.add(label(sc, W / 2, 140, 'QUEM GANHAR ESCOLHE RECEBER OU CHUTAR', 10, '#C9CEE0').setOrigin(0.5));
+    this.liveLine();
+    this.add(tvText(sc, W / 2, 74, 'SORTEIO DO COMEÇO', 14, C.muted, 700, 2).setOrigin(0.5));
+    const head = this.add(tvText(sc, W / 2, 112, 'CARA OU COROA?', 40, C.yellow, 800, 1.4).setOrigin(0.5));
+    const sub = this.add(tvText(sc, W / 2, 150, 'QUEM GANHAR ESCOLHE RECEBER OU CHUTAR', 15, C.white, 700, 0.8).setOrigin(0.5));
+    sub.setWordWrapWidth(W - 40).setAlign('center');
 
     // Moeda: dourada, com rosto (cara) de um lado e coroa do outro
     const coin = this.add(sc.add.container(W / 2, 470));
