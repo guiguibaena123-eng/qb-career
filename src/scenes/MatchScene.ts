@@ -1844,6 +1844,7 @@ export class MatchScene extends Phaser.Scene {
     this.ball.x = MID;
     this.ball.y = ballY;
     this.ball.h = kind === 'punt' ? 1.1 : 0.25;
+    this.ball.spinMode = kind === 'punt' ? 'spiral' : 'tumble';
     this.world.targetY = Phaser.Math.Clamp(s.los - 1, CAMERA.minY, CAMERA.maxY);
 
     const spot = spotName(s.los, TEAMS.home.abbr, TEAMS.away.abbr);
@@ -2302,6 +2303,7 @@ export class MatchScene extends Phaser.Scene {
     this.ball.x = MID;
     this.ball.y = yK;
     this.ball.h = 0.25;
+    this.ball.spinMode = 'tumble';
     this.world.targetY = Phaser.Math.Clamp(yK - 3, CAMERA.minY, CAMERA.maxY);
     this.world.field.scrimmageY = -50;
     this.world.field.firstDownY = -50;

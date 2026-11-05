@@ -27,24 +27,14 @@ export class Ball {
   private img: Phaser.GameObjects.Image;
   private trail: { x: number; y: number }[] = [];
   private spin = 0;
+  /** Passe e punt: espiral (gira em volta do próprio eixo). Field goal e kickoff: de ponta a ponta. */
+  spinMode: 'spiral' | 'tumble' = 'spiral';
+  /** Posição do quadro anterior (direção do voo). */
+  private prev = { x: 0, y: 0, h: 0 };
 
   constructor(scene: Phaser.Scene, private proj: Projection, private ground: Phaser.GameObjects.Graphics, private fxTop: Phaser.GameObjects.Graphics) {
-    if (!scene.textures.exists('ball')) {
-      const t = scene.textures.createCanvas('ball', 60, 36)!;
-      const c = t.getContext();
-      c.scale(3, 3);
-      c.fillStyle = '#0d0d12';
-      c.fillRect(2, 0, 16, 12);
-      c.fillRect(0, 2, 20, 8);
-      c.fillStyle = '#8a4b1f';
-      c.fillRect(2, 2, 16, 8);
-      c.fillStyle = '#a8612b';
-      c.fillRect(4, 2, 10, 3);
-      c.fillStyle = '#ffffff';
-      c.fillRect(7, 5, 6, 2);
-      t.refresh();
-    }
-    this.img = scene.add.image(0, 0, 'ball').setDepth(36).setVisible(false);
+    makeBallTexture(scene);
+    this.img = scene.add.image(0, 0, 'ball2', 'b0').setDepth(36).setVisible(false);
   }
 
   give(pl: Player) {
@@ -60,6 +50,7 @@ export class Ball {
     this.throw = t;
     this.u = 0;
     this.trail = [];
+    this.spinMode = 'spiral';
   }
 
   /** Avança o voo; devolve true quando chega no ponto de queda. */
@@ -67,9 +58,10 @@ export class Ball {
     if (this.state === 'air' && this.throw) {
       this.u = Math.min(1, this.u + dt / this.throw.T);
       [this.x, this.y, this.h] = arcAt(this.throw, this.u);
-      this.spin += dt * 20;
+      this.spin += dt;
       return this.u >= 1;
     }
+    if (this.state === 'loose') this.spin += dt;
     if (this.state === 'held' && this.holder) {
       this.x = this.holder.x;
       this.y = this.holder.y;
@@ -111,13 +103,121 @@ export class Ball {
       this.fxTop.fillStyle(0xffffff, 0.35 * k);
       this.fxTop.fillCircle(t.x, t.y, 1 + k * 2.5 * p.s);
     });
-    this.img
-      .setPosition(p.x, p.y)
-      .setScale(Math.max(0.35, p.s * 0.9) / 3)
-      .setAngle(Math.sin(this.spin) * 25 - 20);
+    const base = Math.max(0.35, p.s * 0.9) / 3;
+    this.img.setPosition(p.x, p.y);
+    // Direção do voo no mundo (do quadro anterior para este)
+    const dx = this.x - this.prev.x;
+    const dy = this.y - this.prev.y;
+    const dh = this.h - this.prev.h;
+    this.prev.x = this.x;
+    this.prev.y = this.y;
+    this.prev.h = this.h;
+    const d = Math.hypot(dx, dy, dh);
+    if (this.h < 0.35 || d < 0.004 || d > 3) {
+      // parada / rolando no chão
+      this.img.setFrame('b0').setScale(base).setAngle(-20);
+      return;
+    }
+    // Eixo da bola apontado para onde ela voa, visto pela câmera: projeta a ponta e o fim da bola.
+    // Indo para longe da câmera ela encurta (vista mais de ponta).
+    const k = 0.3 / d;
+    pr.project(this.x + dx * k, this.y + dy * k, this.h + dh * k, g1);
+    pr.project(this.x - dx * k, this.y - dy * k, this.h - dh * k, g0);
+    const sx = g1.x - g0.x;
+    const sy = g1.y - g0.y;
+    const ang = Math.atan2(sy, sx);
+    const f = Phaser.Math.Clamp(Math.hypot(sx, sy) / (0.6 * p.s * 10), 0.55, 1);
+    if (this.spinMode === 'spiral') {
+      // espiral: os cordões dão a volta na bola (~6 voltas por segundo) e a ponta balança de leve
+      const ph = (this.spin * 6) % 1;
+      this.img
+        .setFrame(`b${Math.floor(ph * BALL_FRAMES)}`)
+        .setScale(base * f, base)
+        .setRotation(ang + Math.sin(this.spin * 9) * 0.05);
+    } else {
+      // de ponta a ponta (~2,2 voltas por segundo): a bola encurta quando a ponta vira para a câmera
+      const rot = this.spin * Math.PI * 2 * 2.2;
+      const c = Math.abs(Math.cos(rot));
+      this.img
+        .setFrame(Math.sin(rot) > 0 ? 'b0' : `b${BALL_FRAMES / 2}`)
+        .setScale(base * f * (0.6 + 0.4 * c), base)
+        .setRotation(ang);
+    }
   }
 
   hide() {
     this.img.setVisible(false);
   }
+}
+
+const BALL_FRAMES = 8;
+const BW = 60;
+const BH = 36;
+
+/** Bola de futebol americano em 8 fases da rotação (os cordões dão a volta em torno do eixo comprido). */
+function makeBallTexture(scene: Phaser.Scene) {
+  if (scene.textures.exists('ball2')) return;
+  const t = scene.textures.createCanvas('ball2', BW * BALL_FRAMES, BH)!;
+  const c = t.getContext();
+  const cx = BW / 2;
+  const cy = BH / 2;
+  const rx = 27;
+  const ry = 15;
+  const shape = (ox: number) => {
+    // bola com as pontas afinadas
+    c.beginPath();
+    c.moveTo(ox + cx - rx, cy);
+    c.bezierCurveTo(ox + cx - rx * 0.6, cy - ry * 1.32, ox + cx + rx * 0.6, cy - ry * 1.32, ox + cx + rx, cy);
+    c.bezierCurveTo(ox + cx + rx * 0.6, cy + ry * 1.32, ox + cx - rx * 0.6, cy + ry * 1.32, ox + cx - rx, cy);
+    c.closePath();
+  };
+  for (let i = 0; i < BALL_FRAMES; i++) {
+    const ox = i * BW;
+    const a = (i / BALL_FRAMES) * Math.PI * 2; // fase da rotação
+    c.save();
+    shape(ox);
+    c.fillStyle = '#0d0d12';
+    c.lineWidth = 4;
+    c.strokeStyle = '#0d0d12';
+    c.stroke();
+    const g = c.createLinearGradient(0, cy - ry, 0, cy + ry);
+    g.addColorStop(0, '#b9733a');
+    g.addColorStop(0.45, '#8a4b1f');
+    g.addColorStop(1, '#4f2810');
+    c.fillStyle = g;
+    c.fill();
+    c.clip();
+    // gomos: costuras que acompanham a rotação
+    c.strokeStyle = 'rgba(40,18,6,0.55)';
+    c.lineWidth = 1.2;
+    for (const off of [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]) {
+      const ya = Math.sin(a + off);
+      if (Math.cos(a + off) < 0) continue;
+      c.beginPath();
+      c.moveTo(ox + cx - rx, cy);
+      c.quadraticCurveTo(ox + cx, cy + ya * ry * 1.25, ox + cx + rx, cy);
+      c.stroke();
+    }
+    // cordões: aparecem na frente e somem atrás da bola
+    const ly = cy + Math.sin(a) * ry * 0.72;
+    const vis = Math.cos(a);
+    if (vis > -0.15) {
+      const al = Math.min(1, (vis + 0.15) * 1.6);
+      c.fillStyle = `rgba(250,248,240,${al})`;
+      c.fillRect(ox + cx - 9, ly - 1.4, 18, 2.8);
+      for (let j = -3; j <= 3; j++) c.fillRect(ox + cx + j * 2.8 - 0.8, ly - 3.6, 1.6, 7.2);
+    }
+    // faixas brancas perto das pontas (dão a leitura do giro)
+    c.fillStyle = 'rgba(250,248,240,0.85)';
+    c.fillRect(ox + cx - rx * 0.62, 0, 3, BH);
+    c.fillRect(ox + cx + rx * 0.62 - 3, 0, 3, BH);
+    // brilho que corre com a rotação
+    c.fillStyle = 'rgba(255,230,190,0.35)';
+    c.beginPath();
+    c.ellipse(ox + cx - 4, cy - ry * 0.45 + Math.sin(a) * 2, rx * 0.5, ry * 0.18, 0, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+    t.add(`b${i}`, 0, ox, 0, BW, BH);
+  }
+  t.refresh();
 }
