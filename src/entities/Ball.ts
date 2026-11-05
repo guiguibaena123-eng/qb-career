@@ -34,7 +34,7 @@ export class Ball {
   /** Posição do quadro anterior (direção do voo). */
   private prev = { x: 0, y: 0, h: 0 };
 
-  constructor(scene: Phaser.Scene, private proj: Projection, private ground: Phaser.GameObjects.Graphics, private fxTop: Phaser.GameObjects.Graphics) {
+  constructor(private scene: Phaser.Scene, private proj: Projection, private ground: Phaser.GameObjects.Graphics, private fxTop: Phaser.GameObjects.Graphics) {
     makeBallTexture(scene);
     this.img = scene.add.image(0, 0, 'ball2', 'b0').setDepth(36).setVisible(false);
   }
@@ -64,7 +64,6 @@ export class Ball {
       this.spin += dt;
       return this.u >= 1;
     }
-    if (this.state === 'loose') this.spin += dt;
     if (this.state === 'held' && this.holder) {
       this.x = this.holder.x;
       this.y = this.holder.y;
@@ -98,6 +97,8 @@ export class Ball {
         this.ground.fillEllipse(g1.x, g1.y, u * 0.7, u * 0.26);
       }
     }
+    // Bola solta (chutes, fumble) avança o giro aqui: nos chutes o update() do voo não é chamado
+    if (this.state === 'loose') this.spin += Math.min(0.05, this.scene.game.loop.delta / 1000);
     const base = Math.max(0.35, p.s * 0.9) / 3;
     this.img.setPosition(p.x, p.y);
     // Direção do voo no mundo (do quadro anterior para este)
