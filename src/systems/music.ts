@@ -51,6 +51,8 @@ class MenuMusic {
   private order: number[] = [];
   private pos = -1;
   private blobs = new Map<number, Promise<string>>();
+  /** faixas já baixadas (endereço do blob pronto) */
+  private ready = new Map<number, string>();
   private wanted = false;
   private playing = false;
   private hidden = false;
@@ -58,10 +60,14 @@ class MenuMusic {
   private pauseTimer: number | null = null;
   /** preparando a próxima faixa (evita disparar duas vezes) */
   private busy = false;
+  private started = false;
   /** play() bloqueado pelo navegador: tenta de novo no próximo toque */
   private blocked: (() => Promise<void>) | null = null;
 
   constructor() {
+    // Já baixa a primeira faixa ao abrir o jogo (baixar não precisa de toque): no primeiro toque ela toca na hora
+    this.shuffle();
+    void this.load(this.order[0]).catch(() => {});
     // Todo toque: cria/retoma o áudio (exigência dos navegadores) e tenta de novo o que foi bloqueado
     const kick = () => this.kick();
     window.addEventListener('pointerdown', kick, true);
@@ -169,14 +175,17 @@ class MenuMusic {
     return this.order[this.pos + 1];
   }
 
+  private fileUrl(t: number) {
+    return `${import.meta.env.BASE_URL}music/${TRACKS[t].file}.mp3`;
+  }
+
   private load(t: number): Promise<string> {
     let p = this.blobs.get(t);
     if (!p) {
-      const url = `${import.meta.env.BASE_URL}music/${TRACKS[t].file}.mp3`;
-      p = fetch(url)
+      p = fetch(this.fileUrl(t))
         .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
         .then((b) => URL.createObjectURL(b));
-      p.catch(() => this.blobs.delete(t));
+      p.then((u) => this.ready.set(t, u), () => this.blobs.delete(t));
       this.blobs.set(t, p);
     }
     return p;
@@ -189,6 +198,7 @@ class MenuMusic {
     for (const [t, p] of this.blobs) {
       if (keep.has(t)) continue;
       this.blobs.delete(t);
+      this.ready.delete(t);
       void p.then((u) => URL.revokeObjectURL(u)).catch(() => {});
     }
   }
@@ -203,7 +213,8 @@ class MenuMusic {
     const deck = this.decks[(this.cur + 1) % 2];
     let url: string;
     try {
-      url = await this.load(t);
+      // primeira faixa ainda baixando: toca direto do servidor enquanto baixa (não espera o arquivo inteiro)
+      url = first && !this.ready.has(t) ? this.fileUrl(t) : await this.load(t);
     } catch {
       // sem internet e sem cache: tenta de novo daqui a pouco
       this.pos--;
@@ -227,7 +238,7 @@ class MenuMusic {
       old.handedOff = true;
       this.cur = this.decks.indexOf(deck);
       const now = ctx.currentTime;
-      const dur = first ? 1.5 : XFADE;
+      const dur = first ? 0.6 : XFADE;
       fade(deck.gain.gain, now, dur, true);
       if (!old.el.paused) fade(old.gain.gain, now, dur, false);
       window.setTimeout(() => {
@@ -265,7 +276,9 @@ class MenuMusic {
     }
     if (should) {
       void ctx.resume();
-      master.gain.linearRampToValueAtTime(LEVEL, now + DUCK);
+      // primeira vez: entra rápido; voltando da partida: sobe com calma
+      master.gain.linearRampToValueAtTime(LEVEL, now + (this.started ? DUCK : 0.6));
+      this.started = true;
       if (!this.playing) {
         this.playing = true;
         const d = this.decks[this.cur];
@@ -297,7 +310,7 @@ function fade(p: AudioParam, at: number, dur: number, up: boolean) {
   }
   p.cancelScheduledValues(at);
   p.setValueAtTime(up ? 0 : p.value, at);
-  if (!up) for (let i = 0; i < n; i++) curve[i] *= p.value || 1;
+  if (!up) for (let i = 0; i < n; i++) curve[i] *= p.value;
   p.setValueCurveAtTime(curve, at, dur);
 }
 
