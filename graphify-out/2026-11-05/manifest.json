@@ -900,9 +900,9 @@
     "semantic_hash": "885ca46daa416ffc5b24efc5c9089076"
   },
   "public/sw.js": {
-    "mtime": 1793887633.6084282,
-    "seen": 1793887650.842283,
-    "ast_hash": "07e4753f005122b482f6ff54d836d067",
+    "mtime": 1793890510.0594022,
+    "seen": 1793890527.3798947,
+    "ast_hash": "6d1a7fb5ad209709bc3cb27cb3353814",
     "semantic_hash": ""
   },
   "public/icons/icon-180.png": {
@@ -948,10 +948,10 @@
     "semantic_hash": "605db32665888287d9d9d151d5a696ef"
   },
   "src/player/PlayerSave.ts": {
-    "mtime": 1792103039.555422,
-    "seen": 1793730727.731064,
-    "ast_hash": "289346881c07df32a67a6ff3e0dd7cf5",
-    "semantic_hash": "289346881c07df32a67a6ff3e0dd7cf5"
+    "mtime": 1793889619.2466755,
+    "seen": 1793890527.3799562,
+    "ast_hash": "d4129e4b1449de74b193beeda9ae29a1",
+    "semantic_hash": ""
   },
   "src/scenes/CareerTest.ts": {
     "mtime": 1791414073.2226243,
@@ -2238,10 +2238,10 @@
     "semantic_hash": ""
   },
   "src/career/pane.ts": {
-    "mtime": 1791935039.6231673,
-    "seen": 1793730727.7310128,
-    "ast_hash": "59e5b2fdf3fea7ef1c2924b05e05fe20",
-    "semantic_hash": "59e5b2fdf3fea7ef1c2924b05e05fe20"
+    "mtime": 1793889870.5297103,
+    "seen": 1793890527.379904,
+    "ast_hash": "15e0f935b61f0856d73185c6f01534d3",
+    "semantic_hash": ""
   },
   "src/career/season.ts": {
     "mtime": 1793832891.2596514,
@@ -2250,9 +2250,9 @@
     "semantic_hash": ""
   },
   "src/scenes/CarreiraMenu.ts": {
-    "mtime": 1793877604.3541353,
-    "seen": 1793877714.5034184,
-    "ast_hash": "cd0f4971809d11de8031ed5e11e61659",
+    "mtime": 1793890133.7429192,
+    "seen": 1793890527.3799667,
+    "ast_hash": "3e5b642885ddb8d7af7ad852f19a0f6e",
     "semantic_hash": ""
   },
   "src/career/kits.ts": {
@@ -2262,10 +2262,10 @@
     "semantic_hash": "ea5218596f66044ecf099e4d0d26c4b7"
   },
   "src/integration/MatchBridge.ts": {
-    "mtime": 1792103165.7597523,
-    "seen": 1793730727.7310574,
-    "ast_hash": "a71de403dd6b19187d79349c7a92b61e",
-    "semantic_hash": "a71de403dd6b19187d79349c7a92b61e"
+    "mtime": 1793889619.2995846,
+    "seen": 1793890527.3799493,
+    "ast_hash": "d6ea4cb78d6fa7428bccb530c71f7ba8",
+    "semantic_hash": ""
   },
   "src/career/league.ts": {
     "mtime": 1792102631.0115652,
@@ -2274,9 +2274,9 @@
     "semantic_hash": "bbc06df7a87b072858ba1d69c8bbe908"
   },
   "src/scenes/PreJogo.ts": {
-    "mtime": 1793833049.834202,
-    "seen": 1793833830.3539286,
-    "ast_hash": "ceeb76a6a47bcd760156fda7f352b010",
+    "mtime": 1793890429.6241252,
+    "seen": 1793890527.3799918,
+    "ast_hash": "8c571e96d417fc066a767ea4669ed4e6",
     "semantic_hash": ""
   },
   "src/ui/gradcard.ts": {
@@ -2298,9 +2298,9 @@
     "semantic_hash": ""
   },
   "src/scenes/CareerSlots.ts": {
-    "mtime": 1793832968.437673,
-    "seen": 1793833830.3538542,
-    "ast_hash": "1bea88c5bad1426bb7b767e49b7497d8",
+    "mtime": 1793889619.3015838,
+    "seen": 1793890527.3799634,
+    "ast_hash": "218974b29ebd7c205f8d0e65291b86d4",
     "semantic_hash": ""
   },
   "src/ui/jerseyArt.ts": {
@@ -2424,9 +2424,9 @@
     "semantic_hash": ""
   },
   "DESIGN.md": {
-    "mtime": 1793887633.6963296,
-    "seen": 1793887650.8424804,
-    "ast_hash": "828eb4e015d50c695d03f7471e821c87",
+    "mtime": 1793890510.1428406,
+    "seen": 1793890527.3800788,
+    "ast_hash": "ca77fb4b7eada3647d42b05f55f8a6c3",
     "semantic_hash": ""
   },
   "PRODUCT.md": {
