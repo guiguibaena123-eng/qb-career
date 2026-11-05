@@ -43,7 +43,7 @@ const BASE: Record<Role, Attributes> = {
 
 /** Poses (frames) desenhadas para cada jogador. */
 // (novas poses sempre no fim: o replay guarda o índice)
-export const POSES = ['idle', 'run1', 'run2', 'throw', 'catch', 'carry', 'carrySide', 'carryTurn', 'diveUp', 'dive', 'diveFlat', 'run3', 'run4', 'carry1', 'carry2', 'stance', 'ready'] as const;
+export const POSES = ['idle', 'run1', 'run2', 'throw', 'catch', 'carry', 'carrySide', 'carryTurn', 'diveUp', 'dive', 'diveFlat', 'run3', 'run4', 'carry1', 'carry2', 'stance', 'ready', 'hold'] as const;
 export type Pose = (typeof POSES)[number];
 const MARGIN = PX;
 const FRAME_W = BOX_W * PX + 2 * MARGIN;
@@ -682,6 +682,20 @@ function rigFor(L: Look, pose: Pose): Rig {
           numSize: 5.2,
         };
       return standing(L, { drop: 3, spread: 2, arms: 'knees' });
+    case 'hold':
+      // segurador do chute: ajoelhado (joelho direito no chão, pé esquerdo plantado), inclinado para a bola,
+      // dedo da mão esquerda em cima da bola em pé; o outro braço apoiado na coxa
+      return {
+        view: L.front ? 'front' : 'back',
+        hipL: [11, 9.6], kneeL: [9.4, 7.4], ankL: [9.6, 2.6],
+        hipR: [17, 9.6], kneeR: [18.4, 2.4], ankR: [19.6, 1.2], soleR: true,
+        cx: 13.4, waist: 10.6, chest: 19.2, wWaist: 13.5, wChest: 17.5,
+        padY: 22.2, padW: 11.2,
+        shL: [4.4, 21], elL: [1.8, 16.8], hdL: [3.4, 14.6],
+        shR: [22.4, 21], elR: [23.4, 15.4], hdR: [19.4, 12.2],
+        head: [12.6, 29.4], headR: 6.9, headRy: 6.2,
+        numSize: 5.6,
+      };
     case 'idle':
     default:
       return standing(L, {});

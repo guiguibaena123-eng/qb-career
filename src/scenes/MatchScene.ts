@@ -1837,8 +1837,10 @@ export class MatchScene extends Phaser.Scene {
       k.x = MID - 1.3;
       k.y = ballY - 2.4;
     }
-    holder.pose = null;
+    // field goal / ponto extra: o segurador fica ajoelhado com a bola em pé no chão
+    holder.pose = kind === 'punt' ? null : 'hold';
     k.pose = null;
+    this.ball.upright = kind !== 'punt';
     this.ball.state = 'loose';
     this.ball.holder = null;
     this.ball.x = MID;
@@ -1950,7 +1952,9 @@ export class MatchScene extends Phaser.Scene {
         kk.stage = 'flight';
         kk.t = 0;
         k.pose = 'throw';
-        this.qb.pose = null;
+        // o segurador continua abaixado um instante e depois levanta
+        if (kk.kind === 'punt') this.qb.pose = null;
+        else this.time.delayedCall(550, () => this.qb.pose === 'hold' && (this.qb.pose = null));
         this.feedback.shake(0.004, 90);
         this.time.delayedCall(300, () => (k.pose = null));
       }

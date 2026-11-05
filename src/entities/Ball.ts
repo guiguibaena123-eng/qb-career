@@ -29,6 +29,8 @@ export class Ball {
   private spin = 0;
   /** Passe e punt: espiral (gira em volta do próprio eixo). Field goal e kickoff: de ponta a ponta. */
   spinMode: 'spiral' | 'tumble' = 'spiral';
+  /** Bola em pé no chão (presa pelo segurador antes do field goal); sai sozinho quando ela começa a voar. */
+  upright = false;
   /** Posição do quadro anterior (direção do voo). */
   private prev = { x: 0, y: 0, h: 0 };
 
@@ -51,6 +53,7 @@ export class Ball {
     this.u = 0;
     this.trail = [];
     this.spinMode = 'spiral';
+    this.upright = false;
   }
 
   /** Avança o voo; devolve true quando chega no ponto de queda. */
@@ -95,14 +98,6 @@ export class Ball {
         this.ground.fillEllipse(g1.x, g1.y, u * 0.7, u * 0.26);
       }
     }
-    // Rastro curto
-    this.trail.push({ x: p.x, y: p.y });
-    if (this.trail.length > 7) this.trail.shift();
-    this.trail.forEach((t, i) => {
-      const k = (i + 1) / this.trail.length;
-      this.fxTop.fillStyle(0xffffff, 0.35 * k);
-      this.fxTop.fillCircle(t.x, t.y, 1 + k * 2.5 * p.s);
-    });
     const base = Math.max(0.35, p.s * 0.9) / 3;
     this.img.setPosition(p.x, p.y);
     // Direção do voo no mundo (do quadro anterior para este)
@@ -113,11 +108,33 @@ export class Ball {
     this.prev.y = this.y;
     this.prev.h = this.h;
     const d = Math.hypot(dx, dy, dh);
+    if (this.upright && (d < 0.004 || d > 3)) {
+      // em pé no chão, um pouco inclinada para trás (como o segurador deixa para o chutador)
+      pr.project(this.x, this.y, 0, g0);
+      this.trail = [];
+      this.img.setFrame('b2').setOrigin(0.07, 0.5).setPosition(g0.x, g0.y).setScale(base * 0.52, base * 0.6).setRotation(-Math.PI / 2 - 0.12);
+      return;
+    }
+    this.img.setOrigin(0.5);
+    if (this.upright && d >= 0.004) {
+      this.upright = false;
+      this.spin = 0; // o giro de ponta a ponta começa da bola em pé
+    }
     if (this.h < 0.35 || d < 0.004 || d > 3) {
       // parada / rolando no chão
+      this.trail = [];
       this.img.setFrame('b0').setScale(base).setAngle(-20);
       return;
     }
+    // Rastro curto (só voando)
+    this.trail.push({ x: p.x, y: p.y });
+    if (this.trail.length > 7) this.trail.shift();
+    this.trail.forEach((t, i) => {
+      const k = (i + 1) / this.trail.length;
+      this.fxTop.fillStyle(0xffffff, 0.35 * k);
+      this.fxTop.fillCircle(t.x, t.y, 1 + k * 2.5 * p.s);
+    });
+
     // Eixo da bola apontado para onde ela voa, visto pela câmera: projeta a ponta e o fim da bola.
     // Indo para longe da câmera ela encurta (vista mais de ponta).
     const k = 0.3 / d;
@@ -135,13 +152,28 @@ export class Ball {
         .setScale(base * f, base)
         .setRotation(ang + Math.sin(this.spin * 9) * 0.05);
     } else {
-      // de ponta a ponta (~2,2 voltas por segundo): a bola encurta quando a ponta vira para a câmera
-      const rot = this.spin * Math.PI * 2 * 2.2;
-      const c = Math.abs(Math.cos(rot));
+      // de ponta a ponta (chute de campo / kickoff): o eixo da bola gira em 3D no plano do voo,
+      // começando em pé e virando para trás (o chute pega embaixo da bola); projetado pela câmera.
+      const fx = dx / d, fy = dy / d, fh = dh / d;
+      // "para cima" perpendicular ao voo
+      let ux = -fh * fx, uy = -fh * fy, uh = 1 - fh * fh;
+      const un = Math.hypot(ux, uy, uh) || 1;
+      ux /= un;
+      uy /= un;
+      uh /= un;
+      const th = Math.PI / 2 + this.spin * Math.PI * 2 * 2.4;
+      const c = Math.cos(th), s = Math.sin(th);
+      const ax = c * fx + s * ux, ay = c * fy + s * uy, ah = c * fh + s * uh;
+      const L = 0.3;
+      pr.project(this.x + ax * L, this.y + ay * L, this.h + ah * L, g1);
+      pr.project(this.x - ax * L, this.y - ay * L, this.h - ah * L, g0);
+      const tx = g1.x - g0.x;
+      const ty = g1.y - g0.y;
+      const fl = Phaser.Math.Clamp(Math.hypot(tx, ty) / (0.6 * p.s * 10), 0.6, 1);
       this.img
-        .setFrame(Math.sin(rot) > 0 ? 'b0' : `b${BALL_FRAMES / 2}`)
-        .setScale(base * f * (0.6 + 0.4 * c), base)
-        .setRotation(ang);
+        .setFrame(Math.floor((this.spin * 2.4 * 2) % 2) ? 'b1' : 'b0')
+        .setScale(base * fl, base)
+        .setRotation(Math.atan2(ty, tx));
     }
   }
 
