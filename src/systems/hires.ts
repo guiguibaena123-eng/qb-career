@@ -14,6 +14,15 @@ export function patchText() {
   proto.text = function (this: unknown, x: number, y: number, text: string, style?: Record<string, unknown>) {
     return orig.call(this, x, y, text, { resolution: RES, ...(style ?? {}) });
   };
+  // setColor redesenha o texto e reenvia a imagem para a placa de vídeo mesmo com a cor igual;
+  // vários textos (relógio de jogada, letreiro do muro, barra de força) chamam isso todo quadro.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tp = Phaser.GameObjects.Text.prototype as any;
+  const origColor = tp.setColor;
+  tp.setColor = function (this: Phaser.GameObjects.Text, color: string) {
+    if (this.style.color === color) return this;
+    return origColor.call(this, color);
+  };
 }
 
 /** Câmera principal com zoom RES, enquadrando o mundo lógico 390×844. */

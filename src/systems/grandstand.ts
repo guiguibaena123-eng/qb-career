@@ -388,6 +388,8 @@ interface Piece {
   r: number;
   u0: number;
   u1: number;
+  /** Pontas no chão (fixas; calculadas uma vez). */
+  ends?: [number, number, number, number];
 }
 
 export class Grandstand {
@@ -407,7 +409,14 @@ export class Grandstand {
     pyro: { x: number; y: number; delay: number }[];
     confetti: { x: number; y: number; h: number; vh: number; ph: number; col: number }[];
   } | null = null;
-  private g: Phaser.GameObjects.Graphics; // muro da frente + flashes
+  private g: Phaser.GameObjects.Graphics; // muro da frente (só redesenha quando a câmera mexe ou o letreiro pisca)
+  /** Flashes de câmera e confete: mudam todo quadro, ficam numa camada à parte do muro. */
+  private fg!: Phaser.GameObjects.Graphics;
+  /** Última câmera/estado desenhado (evita refazer tudo a cada quadro com a câmera parada). */
+  private lastView = '';
+  private lastWall = '';
+  private crowdStill = false;
+  private bgUsed = false;
   /** Luz da explosão (soma com o que está atrás: fogos e labaredas brilham de verdade). */
   private bg!: Phaser.GameObjects.Graphics;
   private sg: Phaser.GameObjects.Graphics; // telão
@@ -468,6 +477,7 @@ export class Grandstand {
       }
     }
     this.g = scene.add.graphics().setDepth(3.9);
+    this.fg = scene.add.graphics().setDepth(3.9);
     this.bg = scene.add.graphics().setDepth(3.97).setBlendMode(Phaser.BlendModes.ADD);
     this.sg = scene.add.graphics().setDepth(3.5);
     this.wallText = scene.add
@@ -724,10 +734,18 @@ export class Grandstand {
       this.crowdPose[k] = ex > 0.35 ? (s > -0.4 ? 1 : 0) : ex > 0.12 ? (Math.sin(this.time * 4 + ph * 3) > 0.6 ? 1 : 0) : 0;
     }
 
+    // Câmera parada e torcida quieta: arquibancada, refletores e muro ficam como estão
+    const view = `${proj.camY},${proj.tilt},${proj.w},${proj.h}`;
+    const camMoved = view !== this.lastView;
+    this.lastView = view;
+    const still = ex <= 0.01;
+    const skipPieces = !camMoved && still && this.crowdStill;
+    this.crowdStill = still;
+
     // Cada pedaço: ponta esquerda projetada, largura até a ponta direita, altura pela profundidade
-    for (const p of this.pieces) {
-      const [x0, y0] = pointAt(p.r, p.u0);
-      const [x1, y1] = pointAt(p.r, p.u1);
+    for (const p of skipPieces ? [] : this.pieces) {
+      const e = (p.ends ??= [...pointAt(p.r, p.u0), ...pointAt(p.r, p.u1)] as [number, number, number, number]);
+      const x0 = e[0], y0 = e[1], x1 = e[2], y1 = e[3];
       if (Math.max(y0, y1) < near) {
         p.img.setVisible(false);
         continue;
@@ -757,33 +775,46 @@ export class Grandstand {
     }
 
     this.drawScreen();
-    this.drawSkyline();
-    this.drawLights();
+    if (camMoved) {
+      this.drawSkyline();
+      this.drawLights();
+    }
 
     // Muro escuro na frente, seguindo a curva dos cantos
     const g = this.g;
-    g.clear();
     const wr = R0;
-    const wl = rowGeom(wr).len;
-    const N = 40;
     const boom = this.boom;
     const blink = boom && boom.t < 3.2 ? Math.floor(boom.t / 0.16) % 2 : -1;
-    const ledBase = blink === 1 ? 0xffd23f : blink === 0 ? hostTeam().color : shadeNum(hostTeam().color, -0.62);
-    for (let i = 0; i < N; i++) {
-      const [ax, ay] = pointAt(wr, (wl * i) / N);
-      const [bx, by] = pointAt(wr, (wl * (i + 1)) / N);
-      wallQuad(g, proj, ax, ay, bx, by, 0, WALL_H + 0.4, 0x0d0d12);
-      wallQuad(g, proj, ax, ay, bx, by, 0.25, WALL_H + 0.1, ledBase); // letreiro de LED
-      wallQuad(g, proj, ax, ay, bx, by, WALL_H - 0.05, WALL_H + 0.1, 0xffffff, 0.18);
-      wallQuad(g, proj, ax, ay, bx, by, WALL_H + 0.25, WALL_H + 0.4, 0x7a809a);
+    const wallKey = `${view},${blink}`;
+    if (wallKey !== this.lastWall) {
+      this.lastWall = wallKey;
+      g.clear();
+      const wl = rowGeom(wr).len;
+      const N = 40;
+      const ledBase = blink === 1 ? 0xffd23f : blink === 0 ? hostTeam().color : shadeNum(hostTeam().color, -0.62);
+      for (let i = 0; i < N; i++) {
+        const [ax, ay] = pointAt(wr, (wl * i) / N);
+        const [bx, by] = pointAt(wr, (wl * (i + 1)) / N);
+        wallQuad(g, proj, ax, ay, bx, by, 0, WALL_H + 0.4, 0x0d0d12);
+        wallQuad(g, proj, ax, ay, bx, by, 0.25, WALL_H + 0.1, ledBase); // letreiro de LED
+        wallQuad(g, proj, ax, ay, bx, by, WALL_H - 0.05, WALL_H + 0.1, 0xffffff, 0.18);
+        wallQuad(g, proj, ax, ay, bx, by, WALL_H + 0.25, WALL_H + 0.4, 0x7a809a);
+      }
+      proj.project((CX_L + CX_R) / 2, CY + wr, WALL_H * 0.55, pa);
+      const wtxt = blink >= 0 ? 'TOUCHDOWN!  TOUCHDOWN!  TOUCHDOWN!' : 'QB CAREER :: QB CAREER :: QB CAREER';
+      if (this.wallText.text !== wtxt) this.wallText.setText(wtxt);
+      // setColor redesenha o texto e reenvia a imagem para a placa de vídeo: só quando a cor muda
+      const wcol = blink === 1 ? hex(hostTeam().color) : '#ffffff';
+      if (this.wallText.style.color !== wcol) this.wallText.setColor(wcol);
+      this.wallText.setPosition(pa.x, pa.y).setScale((WALL_H * 0.55 * pa.s * 10) / 32);
     }
-    proj.project((CX_L + CX_R) / 2, CY + wr, WALL_H * 0.55, pa);
-    const wtxt = blink >= 0 ? 'TOUCHDOWN!  TOUCHDOWN!  TOUCHDOWN!' : 'QB CAREER :: QB CAREER :: QB CAREER';
-    if (this.wallText.text !== wtxt) this.wallText.setText(wtxt);
-    this.wallText.setColor(blink === 1 ? hex(hostTeam().color) : '#ffffff');
-    this.wallText.setPosition(pa.x, pa.y).setScale((WALL_H * 0.55 * pa.s * 10) / 32);
-    this.bg.clear();
-    if (boom) this.drawBoom(g, dt);
+    const fg = this.fg;
+    fg.clear();
+    if (boom || this.bgUsed) {
+      this.bg.clear();
+      this.bgUsed = !!boom;
+    }
+    if (boom) this.drawBoom(fg, dt);
 
     // Flashes de câmera aleatórios na torcida (só nas cadeiras)
     if (this.fx.next() < (2 + this.excite * 16) * dt) {
@@ -799,11 +830,11 @@ export class Grandstand {
       if (pa.x < 0 || pa.x > proj.w || pa.y < 0) continue;
       const k = f.life / 0.14;
       const fu = pa.s * 10;
-      g.fillStyle(0xffffff, 0.35 * k);
-      g.fillCircle(pa.x, pa.y, fu * 0.9 * k + 1);
-      g.fillStyle(0xffffff, k);
-      g.fillRect(pa.x - fu * k, pa.y - 0.5, fu * 2 * k, 1);
-      g.fillRect(pa.x - 0.5, pa.y - fu * k, 1, fu * 2 * k);
+      fg.fillStyle(0xffffff, 0.35 * k);
+      fg.fillCircle(pa.x, pa.y, fu * 0.9 * k + 1);
+      fg.fillStyle(0xffffff, k);
+      fg.fillRect(pa.x - fu * k, pa.y - 0.5, fu * 2 * k, 1);
+      fg.fillRect(pa.x - 0.5, pa.y - fu * k, 1, fu * 2 * k);
     }
     this.flashes = this.flashes.filter((f) => f.life > 0);
   }

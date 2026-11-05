@@ -8,6 +8,7 @@ import '@fontsource/saira-condensed/700.css';
 import '@fontsource/saira-condensed/800.css';
 import { GAME_H, GAME_W, RES } from './config';
 import { patchText } from './systems/hires';
+import { patchGraphicsPerf } from './systems/perf';
 import { Boot } from './scenes/Boot';
 import { CareerTest } from './scenes/CareerTest';
 import { CareerHub } from './scenes/CareerHub';
@@ -39,6 +40,7 @@ async function boot() {
   ]).catch(() => {});
 
   patchText();
+  patchGraphicsPerf();
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
