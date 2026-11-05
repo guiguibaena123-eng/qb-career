@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { FONT_TITLE, GAME_H, GAME_W, TEAMS } from '../config';
-import { bottomGradient, GlassButton, label, title, UI } from './widgets';
+import { inkOn, TvButton, tvText } from './tv';
+import { bottomGradient, label, title, UI } from './widgets';
 
 /*
  * Card de resultado (telas "Resultado" e "Interceptacao" do design):
@@ -172,13 +173,17 @@ export class ResultCard {
     const w1 = o.replay ? wTot / 2.6 : 0;
     const w2 = wTot - w1;
     if (o.replay) {
-      const rp = new GlassButton(sc, L + w1 / 2, byy, { w: w1, h: bh, radius: 16 });
-      rp.add(title(sc, 0, 0, o.replayLabel ?? 'REPLAY', 11).setOrigin(0.5));
+      const rp = new TvButton(sc, L + w1 / 2, byy, { w: w1, h: bh });
+      const rt = tvText(sc, 0, 0, o.replayLabel ?? 'REPLAY', 20, '#FFFFFF', 800, 1).setOrigin(0.5);
+      if (rt.width > w1 - 18) rt.setScale((w1 - 18) / rt.width, 1);
+      rp.add(rt);
       rp.onTap = o.replay;
       root.add(rp);
     }
-    const nx = new GlassButton(sc, R - w2 / 2, byy, { w: w2, h: bh, radius: 16, fill: o.teamColor, fillAlpha: 1, borderAlpha: 0.35, primary: true });
-    nx.add(title(sc, 0, 0, o.nextLabel ?? 'CONTINUAR', 13, TEAMS.home.fg).setOrigin(0.5));
+    const nx = new TvButton(sc, R - w2 / 2, byy, { w: w2, h: bh, fill: o.teamColor, fillAlpha: 1, primary: true });
+    const nt = tvText(sc, 0, 0, o.nextLabel ?? 'CONTINUAR', 24, inkOn(o.teamColor), 800, 1.4).setOrigin(0.5);
+    if (nt.width > w2 - 20) nt.setScale((w2 - 20) / nt.width, 1);
+    nx.add(nt);
     nx.onTap = o.next;
     root.add(nx);
   }

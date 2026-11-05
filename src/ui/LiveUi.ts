@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { GAME_W, GAME_H } from '../config';
+import { GAME_W, GAME_H, TEAMS } from '../config';
 import { Joystick } from './Joystick';
-import { bottomGradient, GlassButton, label, title, UI } from './widgets';
+import { C, plate, plateLine, plateShadow, TV, TvButton, tvText } from './tv';
+import { bottomGradient, UI } from './widgets';
 
 /*
  * Interface do lance ao vivo (como no design):
@@ -37,28 +38,26 @@ export class LiveUi {
     const g1 = bottomGradient(scene, 190, 90);
     const by = H - 104 + 12;
     const bh = 104 - 12 - 16;
-    const run = new GlassButton(scene, 14 + 41, by + bh / 2, { w: 82, h: bh, radius: 18 }).setDepth(D);
-    run.add(title(scene, 0, 0, 'CORRER', 9).setOrigin(0.5));
+    const run = new TvButton(scene, 14 + 41, by + bh / 2, { w: 82, h: bh }).setDepth(D);
+    run.add(tvText(scene, 0, 0, 'CORRER', 19, C.white, 800, 1).setOrigin(0.5));
     run.onTap = h.onRun;
-    const away = new GlassButton(scene, W - 14 - 41, by + bh / 2, { w: 82, h: bh, radius: 18 }).setDepth(D);
-    away.add(title(scene, 0, 0, 'JOGAR\nFORA', 9).setOrigin(0.5).setAlign('center').setLineSpacing(6));
+    const away = new TvButton(scene, W - 14 - 41, by + bh / 2, { w: 82, h: bh }).setDepth(D);
+    away.add(tvText(scene, 0, -10, 'JOGAR', 17, C.white, 800, 1).setOrigin(0.5));
+    away.add(tvText(scene, 0, 10, 'FORA', 17, C.white, 800, 1).setOrigin(0.5));
     away.onTap = h.onThrowAway;
-    // Painel de força
+    // Painel de força (placa da transmissão)
     const px = 14 + 82 + 10;
     const pw = W - 2 * px;
     const panel = scene.add.graphics().setDepth(D);
-    panel.fillStyle(0x000000, 0.28);
-    panel.fillRoundedRect(px, by + 4, pw, bh, 18);
-    panel.fillStyle(0x22284a, 0.6);
-    panel.fillRoundedRect(px, by, pw, bh, 18);
-    panel.lineStyle(1, 0xffffff, 0.12);
-    panel.strokeRoundedRect(px, by, pw, bh, 18);
-    const fl = label(scene, px + 12, by + 14, 'FORÇA', 10, '#C9CEE0').setDepth(D);
-    this.powerPct = title(scene, px + pw - 12, by + 15, '0%', 9, UI.yellow).setOrigin(1, 0).setDepth(D);
+    plateShadow(panel, px, by, pw, bh, true, true, 0.8);
+    plate(panel, px, by, pw, bh, TV.ink, 0.94);
+    plateLine(panel, px, by, pw, bh, TV.rule, 1, 1);
+    const fl = tvText(scene, px + 16, by + 15, 'FORÇA', 13, C.muted, 700, 1.4).setOrigin(0, 0.5).setDepth(D);
+    this.powerPct = tvText(scene, px + pw - 16, by + 15, '0%', 17, C.yellow, 800, 0).setOrigin(1, 0.5).setDepth(D);
     this.powerSegs = scene.add.graphics().setDepth(D);
-    this.powerSegs.setData('box', [px + 12, by + 34, pw - 24, 12]);
-    this.target = label(scene, px + 12, by + 54, 'ARRASTE A PARTIR DO QB', 10, '#C9CEE0').setDepth(D);
-    // Dica de arrastar (círculo branco + caixa de texto)
+    this.powerSegs.setData('box', [px + 16, by + 30, pw - 32, 12]);
+    this.target = tvText(scene, px + 16, by + 60, 'ARRASTE A PARTIR DO QB', 13, C.muted, 700, 0.8).setOrigin(0, 0.5).setDepth(D);
+    // Dica de arrastar (círculo branco + tarja de texto)
     this.dragHint = scene.add.container(0, 0).setDepth(96);
     const ring = scene.add.graphics();
     ring.fillStyle(0xffffff, 0.18);
@@ -69,34 +68,36 @@ export class LiveUi {
     ring.fillCircle(0, 0, 11);
     ring.fillStyle(0xffffff, 1);
     ring.fillCircle(0, 0, 9);
-    const ht = label(scene, 0, 0, 'PUXE PRA TRÁS\nE SOLTE', 10, '#E8EAF2').setLineSpacing(3);
+    const ht1 = tvText(scene, 0, 0, 'PUXE PRA TRÁS', 14, C.white, 800, 0.8).setOrigin(0, 0.5);
+    const ht2 = tvText(scene, 0, 0, 'E SOLTE', 14, C.yellow, 800, 0.8).setOrigin(0, 0.5);
+    const hw = Math.max(ht1.width, ht2.width) + 30;
     const hb = scene.add.graphics();
-    hb.fillStyle(UI.dark, 1);
-    hb.fillRect(34, -ht.height / 2 - 7, ht.width + 20, ht.height + 14);
-    hb.fillStyle(UI.dark, 0.85);
-    hb.fillRect(36, -ht.height / 2 - 5, ht.width + 16, ht.height + 10);
-    ht.setPosition(44, -ht.height / 2);
-    this.dragHint.add([ring, hb, ht]);
+    plate(hb, 36, -22, hw, 44, TV.ink, 0.94);
+    ht1.setPosition(52, -10);
+    ht2.setPosition(52, 10);
+    this.dragHint.add([ring, hb, ht1, ht2]);
     scene.tweens.add({ targets: ring, scale: 1.12, yoyo: true, repeat: -1, duration: 520, ease: 'Sine.InOut' });
     this.pocket.push(g1, run, away, panel, fl, this.powerPct, this.powerSegs, this.target, this.dragHint);
 
     // ---------- CORRIDA
     const g2 = bottomGradient(scene, 260, 90);
     this.joystick = new Joystick(scene, 18 + 64, H - 26 - 64).setDepth(D);
-    const round = (x: number, y: number, text: string) => {
-      const b = new GlassButton(scene, x, y, { w: 62, h: 62, radius: 31 }).setDepth(D);
-      b.add(title(scene, 0, 0, text, 7).setOrigin(0.5));
+    const act = (x: number, y: number, text: string, accent = false) => {
+      const b = new TvButton(scene, x, y, { w: 76, h: 56, fill: accent ? TEAMS.home.color : TV.ink2, fillAlpha: 1, primary: accent }).setDepth(D);
+      const t = tvText(scene, 0, 0, text, 17, accent ? TEAMS.home.fg : C.white, 800, 0.8).setOrigin(0.5);
+      if (t.width > 62) t.setScale(62 / t.width, 1);
+      b.add(t);
       return b;
     };
     // Sem SPRINT: MERGULHO embaixo à direita, JUKE ao lado e SPIN em cima
-    const dive = round(W - 18 - 31, H - 26 - 31, 'MERGULHO');
+    const dive = act(W - 16 - 38, H - 26 - 28, 'MERGULHO', true);
     dive.onDown = h.onDive;
-    const juke = round(W - 18 - 84 - 31, H - 26 - 31, 'JUKE');
+    const juke = act(W - 16 - 38 - 84, H - 26 - 28, 'JUKE');
     juke.onDown = h.onJuke;
-    const spin = round(W - 18 - 42 - 31, H - 26 - 74 - 31, 'SPIN');
+    const spin = act(W - 16 - 38 - 42, H - 26 - 28 - 66, 'SPIN');
     spin.onDown = h.onSpin;
     this.carryHint = scene.add.container(W / 2, 630).setDepth(D);
-    this.carryHintText = label(scene, 0, 0, '', 10, '#E8EAF2').setOrigin(0.5);
+    this.carryHintText = tvText(scene, 0, 0, '', 14, C.white, 800, 0.8).setOrigin(0.5);
     const chb = scene.add.graphics();
     this.carryHint.add([chb, this.carryHintText]);
     this.carryHint.setData('bg', chb);
@@ -121,7 +122,7 @@ export class LiveUi {
     const sw = (w - gap * (n - 1)) / n;
     const lit = Math.round(power * n);
     for (let i = 0; i < n; i++) {
-      g.fillStyle(i >= lit ? 0x3a4060 : i < 4 ? 0xffd23f : i < 7 ? 0xffb02e : 0xff8a2e, 1);
+      g.fillStyle(i >= lit ? TV.ink3 : i < 4 ? 0xffd23f : i < 7 ? 0xffb02e : 0xff8a2e, 1);
       g.fillRect(x + i * (sw + gap), y, sw, h);
     }
     this.powerPct.setText(`${Math.round(power * 100)}%`);
@@ -136,9 +137,8 @@ export class LiveUi {
   setCarryHint(text: string) {
     this.carryHintText.setText(text);
     const g = this.carryHint.getData('bg') as Phaser.GameObjects.Graphics;
-    const w = this.carryHintText.width + 20;
+    const w = this.carryHintText.width + 32;
     g.clear();
-    g.fillStyle(UI.dark, 0.75);
-    g.fillRoundedRect(-w / 2, -12, w, 24, 10);
+    plate(g, -w / 2, -14, w, 28, TV.ink, 0.9);
   }
 }

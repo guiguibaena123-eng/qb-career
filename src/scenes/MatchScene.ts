@@ -50,8 +50,8 @@ import { careerMatch, finishCareerMatch, leaveCareerMatch } from '../integration
 import { ROUND_INFO } from '../career/playoffs';
 import { TeamRepository } from '../data/TeamRepository';
 import { getSave } from '../player/PlayerSave';
-import { bottomGradient, GlassButton, label, Tag, title, UI } from '../ui/widgets';
-import { C, plate, plateShadow, TV, TvButton, tvText } from '../ui/tv';
+import { bottomGradient, label, Tag, title, UI } from '../ui/widgets';
+import { C, plate, plateLine, plateShadow, TV, TvButton, tvText } from '../ui/tv';
 
 const KEYS: RecvKey[] = ['A', 'B', 'C', 'D', 'E'];
 const MID = FIELD.width / 2;
@@ -96,8 +96,8 @@ export class MatchScene extends Phaser.Scene {
   private windowTag!: Tag;
   private hint!: Phaser.GameObjects.Container;
   private playName!: Phaser.GameObjects.Text;
-  private toggle!: { setMode: (m: 'pass' | 'run') => void };
-  private recvButtons: { btn: GlassButton; route: Phaser.GameObjects.Text }[] = [];
+  private toggle!: { setMode: (m: 'pass' | 'run') => void; left: number };
+  private recvButtons: { btn: TvButton; route: Phaser.GameObjects.Text }[] = [];
   private legend!: Phaser.GameObjects.Container;
   private legendRead!: Phaser.GameObjects.Text;
   private tipBox!: Phaser.GameObjects.Container;
@@ -532,20 +532,24 @@ export class MatchScene extends Phaser.Scene {
 
     // Linha 1: nome da jogada + chave PASSE | CORRIDA
     const y1 = H - 204 + 12;
-    label(this, L, y1 + 2, `JOGADA · ${FORMATION_NAME}`, 10, UI.muted).setDepth(95);
-    this.playName = title(this, L, y1 + 20, '', 13, UI.yellow).setDepth(95);
+    tvText(this, L, y1 + 8, `JOGADA · ${FORMATION_NAME}`, 12, C.muted, 700, 1.2).setOrigin(0, 0.5).setDepth(95);
+    this.playName = tvText(this, L, y1 + 31, '', 24, C.yellow, 800, 0.6).setOrigin(0, 0.5).setDepth(95);
     this.toggle = this.buildToggle(R, y1);
 
-    // Linha 2: os 5 recebedores (tocar = hot route)
+    // Linha 2: os 5 recebedores (tocar = hot route) — placa com a letra na cor do recebedor
     const y2 = y1 + 54;
     const gap = 6;
     const bw = (R - L - gap * 4) / 5;
     KEYS.forEach((k, i) => {
       const x = L + i * (bw + gap) + bw / 2;
-      const btn = new GlassButton(this, x, y2 + 23, { w: bw, h: 46, radius: 12 }).setDepth(95);
-      const letter = title(this, 0, -8, k, 10, '#' + RECV_COLORS[k].toString(16).padStart(6, '0')).setOrigin(0.5);
-      const route = label(this, 0, 9, '', 9, '#FFFFFF').setOrigin(0.5);
-      btn.add([letter, route]);
+      const btn = new TvButton(this, x, y2 + 23, { w: bw, h: 46 }).setDepth(95);
+      const col = RECV_COLORS[k];
+      const chip = this.add.graphics();
+      chip.fillStyle(col, 1);
+      chip.fillRect(-bw / 2 + 10, -23, bw - 20, 3);
+      const letter = tvText(this, 0, -9, k, 20, '#' + col.toString(16).padStart(6, '0'), 800, 0).setOrigin(0.5);
+      const route = tvText(this, 0, 11, '', 12, C.white, 700, 0.8).setOrigin(0.5);
+      btn.add([chip, letter, route]);
       btn.onTap = () => this.cycleRoute(k);
       this.recvButtons.push({ btn, route });
     });
@@ -553,31 +557,25 @@ export class MatchScene extends Phaser.Scene {
     // Linha 3: AUDIBLE | VISÃO (segurar) | SNAP
     const y3 = y2 + 56;
     const units = (R - L - 20) / 3.6;
-    const aud = new GlassButton(this, L + units / 2, y3 + 29, { w: units, h: 58 }).setDepth(95);
-    aud.add(title(this, 0, 0, 'AUDIBLE', 9).setOrigin(0.5));
+    const aud = new TvButton(this, L + units / 2, y3 + 29, { w: units, h: 58 }).setDepth(95);
+    aud.add(tvText(this, 0, 0, 'AUDIBLE', 19, C.white, 800, 1).setOrigin(0.5));
     aud.onTap = () => this.audible();
 
-    const vis = new GlassButton(this, L + units + 10 + units / 2, y3 + 29, { w: units, h: 58, borderAlpha: 0.8, border: 0xffd23f }).setDepth(95);
-    vis.add(title(this, 0, 0, 'SEGURE\nVISÃO', 8).setOrigin(0.5).setAlign('center').setLineSpacing(6));
+    const vis = new TvButton(this, L + units + 10 + units / 2, y3 + 29, { w: units, h: 58, border: TV.yellow, borderAlpha: 1 }).setDepth(95);
+    vis.add(tvText(this, 0, -9, 'SEGURE', 12, C.muted, 700, 1.2).setOrigin(0.5));
+    vis.add(tvText(this, 0, 9, 'VISÃO', 19, C.yellow, 800, 1).setOrigin(0.5));
     vis.onDown = () => this.setTactical(true);
     vis.onUp = () => this.setTactical(false);
 
     const snapW = units * 1.6;
-    const snap = new GlassButton(this, R - snapW / 2, y3 + 29, {
-      w: snapW,
-      h: 58,
-      fill: TEAMS.home.color,
-      fillAlpha: 1,
-      primary: true,
-      borderAlpha: 0.35,
-    }).setDepth(95);
-    snap.add(title(this, 0, 0, 'SNAP', 18, TEAMS.home.fg).setOrigin(0.5));
+    const snap = new TvButton(this, R - snapW / 2, y3 + 29, { w: snapW, h: 58, fill: TEAMS.home.color, fillAlpha: 1, primary: true }).setDepth(95);
+    snap.add(tvText(this, 0, 0, 'SNAP', 32, TEAMS.home.fg, 800, 2).setOrigin(0.5));
     snap.onTap = () => this.snap();
 
     this.refreshPlayUi();
   }
 
-  /** Chave PASSE | CORRIDA (pílula de vidro, segmento ativo na cor do time). */
+  /** Chave PASSE | CORRIDA (placa da transmissão, segmento ativo na cor do time). */
   private buildToggle(right: number, top: number) {
     const segs = [
       { id: 'pass' as const, text: 'PASSE' },
@@ -586,11 +584,11 @@ export class MatchScene extends Phaser.Scene {
     const c = this.add.container(0, 0).setDepth(95);
     const bg = this.add.graphics();
     c.add(bg);
-    const texts = segs.map((sg) => title(this, 0, top + 22, sg.text, 8).setOrigin(0.5));
-    const widths = texts.map((t) => t.width + 24);
-    const total = widths[0] + widths[1] + 6;
+    const texts = segs.map((sg) => tvText(this, 0, top + 22, sg.text, 16, C.white, 800, 1).setOrigin(0.5));
+    const widths = texts.map((t) => t.width + 30);
+    const total = widths[0] + widths[1] + 8;
     const left = right - total;
-    let x = left + 3;
+    let x = left + 4;
     const xs: number[] = [];
     texts.forEach((t, i) => {
       xs.push(x);
@@ -607,16 +605,14 @@ export class MatchScene extends Phaser.Scene {
     const setMode = (m: 'pass' | 'run') => {
       const i = m === 'pass' ? 0 : 1;
       bg.clear();
-      bg.fillStyle(UI.glass, 0.75);
-      bg.fillRoundedRect(left, top, total, 44, 22);
-      bg.lineStyle(1, 0xffffff, 0.16);
-      bg.strokeRoundedRect(left, top, total, 44, 22);
-      bg.fillStyle(TEAMS.home.color, 1);
-      bg.fillRoundedRect(xs[i], top + 3, widths[i], 38, 19);
-      texts.forEach((t, j) => t.setColor(j === i ? TEAMS.home.fg : '#FFFFFF'));
+      plateShadow(bg, left, top, total, 44, true, true, 0.8);
+      plate(bg, left, top, total, 44, TV.ink2, 1);
+      plateLine(bg, left, top, total, 44, TV.rule, 1, 1);
+      plate(bg, xs[i], top + 5, widths[i], 34, TEAMS.home.color, 1);
+      texts.forEach((t, j) => t.setColor(j === i ? TEAMS.home.fg : C.muted));
     };
     setMode('pass');
-    return { setMode };
+    return { setMode, left };
   }
 
   private buildTactical() {
@@ -759,10 +755,14 @@ export class MatchScene extends Phaser.Scene {
 
   private refreshPlayUi() {
     const pass = this.mode === 'pass';
-    this.playName.setText(pass ? PASS_PLAYS[this.playIdx].name : RUN_PLAYS[this.runIdx].name);
+    this.playName.setText(pass ? PASS_PLAYS[this.playIdx].name : RUN_PLAYS[this.runIdx].name).setScale(1);
+    // nome longo encolhe na horizontal em vez de encostar na chave PASSE | CORRIDA
+    const pmax = this.toggle.left - this.playName.x - 10;
+    if (this.playName.width > pmax) this.playName.setScale(pmax / this.playName.width, 1);
     KEYS.forEach((k, i) => {
       const { btn, route } = this.recvButtons[i];
-      route.setText(pass ? ROUTES[this.routes[k]].name : 'BLOQ');
+      route.setText(pass ? ROUTES[this.routes[k]].name : 'BLOQ').setScale(1);
+      if (route.width > btn.width - 12) route.setScale((btn.width - 12) / route.width, 1);
       btn.setEnabled(pass);
     });
     this.hint.list.forEach((o) => o instanceof Phaser.GameObjects.Text && o.setText(pass ? 'TOQUE NUMA LETRA PARA MUDAR A ROTA' : 'CORRIDA: O RB SEGUE A FAIXA VERDE'));

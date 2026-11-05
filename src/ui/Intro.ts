@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { FONT_TITLE, GAME_H, GAME_W, TEAMS, broadcast, logoKey } from '../config';
 import type { Rng } from '../systems/rng';
-import { GlassButton, label, title, UI } from './widgets';
+import { TvButton, tvText } from './tv';
+import { label, title, UI } from './widgets';
 
 /*
  * Abertura da partida:
@@ -178,8 +179,8 @@ export class Intro {
     const arena = this.add(label(sc, W / 2, 640, this.info.arena, 10, UI.muted).setOrigin(0.5).setAlpha(0));
     sc.tweens.add({ targets: arena, alpha: 1, duration: 400, delay: 1300 });
 
-    const btn = new GlassButton(sc, W / 2, H - 60, { w: W - 60, h: 60, radius: 16, fill: TEAMS.home.color, fillAlpha: 1, borderAlpha: 0.35, primary: true });
-    btn.add(title(sc, 0, 0, 'IR PARA O SORTEIO', 11, TEAMS.home.fg).setOrigin(0.5));
+    const btn = new TvButton(sc, W / 2, H - 60, { w: W - 40, h: 60, fill: TEAMS.home.color, fillAlpha: 1, primary: true });
+    btn.add(tvText(sc, 0, 0, 'IR PARA O SORTEIO', 26, TEAMS.home.fg, 800, 1.6).setOrigin(0.5));
     btn.setAlpha(0);
     btn.onTap = () => sc.time.delayedCall(30, next);
     this.add(btn);
@@ -231,13 +232,13 @@ export class Intro {
     const shadow = this.add(sc.add.ellipse(W / 2, 560, 90, 18, 0x000000, 0.35));
 
     const mkBtn = (x: number, text: string, onTap: () => void, primary = false, bw = (W - 52) / 2) => {
-      const b = new GlassButton(sc, x, H - 70, { w: bw, h: 62, radius: 16, ...(primary ? { fill: TEAMS.home.color, fillAlpha: 1, borderAlpha: 0.35, primary: true } : {}) });
-      b.add(title(sc, 0, 0, text, 12, primary ? TEAMS.home.fg : '#FFFFFF').setOrigin(0.5));
+      const b = new TvButton(sc, x, H - 70, { w: bw, h: 62, ...(primary ? { fill: TEAMS.home.color, fillAlpha: 1, primary: true } : {}) });
+      b.add(tvText(sc, 0, 0, text, 26, primary ? TEAMS.home.fg : '#FFFFFF', 800, 1.6).setOrigin(0.5));
       b.onTap = () => sc.time.delayedCall(30, onTap);
       this.add(b);
       return b;
     };
-    const buttons: GlassButton[] = [];
+    const buttons: TvButton[] = [];
     const pick = (choice: 'cara' | 'coroa') => {
       buttons.forEach((b) => b.destroy());
       buttons.length = 0;

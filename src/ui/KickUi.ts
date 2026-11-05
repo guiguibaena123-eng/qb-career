@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_H, GAME_W, TEAMS } from '../config';
-import { bottomGradient, GlassButton, label, title, UI } from './widgets';
+import { C, inkOn, plate, plateLine, plateShadow, TV, TvButton, tvText } from './tv';
+import { bottomGradient, UI } from './widgets';
 
 /*
  * Chute (telas FieldGoal / PontoExtra do design):
@@ -14,7 +15,7 @@ export class KickUi {
   private needle: Phaser.GameObjects.Rectangle;
   private wind: Phaser.GameObjects.Container;
   private info: Phaser.GameObjects.Container;
-  private btn: GlassButton;
+  private btn: TvButton;
   private btnText: Phaser.GameObjects.Text;
   private barX: number;
   private barW: number;
@@ -43,15 +44,15 @@ export class KickUi {
     this.zone.setData('y', by);
     this.needle = scene.add.rectangle(W / 2, by + 11, 5, 36, 0xffffff).setDepth(D + 1).setStrokeStyle(1.5, UI.dark);
 
-    this.btn = new GlassButton(scene, W / 2, H - 30 - 30, { w: W - 40, h: 60, radius: 16, fill: TEAMS.home.color, fillAlpha: 1, borderAlpha: 0.35, primary: true }).setDepth(D);
-    this.btnText = title(scene, 0, 0, 'CHUTAR', 14, TEAMS.home.fg).setOrigin(0.5);
+    this.btn = new TvButton(scene, W / 2, H - 30 - 30, { w: W - 40, h: 60, fill: TEAMS.home.color, fillAlpha: 1, primary: true }).setDepth(D);
+    this.btnText = tvText(scene, 0, 0, 'CHUTAR', 30, TEAMS.home.fg, 800, 2).setOrigin(0.5);
     this.btn.add(this.btnText);
     this.btn.onTap = () => this.stop();
 
     this.wind = scene.add.container(0, 0).setDepth(D);
     this.info = scene.add.container(0, 0).setDepth(D);
     this.timerG = scene.add.graphics().setDepth(D);
-    this.timerT = title(scene, W / 2 + 62, 168, '', 9, '#FFFFFF').setOrigin(1, 0.5).setDepth(D + 1);
+    this.timerT = tvText(scene, W / 2 + 62, 168, '', 16, C.white, 800, 0).setOrigin(1, 0.5).setDepth(D + 1);
     this.items.push(grad, bar, this.zone, this.needle, this.btn, this.wind, this.info, this.timerG, this.timerT);
     this.show(false);
   }
@@ -62,7 +63,7 @@ export class KickUi {
     const W = GAME_W;
     this.show(true);
     this.btn.setFill(opts.color, 1, true);
-    this.btnText.setText(opts.label ?? 'CHUTAR');
+    this.btnText.setText(opts.label ?? 'CHUTAR').setColor(inkOn(opts.color));
     this.phase = 0;
     this.running = true;
     this.paintBar(opts.window);
@@ -78,17 +79,15 @@ export class KickUi {
       c.removeAll(true);
       const w = build(c);
       const bg = sc.add.graphics();
-      bg.fillStyle(0x000000, 0.3);
-      bg.fillRoundedRect(0, 4, w, 30, 12);
-      bg.fillStyle(0x22284a, 0.85);
-      bg.fillRoundedRect(0, 0, w, 30, 12);
-      bg.lineStyle(1, 0xffffff, 0.16);
-      bg.strokeRoundedRect(0, 0, w, 30, 12);
+      plateShadow(bg, 0, 0, w, 30, true, true, 0.7);
+      plate(bg, 0, 0, w, 30, TV.ink, 0.94);
+      plateLine(bg, 0, 0, w, 30, TV.rule, 1, 1);
       c.addAt(bg, 0);
-      c.setPosition(right ? x - w : x, 116);
+      // abaixo do selo de pressão e longe do botão de pausa (canto direito, y 122–162)
+      c.setPosition(right ? x - w : x, 194);
     };
     pill(this.wind, 12, false, (c) => {
-      const l = label(sc, 10, 15, 'VENTO', 9, UI.muted).setOrigin(0, 0.5);
+      const l = tvText(sc, 14, 15, 'VENTO', 13, C.muted, 700, 1.2).setOrigin(0, 0.5);
       const ar = sc.add.graphics();
       const ax = l.x + l.width + 8;
       ar.fillStyle(0x3fd0ff, 1);
@@ -98,16 +97,16 @@ export class KickUi {
         if (dir < 0) ar.fillTriangle(ax, 15, ax + 8, 10, ax + 8, 20);
         else ar.fillTriangle(ax + 22, 15, ax + 14, 10, ax + 14, 20);
       }
-      const t = title(sc, ax + 30, 15, `${opts.windKmh} KM/H`, 8).setOrigin(0, 0.5);
+      const t = tvText(sc, ax + 30, 15, `${opts.windKmh} KM/H`, 16, C.white, 800, 0.6).setOrigin(0, 0.5);
       c.add([l, ar, t]);
-      return t.x + t.width + 10;
+      return t.x + t.width + 16;
     });
     pill(this.info, W - 12, true, (c) => {
-      const t = title(sc, 10, 15, `${opts.dist} JDS`, 8).setOrigin(0, 0.5);
+      const t = tvText(sc, 14, 15, `${opts.dist} JDS`, 16, C.white, 800, 0.6).setOrigin(0, 0.5);
       const col = opts.chance >= 0.7 ? '#3CCB5A' : opts.chance >= 0.45 ? '#FFD23F' : '#FF7B80';
-      const ch = label(sc, t.x + t.width + 8, 15, opts.info ?? `CHANCE ${Math.round(opts.chance * 100)}%`, 9, opts.info ? '#3FD0FF' : col).setOrigin(0, 0.5);
+      const ch = tvText(sc, t.x + t.width + 10, 15, opts.info ?? `CHANCE ${Math.round(opts.chance * 100)}%`, 14, opts.info ? '#3FD0FF' : col, 800, 0.8).setOrigin(0, 0.5);
       c.add([t, ch]);
-      return ch.x + ch.width + 10;
+      return ch.x + ch.width + 16;
     });
   }
 
@@ -151,19 +150,16 @@ export class KickUi {
     const y = 154;
     const k = Math.max(0, Math.min(1, left / total));
     const col = k > 0.5 ? 0xffb02e : 0xe5484d;
-    g.fillStyle(0x000000, 0.3);
-    g.fillRoundedRect(x, y + 4, 200, 28, 12);
-    g.fillStyle(0x22284a, 0.9);
-    g.fillRoundedRect(x, y, 200, 28, 12);
-    g.lineStyle(1, 0xffffff, 0.16);
-    g.strokeRoundedRect(x, y, 200, 28, 12);
-    g.fillStyle(0x3a4060, 1);
+    plateShadow(g, x, y, 200, 28, true, true, 0.7);
+    plate(g, x, y, 200, 28, TV.ink, 0.94);
+    plateLine(g, x, y, 200, 28, TV.rule, 1, 1);
+    g.fillStyle(TV.ink3, 1);
     g.fillRect(x + 66, y + 10, 74, 8);
     g.fillStyle(col, 1);
     g.fillRect(x + 66, y + 10, 74 * k, 8);
     this.timerT.setText(`${left.toFixed(1)}s`).setColor(k > 0.5 ? '#FFB02E' : '#FF7B80').setX(x + 192);
-    if (!this.timerLbl) this.timerLbl = label(this.scene, 0, 0, 'PRESSÃO', 9, '#FFFFFF').setOrigin(0, 0.5).setDepth(96);
-    this.timerLbl.setPosition(x + 12, y + 14).setVisible(true);
+    if (!this.timerLbl) this.timerLbl = tvText(this.scene, 0, 0, 'PRESSÃO', 13, C.white, 800, 1).setOrigin(0, 0.5).setDepth(96);
+    this.timerLbl.setPosition(x + 16, y + 14).setVisible(true);
   }
   private timerLbl: Phaser.GameObjects.Text | null = null;
 
