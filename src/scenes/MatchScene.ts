@@ -1282,9 +1282,12 @@ export class MatchScene extends Phaser.Scene {
     return this.incomplete('INCOMPLETO', 'NINGUÉM NO LUGAR');
   }
 
-  /** Jogo fora de casa (estádio do adversário): a torcida é contra o nosso ataque. */
+  /**
+   * Jogo fora de casa (estádio do adversário): a torcida é contra o nosso ataque. A final nunca é hostil
+   * (mesmo num estádio escolhido do adversário): explosão e reações iguais às de casa.
+   */
   private get hostile() {
-    return !this.practice && hostTeam() === TEAMS.away;
+    return !this.practice && !finalGame.on && hostTeam() === TEAMS.away;
   }
 
   /**
