@@ -18,6 +18,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Confere os segredos
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          ok=1
+          [ -n "$ASC_KEY_ID" ] || { echo "::error::Segredo ASC_KEY_ID está vazio"; ok=0; }
+          echo "$ASC_ISSUER_ID" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' || { echo "::error::Segredo ASC_ISSUER_ID vazio ou fora do formato 1234abcd-12ab-34cd-56ef-1234567890ab"; ok=0; }
+          echo "$ASC_KEY_P8" | grep -q 'BEGIN PRIVATE KEY' || { echo "::error::Segredo ASC_KEY_P8 não tem o conteúdo da chave .p8"; ok=0; }
+          [ $ok = 1 ]
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
