@@ -72,7 +72,9 @@ async function boot() {
 
 boot();
 
-// Modo offline (só na versão publicada): o service worker guarda o jogo para abrir sem internet
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// Modo offline (só na versão publicada no site): o service worker guarda o jogo para abrir sem internet.
+// No app de iPhone o jogo já vem dentro do app, então não precisa.
+const nativeApp = !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
+if ('serviceWorker' in navigator && import.meta.env.PROD && !nativeApp) {
   window.addEventListener('load', () => navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {}));
 }
