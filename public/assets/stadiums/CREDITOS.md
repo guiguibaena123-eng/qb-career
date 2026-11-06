@@ -1,9 +1,10 @@
 # Origem das ilustrações dos estádios
 
-Todas as 30 ilustrações foram desenhadas (tools/stadiums/toon.py, estilo desenho animado) a partir de fotos
+Todas as 30 ilustrações foram desenhadas (tools/stadiums/toon.py: cartoon com traço técnico) a partir de fotos
 do Wikimedia Commons em **domínio público ou CC0**: nenhuma exige licença nem crédito. A lista fica aqui só
 como registro de origem. Nomes e logos de marcas (patrocinadores, nomes nos telhados e fachadas, painéis
-de propaganda, escritas no gramado e marcas de times) foram apagados antes do desenho (tools/stadiums/batch.py).
+de propaganda, escritas no gramado e marcas de times) foram apagados antes do desenho, com a superfície
+reconstruída (sem tarjas): tools/stadiums/batch.py.
 
 | Arquivo | Foto original | Autor | Situação |
 |---|---|---|---|
