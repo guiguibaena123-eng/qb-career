@@ -74,18 +74,31 @@ const METAL = [0xc9ceda, 0xf4f1e8, 0x0d0d12, 0xf26b1d, 0x22406b, 0xc9a93a, 0xb32
 const COLOR_KEYS = ['maskC', 'chinC', 'underC', 'aslC', 'kneeC', 'sockC', 'sstripeC', 'cleatC', 'caccC', 'gloveC', 'wristC', 'towelC', 'nrollC', 'mouthC'] as const;
 const BEARDS: Opt<number> = [[-1, 'SEM BARBA'], ...Array.from({ length: BEARD_COUNT }, (_, i): [number, string] => [i, `ESTILO ${i + 1}`])];
 type Cat = 'unif' | 'rosto' | 'capacete' | 'corpo' | 'pes' | 'maos' | 'extras';
+/** Categorias na ordem do corpo (de cima para baixo), com o uniforme primeiro. */
 const CATS: [Cat, string][] = [
   ['unif', 'UNIFORME'],
-  ['rosto', 'ROSTO'],
   ['capacete', 'CAPACETE'],
+  ['rosto', 'ROSTO'],
   ['corpo', 'CORPO'],
-  ['pes', 'PÉS'],
   ['maos', 'MÃOS'],
+  ['pes', 'PÉS'],
   ['extras', 'EXTRAS'],
 ];
-/** Prévia fixa do PERSONALIZAR (à esquerda) e área rolável dos controles (à direita). */
-const PV = { x: 16, y: 168, w: 168, h: 330 };
-const PX = PV.x + PV.w + 10;
+/** VISUAL: palco do jogador, barra de categorias e a área rolável das opções embaixo. */
+const STAGE = { x: 16, y: 168, w: GAME_W - 32, h: 282 };
+const CAT_Y = STAGE.y + STAGE.h + 8;
+const CAT_H = 42;
+const PANE_Y = CAT_Y + CAT_H + 10;
+/** Zoom do palco por categoria: escala do jogador e a altura da arte (0–200) que fica no centro. */
+const ZOOM: Record<Cat, { s: number; ay: number }> = {
+  unif: { s: 0.86, ay: 100 },
+  extras: { s: 0.86, ay: 100 },
+  capacete: { s: 2.0, ay: 24 },
+  rosto: { s: 2.4, ay: 25 },
+  corpo: { s: 1.25, ay: 92 },
+  maos: { s: 1.75, ay: 96 },
+  pes: { s: 1.9, ay: 166 },
+};
 
 type Tab = 'clube' | 'pers' | 'elenco' | 'stats' | 'jogadores' | 'times' | 'tabela' | 'premios' | 'titulos' | 'noticias' | 'contratos' | 'jogos';
 
@@ -180,6 +193,11 @@ export class CarreiraMenu extends Phaser.Scene {
   private persFixed!: Phaser.GameObjects.Container;
   private persButtons: GlassButton[] = [];
   private preview!: PlayerBody;
+  private catBar!: Phaser.GameObjects.Container;
+  private persHint!: Phaser.GameObjects.Text;
+  private undoBtn!: GlassButton;
+  /** Mudanças do visual nesta visita (DESFAZER volta uma por vez). */
+  private undoStack: { look: LookOptions; face: { skin: number; hairColor: number; beard: number } }[] = [];
   // Liga: ficha de jogador / página de time abertas, filtros da aba JOGADORES, TABELA e JOGOS
   private plSel: string | null = null;
   private teamSel: string | null = null;
@@ -223,7 +241,7 @@ export class CarreiraMenu extends Phaser.Scene {
     this.tabsPane = new Pane(this, 0, 208, GAME_W, 44, 'x', 11);
     this.subBar = this.add.container(0, 0).setDepth(11);
     this.body = new Pane(this, 0, 258, GAME_W, GAME_H - 76 - 258, 'y', 5);
-    this.persPane = new Pane(this, PX, PV.y, GAME_W - PX - 16, GAME_H - 76 - PV.y, 'y', 5);
+    this.persPane = new Pane(this, 16, PANE_Y, GAME_W - 32, GAME_H - 76 - PANE_Y, 'y', 5);
     this.buildPersFixed();
     this.drawCta();
     this.show(this.tab);
@@ -578,7 +596,7 @@ export class CarreiraMenu extends Phaser.Scene {
     this.tweens.add({ targets: bc, x: 0, alpha: 1, duration: 360, ease: 'Expo.Out' });
     if (pers) {
       const pc = this.persPane.content;
-      const base = PX;
+      const base = 16;
       this.tweens.killTweensOf([pc, this.persFixed]);
       pc.setAlpha(0).setX(base - 28);
       this.persFixed.setAlpha(0).setX(-28);
@@ -740,43 +758,126 @@ export class CarreiraMenu extends Phaser.Scene {
     return y + oh;
   }
 
-  // ---- PERSONALIZAR
-  /** Prévia do jogador (fixa, fora da rolagem) e os botões ALEATÓRIO / RESTAURAR / PRONTO. */
+  // ---- VISUAL (personalizar o jogador)
+  /**
+   * Palco do jogador (grande, com zoom na parte do corpo que está sendo editada), botões DESFAZER e
+   * ALEATÓRIO no palco e a barra de categorias. Tocar numa parte do jogador abre a categoria dela.
+   */
   private buildPersFixed() {
     const c = (this.persFixed = this.add.container(0, 0).setDepth(6));
+    const S = STAGE;
     const g = this.add.graphics();
-    // Placa de estúdio: tinta, piso na cor do time sob os pés e o número chapado no fundo
-    plateShadow(g, PV.x, PV.y, PV.w, PV.h);
-    plate(g, PV.x, PV.y, PV.w, PV.h, TV.ink2, 1);
-    plate(g, PV.x, PV.y + PV.h - 58, PV.w, 58, this.team.colors.primary, 1, false, true);
-    g.fillStyle(0x000000, 0.18);
-    g.fillRect(PV.x, PV.y + PV.h - 58, PV.w - 12, 3);
+    plateShadow(g, S.x, S.y, S.w, S.h);
+    plate(g, S.x, S.y, S.w, S.h, TV.ink2, 1);
+    // holofote: elipses claras sobrepostas atrás do jogador
+    for (let i = 0; i < 7; i++) {
+      g.fillStyle(0xffffff, 0.022);
+      g.fillEllipse(S.x + S.w / 2, S.y + S.h * 0.42, 330 - i * 40, 300 - i * 34);
+    }
+    // piso na cor do time
+    plate(g, S.x, S.y + S.h - 46, S.w, 46, this.team.colors.primary, 1, false, true);
+    g.fillStyle(0x000000, 0.2);
+    g.fillRect(S.x, S.y + S.h - 46, S.w - 12, 3);
     c.add(g);
-    c.add(tvText(this, PV.x + PV.w - 14, PV.y + 26, `#${getSave().number}`, 34, hex(mix(TV.ink2, 0xffffff, 0.1)), 800, 0).setOrigin(1, 0.5));
-    this.preview = new PlayerBody(this, PV.x + 9 + 75, PV.y + 12 + 300, this.bodyCfg(getSave().look));
+    c.add(tvText(this, S.x + S.w - 16, S.y + 64, `#${getSave().number}`, 64, hex(mix(TV.ink2, 0xffffff, 0.08)), 800, 0).setOrigin(1, 0.5));
+    // jogador (recortado no palco: no zoom ele passa das bordas)
+    const z = ZOOM.unif;
+    this.preview = new PlayerBody(this, S.x + S.w / 2, this.feetY(z), this.bodyCfg(getSave().look), z.s);
+    const mg = this.make.graphics({}, false);
+    mg.fillRect(S.x + 2, S.y + 2, S.w - 4, S.h - 4);
+    this.preview.setMask(mg.createGeometryMask());
     c.add(this.preview);
-    // nome do uniforme: selo branco na borda de baixo (longe do capacete)
+    // nome do uniforme (selo no piso) e dica
     this.kitTagBg = this.add.graphics();
-    this.kitTag = tvText(this, PV.x + 22, PV.y + PV.h, '', 13, C.ink, 800, 1.2).setOrigin(0, 0.5);
+    this.kitTag = tvText(this, S.x + 22, S.y + S.h - 22, '', 13, C.ink, 800, 1.2).setOrigin(0, 0.5);
     c.add([this.kitTagBg, this.kitTag]);
-    // Botões abaixo da prévia
-    const btn = (y: number, h: number, text: string, fill: number, color: string, fn: () => void, big = false) => {
-      const b = new GlassButton(this, PV.x + PV.w / 2, y + h / 2, { w: PV.w, h, fill, fillAlpha: 1, primary: big }).setDepth(6);
-      b.add(tvText(this, 0, 0, text, big ? 19 : 15, color, 800, 1.4).setOrigin(0.5));
+    this.persHint = tvText(this, S.x + S.w - 14, S.y + S.h - 22, 'TOQUE NO JOGADOR', 11, inkOn(this.team.colors.primary), 700, 1).setOrigin(1, 0.5).setAlpha(0.75);
+    c.add(this.persHint);
+    // tocar no jogador: abre a categoria da parte tocada (fora dele, volta ao uniforme)
+    const zone = this.add.zone(S.x, S.y + 44, S.w, S.h - 44).setOrigin(0).setInteractive();
+    zone.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (p.getDistance() > 10) return;
+      const cat = this.partAt(p.worldX, p.worldY);
+      this.pickCat(cat ?? 'unif');
+    });
+    c.add(zone);
+    // botões do palco
+    const btn = (x: number, w: number, text: string, fn: () => void) => {
+      const b = new GlassButton(this, x, S.y + 24, { w, h: 32, fill: TV.ink3, fillAlpha: 0.94 }).setDepth(7);
+      b.add(tvText(this, 0, 0, text, 13, C.white, 800, 1.2).setOrigin(0.5));
       b.onTap = fn;
       this.add.existing(b);
       this.persButtons.push(b);
+      return b;
     };
-    let y = PV.y + PV.h + 20;
-    btn(y, 36, 'ALEATÓRIO', TV.ink3, C.white, () => this.randomLook());
-    y += 40;
-    btn(y, 36, 'RESTAURAR', TV.ink3, C.white, () => {
-      const k = getSave().look.kit;
-      this.setLook({ ...DEFAULT_LOOK, kit: k, ...kitAccents(k, this.team.kits[k]) });
-    });
-    y += 40;
-    btn(y, 46, 'PRONTO', TV.yellow, C.ink, () => this.show('clube'), true);
+    this.undoBtn = btn(S.x + 12 + 52, 104, 'DESFAZER', () => this.undoLook());
+    btn(S.x + S.w - 12 - 56, 112, 'ALEATÓRIO', () => this.randomLook());
+    // barra de categorias (fixa)
+    this.catBar = this.add.container(0, 0);
+    c.add(this.catBar);
+    this.drawCatBar();
     this.updateKitTag();
+    this.updateUndo();
+  }
+
+  /** Altura dos pés do jogador no palco para um zoom (centraliza a parte `ay` da arte). */
+  private feetY(z: { s: number; ay: number }) {
+    return STAGE.y + STAGE.h * 0.5 + (200 - z.ay) * 1.5 * z.s;
+  }
+
+  /** Parte do jogador sob o toque (coordenadas da arte 100×200) → categoria. */
+  private partAt(px: number, py: number): Cat | null {
+    const b = this.preview;
+    const s = b.scaleX;
+    const ax = (px - b.x) / (1.5 * s) + 50;
+    const ay = (py - b.y) / (1.5 * s) + 200;
+    if (ax < 12 || ax > 88 || ay < 0 || ay > 198) return null;
+    if (ay < 37) return ay > 14 && Math.abs(ax - 50) < 11 ? 'rosto' : 'capacete';
+    if (ay > 62 && ay < 113 && (ax < 31 || ax > 69)) return 'maos';
+    if (ay < 131) return Math.abs(ax - 50) < 36 ? 'corpo' : null;
+    return Math.abs(ax - 50) < 24 ? 'pes' : null;
+  }
+
+  private pickCat(cat: Cat) {
+    if (cat === this.pc) return;
+    this.pc = cat;
+    navigator.vibrate?.(8);
+    this.persHint.setVisible(false);
+    this.drawCatBar();
+    this.zoomTo(cat);
+    this.drawPers(false);
+  }
+
+  /** Câmera do palco: aproxima da parte do corpo da categoria. */
+  private zoomTo(cat: Cat, instant = false) {
+    const z = ZOOM[cat];
+    const b = this.preview;
+    this.tweens.killTweensOf(b);
+    if (instant) {
+      b.setScale(z.s).setY(this.feetY(z));
+      return;
+    }
+    this.tweens.add({ targets: b, scale: z.s, y: this.feetY(z), duration: 420, ease: 'Cubic.InOut' });
+  }
+
+  private drawCatBar() {
+    const bar = this.catBar;
+    bar.removeAll(true);
+    const n = CATS.length;
+    const gap = 4;
+    const w = (GAME_W - 32 - gap * (n - 1)) / n;
+    CATS.forEach(([id, name], i) => {
+      const x = 16 + i * (w + gap);
+      const on = id === this.pc;
+      const g = this.add.graphics();
+      plate(g, x, CAT_Y, w, CAT_H, on ? TV.yellow : TV.ink2, 1);
+      if (!on) plateLine(g, x, CAT_Y, w, CAT_H, TV.rule, 1, 1);
+      bar.add(g);
+      bar.add(fit(tvText(this, x + w / 2, CAT_Y + CAT_H / 2, name, 12, on ? C.ink : C.white, 800, 0.6).setOrigin(0.5), w - 8));
+      const z = this.add.zone(x, CAT_Y, w, CAT_H).setOrigin(0).setInteractive({ useHandCursor: true });
+      z.on('pointerup', () => this.pickCat(id));
+      bar.add(z);
+    });
   }
 
   private bodyCfg(look: LookOptions) {
@@ -785,18 +886,45 @@ export class CarreiraMenu extends Phaser.Scene {
   }
 
   private updateKitTag() {
+    const S = STAGE;
     const t = this.kitTag.setText(kitInfo(this.team, getSave().look.kit).name).setScale(1);
-    if (t.width > PV.w - 40) t.setScale((PV.w - 40) / t.width, 1);
+    if (t.width > S.w * 0.55) t.setScale((S.w * 0.55) / t.width, 1);
     this.kitTagBg.clear();
-    plate(this.kitTagBg, PV.x + 10, PV.y + PV.h - 11, t.displayWidth + 24, 22, TV.plate);
+    plate(this.kitTagBg, S.x + 10, S.y + S.h - 33, t.displayWidth + 24, 22, TV.plate);
   }
 
-  /** Grava a mudança no save (cada alteração já fica salva) e atualiza a prévia e os controles. */
-  private setLook(look: Partial<LookOptions>, face?: { skin?: number; hairColor?: number; beard?: number }) {
-    updateSave({ ...(face ?? {}), look: { ...getSave().look, ...look } });
+  private updateUndo() {
+    const on = this.undoStack.length > 0;
+    this.undoBtn.setAlpha(on ? 1 : 0.4);
+  }
+
+  /** Grava a mudança no save (cada alteração já fica salva), atualiza a prévia e os controles. */
+  private setLook(look: Partial<LookOptions>, face?: { skin?: number; hairColor?: number; beard?: number }, record = true) {
+    const s = getSave();
+    if (record) {
+      this.undoStack.push({ look: { ...s.look }, face: { skin: s.skin, hairColor: s.hairColor, beard: s.beard } });
+      if (this.undoStack.length > 40) this.undoStack.shift();
+    }
+    updateSave({ ...(face ?? {}), look: { ...s.look, ...look } });
     this.preview.setLook(this.bodyCfg(getSave().look));
     this.updateKitTag();
+    this.updateUndo();
+    this.pulse();
     this.drawPers(true);
+  }
+
+  private undoLook() {
+    const u = this.undoStack.pop();
+    if (!u) return;
+    this.setLook(u.look, u.face, false);
+  }
+
+  /** Pulinho do jogador a cada troca (o olho acha a mudança). */
+  private pulse() {
+    const b = this.preview;
+    if (this.tweens.isTweening(b)) return;
+    const s = b.scaleX;
+    this.tweens.add({ targets: b, scale: s * 1.035, duration: 80, yoyo: true, ease: 'Quad.Out' });
   }
 
   private randomLook() {
@@ -805,15 +933,17 @@ export class CarreiraMenu extends Phaser.Scene {
     for (const [k, opts] of Object.entries(OPT)) p[k] = rnd(opts as [unknown, string][])[0];
     for (const k of COLOR_KEYS) p[k] = rnd(PAL);
     p.maskC = rnd(METAL);
+    delete p.kit;
     this.setLook(p as Partial<LookOptions>, { skin: Math.floor(Math.random() * SKINS.length), hairColor: Math.floor(Math.random() * HAIR_COLORS.length), beard: rnd(BEARDS)[0] });
   }
 
   private pers() {
+    this.zoomTo(this.pc, true);
     this.drawPers(false);
     return 0;
   }
 
-  /** Categorias e controles à direita (rolam; a prévia fica parada). */
+  /** Opções da categoria: todas à vista (botões lado a lado) e as cores logo abaixo; rola se precisar. */
   private drawPers(keepScroll: boolean) {
     const p = this.persPane;
     p.clear(keepScroll);
@@ -821,161 +951,151 @@ export class CarreiraMenu extends Phaser.Scene {
     const s = getSave();
     const L = s.look;
     const add = <T extends Phaser.GameObjects.GameObject>(o: T) => p.add(o);
-    // Categorias (quebram linha): a ativa é amarela, como as abas
-    let x = 0;
-    let y = 0;
-    for (const [id, name] of CATS) {
-      const on = this.pc === id;
-      const t = tvText(this, 0, 0, name, 14, on ? C.ink : C.white, 800, 1).setOrigin(0.5);
-      const w = t.width + 24;
-      if (x + w > W) {
-        x = 0;
-        y += 36;
-      }
-      const g = this.add.graphics();
-      plate(g, x, y, w, 32, on ? TV.yellow : TV.ink2, 1);
-      if (!on) plateLine(g, x, y, w, 32, TV.rule, 1, 1);
-      t.setPosition(x + w / 2, y + 16);
-      add(g);
-      add(t);
-      p.hit(x, y, w, 32, () => ((this.pc = id), this.drawPers(false)));
-      x += w + 4;
-    }
-    y += 32 + 14;
+    let y = 2;
 
     if (this.pc === 'unif') {
-      // Aviso: o uniforme é do time (cores, número e fonte travados)
-      const msg = tvText(this, 34, y + 10, 'O UNIFORME É DO SEU TIME: CORES, NÚMERO E FONTE NÃO MUDAM.', 13, C.muted, 600, 0.8)
-        .setWordWrapWidth(W - 46)
-        .setLineSpacing(2);
-      const mh = msg.height + 20;
-      const g = this.add.graphics();
-      plate(g, 0, y, W, mh, TV.ink, 0.9);
-      g.lineStyle(2, TV.yellow, 1);
-      g.strokeRect(12, y + 13, 10, 6);
-      g.fillStyle(TV.yellow, 1);
-      g.fillRect(10, y + 18, 14, 11);
-      g.fillStyle(TV.ink, 1);
-      g.fillRect(16, y + 21, 2, 5);
-      add(g);
-      add(msg);
-      y += mh + 18;
-      add(sectionHead(this, 0, y, 'UNIFORMES', undefined, W));
-      y += 16;
-      for (const id of KIT_IDS) {
-        const { name, desc, kit } = kitInfo(this.team, id);
+      // Os 3 uniformes do time, cada um com o jogador vestido
+      const gap = 6;
+      const cw = (W - gap * 2) / 3;
+      const ch = 150;
+      KIT_IDS.forEach((id, i) => {
+        const { kit } = kitInfo(this.team, id);
         const on = L.kit === id;
-        const nm = tvText(this, 12, y + 42, name, 17, on ? C.yellow : C.white, 800, 0.6).setWordWrapWidth(W - 24);
-        const ds = tvText(this, 12, 0, desc, 13, C.muted, 600, 0.4).setWordWrapWidth(W - 24).setLineSpacing(1);
-        ds.setY(nm.y + nm.height + 2);
-        const h = ds.y + ds.height + 12 - y;
-        const g2 = this.add.graphics();
-        plate(g2, 0, y, W, h, on ? TV.ink3 : TV.ink2, 1);
-        if (on) plateLine(g2, 0, y, W, h, TV.yellow, 1, 2);
-        else plateLine(g2, 0, y, W, h, TV.rule, 1, 1);
-        // Amostras: capacete, camisa e calça (placas chapadas)
-        [kit.helmet, kit.jersey, kit.pants].forEach((col, i) => {
-          plate(g2, 12 + i * 26, y + 10, 24, 24, lum(col) < 60 ? TV.rule : mix(col, TV.ink, 0.35), 1);
-          plate(g2, 14 + i * 26, y + 12, 20, 20, col, 1);
-        });
-        add(g2);
-        add(nm);
-        add(ds);
-        p.hit(0, y, W, h, () => this.setLook({ kit: id, ...kitAccents(id, kit) }));
-        y += h + 6;
-      }
-      p.setExtent(y + 20);
+        const x = i * (cw + gap);
+        const g = this.add.graphics();
+        plate(g, x, y, cw, ch, on ? TV.ink3 : TV.ink2, 1);
+        plateLine(g, x, y, cw, ch, on ? TV.yellow : TV.rule, 1, on ? 2 : 1);
+        add(g);
+        add(new PlayerBody(this, x + cw / 2, y + 114, this.bodyCfg({ ...L, kit: id, ...kitAccents(id, kit) }), 0.33));
+        add(tvText(this, x + cw / 2, y + 132, ['CASA', 'FORA', 'NOITE'][i], 15, on ? C.yellow : C.white, 800, 1).setOrigin(0.5));
+        p.hit(x, y, cw, ch, () => this.setLook({ kit: id, ...kitAccents(id, kit) }));
+      });
+      y += ch + 12;
+      const note = tvText(this, 26, y + 2, 'CORES, NÚMERO E FONTE SÃO DO SEU TIME. TROQUE O RESTO NAS OUTRAS ABAS OU TOCANDO NO JOGADOR.', 12, C.muted, 600, 0.6)
+        .setWordWrapWidth(W - 30)
+        .setLineSpacing(2);
+      const lk = this.add.graphics();
+      lk.lineStyle(2, TV.yellow, 1);
+      lk.strokeRect(6, y + 3, 9, 6);
+      lk.fillStyle(TV.yellow, 1);
+      lk.fillRect(4, y + 8, 13, 10);
+      add(lk);
+      add(note);
+      p.setExtent(y + note.height + 20);
       return;
     }
 
-    // Controles da categoria num cartão
-    type Ctrl = { n: string; cur?: string; step?: { v: string; prev: () => void; next: () => void }; colors?: { pal: number[]; sel: number; pick: (i: number) => void } };
-    const step = <K extends keyof typeof OPT>(k: K, n: string): Ctrl => {
+    type Row = { n: string; chips?: { opts: string[]; sel: number; pick: (i: number) => void }; colors?: { pal: number[]; sel: number; pick: (i: number) => void }; button?: { text: string; fn: () => void } };
+    const opt = <K extends keyof typeof OPT>(k: K, n: string): Row => {
       const opts = OPT[k] as [unknown, string][];
-      const i = Math.max(0, opts.findIndex(([v]) => v === L[k]));
-      const go = (d: number) => this.setLook({ [k]: opts[(i + d + opts.length) % opts.length][0] } as Partial<LookOptions>);
-      return { n, cur: `${i + 1}/${opts.length}`, step: { v: opts[i][1], prev: () => go(-1), next: () => go(1) } };
+      return { n, chips: { opts: opts.map((o) => o[1]), sel: opts.findIndex(([v]) => v === L[k]), pick: (i) => this.setLook({ [k]: opts[i][0] } as Partial<LookOptions>) } };
     };
-    const color = (k: (typeof COLOR_KEYS)[number], n: string, pal = PAL): Ctrl => ({ n, colors: { pal, sel: pal.indexOf(L[k]), pick: (i) => this.setLook({ [k]: pal[i] } as Partial<LookOptions>) } });
-    const beardIdx = Math.max(0, BEARDS.findIndex(([v]) => v === s.beard));
-    const goBeard = (d: number) => this.setLook({}, { beard: BEARDS[(beardIdx + d + BEARDS.length) % BEARDS.length][0] });
-    const CT: Record<Exclude<Cat, 'unif'>, () => Ctrl[]> = {
+    const col = (k: (typeof COLOR_KEYS)[number], n: string, pal = PAL): Row => ({ n, colors: { pal, sel: pal.indexOf(L[k]), pick: (i) => this.setLook({ [k]: pal[i] } as Partial<LookOptions>) } });
+    // a cor só aparece quando o item existe (sem luvas = sem cor de luva)
+    const colIf = (cond: boolean, k: (typeof COLOR_KEYS)[number], n: string, pal = PAL): Row[] => (cond ? [col(k, n, pal)] : []);
+    const beardSel = Math.max(0, BEARDS.findIndex(([v]) => v === s.beard));
+    const CT: Record<Exclude<Cat, 'unif'>, () => Row[]> = {
+      capacete: () => [opt('helmet', 'CASCA'), opt('gloss', 'ACABAMENTO'), opt('mask', 'MÁSCARA'), col('maskC', 'COR DA MÁSCARA', METAL), opt('visor', 'VISEIRA'), opt('chin', 'JUGULAR'), col('chinC', 'COR DA JUGULAR')],
       rosto: () => [
         { n: 'TOM DE PELE', colors: { pal: SKINS, sel: s.skin, pick: (i) => this.setLook({}, { skin: i }) } },
-        { n: 'BARBA', cur: `${beardIdx + 1}/${BEARDS.length}`, step: { v: BEARDS[beardIdx][1], prev: () => goBeard(-1), next: () => goBeard(1) } },
-        step('eyeblack', 'EYE BLACK'),
-        step('hairOut', 'CABELO PARA FORA DO CAPACETE'),
+        { n: 'BARBA', chips: { opts: BEARDS.map(([v]) => (v < 0 ? 'SEM' : String(v + 1))), sel: beardSel, pick: (i) => this.setLook({}, { beard: BEARDS[i][0] }) } },
+        opt('hairOut', 'CABELO PARA FORA DO CAPACETE'),
         { n: 'COR DO CABELO E DA BARBA', colors: { pal: HAIR_COLORS, sel: s.hairColor, pick: (i) => this.setLook({}, { hairColor: i }) } },
-        step('mouth', 'PROTETOR BUCAL'),
-        color('mouthC', 'COR DO PROTETOR'),
+        opt('eyeblack', 'EYE BLACK'),
+        opt('mouth', 'PROTETOR BUCAL'),
+        ...colIf(L.mouth !== 'none', 'mouthC', 'COR DO PROTETOR'),
       ],
-      capacete: () => [step('helmet', 'MODELO DA CASCA'), step('gloss', 'ACABAMENTO'), step('mask', 'MÁSCARA'), color('maskC', 'COR DA MÁSCARA', METAL), step('visor', 'VISEIRA'), step('chin', 'JUGULAR'), color('chinC', 'COR DA JUGULAR')],
       corpo: () => [
-        step('jerseyLen', 'CAMISA'),
-        step('under', 'CAMISA POR BAIXO'),
-        color('underC', 'COR DA CAMISA POR BAIXO'),
-        step('pants', 'COMPRIMENTO DA CALÇA'),
-        step('knee', 'JOELHEIRA'),
-        color('kneeC', 'COR DA JOELHEIRA'),
-        step('nroll', 'PROTETOR DE PESCOÇO'),
-        color('nrollC', 'COR DO PROTETOR'),
+        opt('jerseyLen', 'CAMISA'),
+        opt('under', 'CAMISA POR BAIXO'),
+        ...colIf(L.under !== 'none', 'underC', 'COR DA CAMISA POR BAIXO'),
+        opt('pants', 'CALÇA'),
+        opt('knee', 'JOELHEIRA'),
+        ...colIf(L.knee !== 'none', 'kneeC', 'COR DA JOELHEIRA'),
+        opt('nroll', 'PROTETOR DE PESCOÇO'),
+        ...colIf(L.nroll !== 'none', 'nrollC', 'COR DO PROTETOR DE PESCOÇO'),
       ],
-      pes: () => [step('sock', 'MEIÃO'), color('sockC', 'COR DO MEIÃO'), step('sstripe', 'LISTRAS DO MEIÃO'), color('sstripeC', 'COR DAS LISTRAS'), step('cleats', 'CHUTEIRA'), color('cleatC', 'COR DA CHUTEIRA'), step('cacc', 'DETALHE DA CHUTEIRA'), color('caccC', 'COR DO DETALHE')],
-      maos: () => [step('gloves', 'LUVAS'), color('gloveC', 'COR DAS LUVAS'), step('wrist', 'MUNHEQUEIRA'), color('wristC', 'COR DA MUNHEQUEIRA'), step('asl', 'MANGA DE COMPRESSÃO'), color('aslC', 'COR DA MANGA')],
-      extras: () => [step('towel', 'TOALHA'), color('towelC', 'COR DA TOALHA'), step('celebration', 'COMEMORAÇÃO DE TOUCHDOWN')],
+      maos: () => [
+        opt('gloves', 'LUVAS'),
+        ...colIf(L.gloves !== 'none', 'gloveC', 'COR DAS LUVAS'),
+        opt('wrist', 'MUNHEQUEIRA'),
+        ...colIf(L.wrist !== 'none', 'wristC', 'COR DA MUNHEQUEIRA'),
+        opt('asl', 'MANGA DE COMPRESSÃO'),
+        ...colIf(L.asl !== 'none', 'aslC', 'COR DA MANGA'),
+      ],
+      pes: () => [opt('sock', 'MEIÃO'), col('sockC', 'COR DO MEIÃO'), opt('sstripe', 'LISTRAS DO MEIÃO'), ...colIf(L.sstripe !== 'none', 'sstripeC', 'COR DAS LISTRAS'), opt('cleats', 'CHUTEIRA'), col('cleatC', 'COR DA CHUTEIRA'), opt('cacc', 'DETALHE DA CHUTEIRA'), ...colIf(L.cacc !== 'none', 'caccC', 'COR DO DETALHE')],
+      extras: () => [
+        opt('towel', 'TOALHA'),
+        ...colIf(L.towel !== 'none', 'towelC', 'COR DA TOALHA'),
+        opt('celebration', 'COMEMORAÇÃO DE TOUCHDOWN'),
+        {
+          n: 'VISUAL',
+          button: {
+            text: 'RESTAURAR O PADRÃO',
+            fn: () => {
+              const k = getSave().look.kit;
+              this.setLook({ ...DEFAULT_LOOK, kit: k, ...kitAccents(k, this.team.kits[k]) });
+            },
+          },
+        },
+      ],
     };
-    const top = y;
-    const bg = add(this.add.graphics());
-    y += 14;
-    const IW = W - 24;
-    const chev = (g: Phaser.GameObjects.Graphics, cx: number, cy: number, dir: number) => {
-      g.lineStyle(3, TV.plate, 1);
-      g.beginPath();
-      g.moveTo(cx - 3 * dir, cy - 7);
-      g.lineTo(cx + 4 * dir, cy);
-      g.lineTo(cx - 3 * dir, cy + 7);
-      g.strokePath();
-    };
-    for (const c of CT[this.pc]()) {
-      const n = add(tvText(this, 12, y, c.n, 13, C.muted, 700, 1).setWordWrapWidth(IW - 34));
-      if (c.cur) add(tvText(this, 12 + IW, y, c.cur, 12, C.dim, 600, 0.8).setOrigin(1, 0));
-      y += n.height + 6;
+    for (const r of CT[this.pc]()) {
+      add(tvText(this, 2, y, r.n, 12, C.muted, 700, 1));
+      y += 20;
       const g = add(this.add.graphics());
-      if (c.step) {
-        const st = c.step;
-        plate(g, 12, y, 34, 38, TV.ink3, 1);
-        plate(g, 12 + IW - 34, y, 34, 38, TV.ink3, 1);
-        plate(g, 50, y, IW - 76, 38, TV.ink, 1);
-        chev(g, 30, y + 19, -1);
-        chev(g, 12 + IW - 18, y + 19, 1);
-        const v = add(tvText(this, 12 + IW / 2, y + 19, st.v, 15, C.white, 800, 0.6).setOrigin(0.5));
-        if (v.width > IW - 90) v.setScale((IW - 90) / v.width, 1);
-        p.hit(12, y, 34, 38, st.prev);
-        p.hit(12 + IW - 34, y, 34, 38, st.next);
-        // Tocar no valor também avança
-        p.hit(50, y, IW - 76, 38, st.next);
-        y += 38;
-      } else if (c.colors) {
-        const { pal, sel, pick } = c.colors;
-        const per = Math.max(1, Math.floor((IW + 6) / 28));
-        pal.forEach((col, i) => {
-          const cx = 12 + (i % per) * 28;
-          const cy = y + Math.floor(i / per) * 28;
-          const on = i === sel;
-          g.fillStyle(on ? TV.yellow : TV.ink, 1);
-          g.fillRect(cx - 2, cy - 2, 26, 26);
-          g.fillStyle(col, 1);
-          g.fillRect(cx + 1, cy + 1, 20, 20);
-          p.hit(cx - 2, cy - 2, 26, 26, () => pick(i));
+      if (r.chips) {
+        // botões lado a lado (quebram linha): o escolhido fica amarelo
+        const CH = 34;
+        let x = 0;
+        r.chips.opts.forEach((name, i) => {
+          const on = i === r.chips!.sel;
+          const t = tvText(this, 0, 0, name, 13, on ? C.ink : C.white, 800, 0.6).setOrigin(0.5);
+          const w = Math.max(44, t.width + 22);
+          if (x + w > W) {
+            x = 0;
+            y += CH + 6;
+          }
+          plate(g, x, y, w, CH, on ? TV.yellow : TV.ink3, 1);
+          if (!on) plateLine(g, x, y, w, CH, TV.rule, 1, 1);
+          t.setPosition(x + w / 2, y + CH / 2);
+          add(t);
+          const pick = r.chips!.pick;
+          p.hit(x - 2, y - 3, w + 4, CH + 6, () => !on && pick(i));
+          x += w + 6;
         });
-        y += Math.ceil(pal.length / per) * 28 - 4;
+        y += CH;
+      } else if (r.colors) {
+        const { pal, sel, pick } = r.colors;
+        const SZ = 30;
+        const GP = 6;
+        const per = Math.max(1, Math.floor((W + GP) / (SZ + GP)));
+        pal.forEach((cc, i) => {
+          const cx = (i % per) * (SZ + GP);
+          const cy = y + Math.floor(i / per) * (SZ + GP);
+          const on = i === sel;
+          g.fillStyle(on ? TV.yellow : TV.rule, 1);
+          g.fillRect(cx - (on ? 3 : 1), cy - (on ? 3 : 1), SZ + (on ? 6 : 2), SZ + (on ? 6 : 2));
+          g.fillStyle(cc, 1);
+          g.fillRect(cx, cy, SZ, SZ);
+          if (on) {
+            // marca de escolhido no canto, legível em qualquer cor
+            g.fillStyle(TV.yellow, 1);
+            g.fillTriangle(cx + SZ, cy + SZ - 12, cx + SZ, cy + SZ, cx + SZ - 12, cy + SZ);
+          }
+          p.hit(cx - 3, cy - 3, SZ + 6, SZ + 6, () => !on && pick(i));
+        });
+        y += Math.ceil(pal.length / per) * (SZ + GP) - GP;
+      } else if (r.button) {
+        plate(g, 0, y, W, 40, TV.ink3, 1);
+        plateLine(g, 0, y, W, 40, TV.rule, 1, 1);
+        add(tvText(this, W / 2, y + 20, r.button.text, 15, C.white, 800, 1.2).setOrigin(0.5));
+        p.hit(0, y, W, 40, r.button.fn);
+        y += 40;
       }
       y += 16;
     }
-    y -= 2;
-    plate(bg, 0, top, W, y - top, TV.ink2, 1);
-    plateLine(bg, 0, top, W, y - top, TV.rule, 1, 1);
-    p.setExtent(y + 20);
+    p.setExtent(y + 12);
   }
 
   // ---- ELENCO

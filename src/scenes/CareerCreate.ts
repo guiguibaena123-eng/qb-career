@@ -11,11 +11,19 @@ import { C, feed, fillPlate, inkOn, plate, plateLine, plateShadow, scoreBug, str
 
 
 /*
- * Criação da carreira (Etapa 3): Nome → Faculdade → Rosto → Pele → Cabelo → Barba → Confirmação.
- * Tudo lê e grava no PlayerSave; o preview usa PlayerBody/PlayerFace, então o rosto é idêntico em
- * qualquer passo e na confirmação. `?passo=0..6` abre direto num passo.
+ * Criação da carreira: Nome → Faculdade → Aparência (rosto, pele, cabelo e barba num passo só, em abas)
+ * → Confirmação. Tudo lê e grava no PlayerSave; o preview usa PlayerBody/PlayerFace, então o rosto é
+ * idêntico em qualquer passo e na confirmação. `?passo=0..3` abre direto num passo.
  */
-const STEPS = ['NOME', 'FACULDADE', 'ROSTO', 'PELE', 'CABELO', 'BARBA', 'CONFIRMAR'];
+const STEPS = ['NOME', 'FACULDADE', 'APARÊNCIA', 'CONFIRMAR'];
+const LAST = STEPS.length - 1;
+type LookTab = 'face' | 'skin' | 'hair' | 'beard';
+const LOOK_TABS: [LookTab, string][] = [
+  ['face', 'ROSTO'],
+  ['skin', 'PELE'],
+  ['hair', 'CABELO'],
+  ['beard', 'BARBA'],
+];
 
 type Add = <T extends Phaser.GameObjects.GameObject>(o: T) => T;
 
@@ -29,6 +37,7 @@ export function collegeKit(colors: [string, string]): KitDef {
 export class CareerCreate extends Phaser.Scene {
   private step = 0;
   private field: 'first' | 'last' | 'num' | null = null;
+  private lookTab: LookTab = 'face';
   private ui!: Phaser.GameObjects.Container;
 
   constructor() {
@@ -73,18 +82,16 @@ export class CareerCreate extends Phaser.Scene {
 
     // Placar do topo (voltar = passo anterior) e barra de passos
     add(scoreBug(this, { title: `CRIAR QB · ${STEPS[this.step]}`, step: `${this.step + 1} DE ${STEPS.length}`, onBack: () => (this.step === 0 ? wipeTo(this, 'CareerSlots') : this.go(this.step - 1)) }));
-    const bw = (W - 24 - 6 * 3) / 7;
+    const bw = (W - 24 - (STEPS.length - 1) * 3) / STEPS.length;
     const pg = this.add.graphics();
     STEPS.forEach((_, i) => plate(pg, 12 + i * (bw + 3), 62, bw, 7, i < this.step ? TV.yellow : i === this.step ? TV.plate : TV.ink3));
     add(pg);
 
     const college = COLLEGES.find((c) => c.id === s.college.id) ?? COLLEGES[0];
     const kit = collegeKit(college.colors);
-    if (this.step !== 0 && this.step !== 6) {
+    if (this.step === 1) {
       // Antes do cartão final, só o rosto (a roupa de jogo aparece apenas na confirmação)
-      // passos com poucas opções mostram o rosto maior
-      const big = this.step === 2 || this.step === 3 || this.step === 5;
-      add(new PlayerFace(this, W / 2, big ? 226 : 196, this.faceLook(), big ? 1.4 : 1.05, [hexNum(college.colors[0]), hexNum(college.colors[1])]));
+      add(new PlayerFace(this, W / 2, 196, this.faceLook(), 1.05, [hexNum(college.colors[0]), hexNum(college.colors[1])]));
     }
 
     let valid = true;
@@ -96,20 +103,9 @@ export class CareerCreate extends Phaser.Scene {
         this.stepCollege(add);
         break;
       case 2:
-        this.grid(add, FACE_COUNT, 5, 'face', 0.33, 384, (i) => ({ face: i }), 72);
+        this.stepLook(add, college.colors);
         break;
-      case 3:
-        this.colorRow(add, 520, SKINS, s.skin, (i) => this.apply({ skin: i }), 72);
-        add(tvText(this, W / 2, 586, `TOM ${s.skin + 1} DE ${SKINS.length}`, 16, C.muted, 700, 1.4).setOrigin(0.5));
-        break;
-      case 4:
-        this.grid(add, HAIR_COUNT, 6, 'hair', 0.27, 332, (i) => ({ hair: i }));
-        this.colorRow(add, 756, HAIR_COLORS, s.hairColor, (i) => this.apply({ hairColor: i }));
-        break;
-      case 5:
-        this.grid(add, BEARD_COUNT + 1, 5, 'beard', 0.33, 420, (i) => ({ beard: i === 0 ? -1 : i - 1 }), 72);
-        break;
-      case 6:
+      case LAST:
         this.stepConfirm(add, college.name, kit);
         return;
     }
@@ -138,7 +134,9 @@ export class CareerCreate extends Phaser.Scene {
 
   /** Aplica uma mudança de rosto: grava e refaz a tela (preview ao vivo). */
   private apply(patch: Partial<ReturnType<CareerCreate['faceLook']>>) {
+    navigator.vibrate?.(8);
     updateSave(patch);
+    this.bump = true;
     this.build();
   }
 
@@ -313,7 +311,75 @@ export class CareerCreate extends Phaser.Scene {
     });
   }
 
-  // ---- 3, 5 e 6: grade de rostos / cabelos / barbas
+  // ---- 3. aparência: rosto grande no alto, abas e as opções da aba
+  private stepLook(add: Add, colors: [string, string]) {
+    const W = GAME_W;
+    const s = getSave();
+    // retrato (com os ombros na cor da faculdade) num palco com holofote
+    const g = this.add.graphics();
+    for (let i = 0; i < 6; i++) {
+      g.fillStyle(0xffffff, 0.025);
+      g.fillEllipse(W / 2, 178, 300 - i * 40, 190 - i * 24);
+    }
+    add(g);
+    const face = add(new PlayerFace(this, W / 2, 176, this.faceLook(), 0.95, [hexNum(colors[0]), hexNum(colors[1])]));
+    // retorno do toque: o retrato dá um pulinho a cada troca
+    if (this.bump) {
+      this.bump = false;
+      this.tweens.add({ targets: face, scale: 0.95 * 1.05, duration: 80, yoyo: true, ease: 'Quad.Out' });
+    }
+    // sortear tudo de uma vez
+    const rnd = new GlassButton(this, W - 16 - 54, 104, { w: 108, h: 34, fill: TV.ink3, fillAlpha: 1 });
+    rnd.add(tvText(this, 0, 0, 'SORTEAR', 14, C.white, 800, 1.2).setOrigin(0.5));
+    rnd.onTap = () => {
+      const r = (n: number) => Math.floor(Math.random() * n);
+      this.apply({ face: r(FACE_COUNT), skin: r(SKINS.length), hair: r(HAIR_COUNT), hairColor: r(HAIR_COLORS.length), beard: r(BEARD_COUNT + 1) - 1 });
+    };
+    add(rnd);
+    // abas
+    const ty = 282;
+    const gap = 6;
+    const tw = (W - 32 - gap * 3) / 4;
+    LOOK_TABS.forEach(([id, name], i) => {
+      const x = 16 + i * (tw + gap);
+      const on = id === this.lookTab;
+      const tg = this.add.graphics();
+      plate(tg, x, ty, tw, 40, on ? TV.yellow : TV.ink2, 1);
+      if (!on) plateLine(tg, x, ty, tw, 40, TV.rule, 1, 1);
+      add(tg);
+      add(tvText(this, x + tw / 2, ty + 20, name, 16, on ? C.ink : C.white, 800, 1).setOrigin(0.5));
+      const z = add(this.add.zone(x, ty, tw, 40).setOrigin(0).setInteractive({ useHandCursor: true }));
+      z.on('pointerup', () => {
+        if (this.lookTab === id) return;
+        navigator.vibrate?.(8);
+        this.lookTab = id;
+        this.build();
+      });
+    });
+    const top = ty + 56;
+    switch (this.lookTab) {
+      case 'face':
+        this.grid(add, FACE_COUNT, 5, 'face', 0.33, top, (i) => ({ face: i }), 72);
+        break;
+      case 'skin':
+        this.colorRow(add, top + 60, SKINS, s.skin, (i) => this.apply({ skin: i }), 72);
+        add(tvText(this, W / 2, top + 126, `TOM ${s.skin + 1} DE ${SKINS.length}`, 16, C.muted, 700, 1.4).setOrigin(0.5));
+        break;
+      case 'hair':
+        this.grid(add, HAIR_COUNT, 7, 'hair', 0.25, top - 4, (i) => ({ hair: i }), 52);
+        add(tvText(this, 16, top + 5 * 52 + 8, 'COR DO CABELO E DA BARBA', 12, C.muted, 700, 1.2).setOrigin(0, 0.5));
+        this.colorRow(add, top + 5 * 52 + 42, HAIR_COLORS, s.hairColor, (i) => this.apply({ hairColor: i }), 40);
+        break;
+      case 'beard':
+        this.grid(add, BEARD_COUNT + 1, 5, 'beard', 0.33, top, (i) => ({ beard: i === 0 ? -1 : i - 1 }), 72);
+        add(tvText(this, 16, top + 3 * 72 + 22, 'COR DA BARBA', 12, C.muted, 700, 1.2).setOrigin(0, 0.5));
+        this.colorRow(add, top + 3 * 72 + 56, HAIR_COLORS, s.hairColor, (i) => this.apply({ hairColor: i }), 40);
+        break;
+    }
+  }
+  private bump = false;
+
+  // ---- grade de rostos / cabelos / barbas
   private grid(add: Add, count: number, cols: number, kind: 'face' | 'hair' | 'beard', sc: number, top: number, patch: (i: number) => object, max = 66) {
     const W = GAME_W;
     const look = this.faceLook();

@@ -92,24 +92,75 @@ function topLayers(look: LookOptions, kit: KitDef, num: number, hairColor: numbe
   return L;
 }
 
+/**
+ * Camada recortada só na área com pixels. As camadas são 200×400, mas quase todo acessório ocupa um
+ * canto pequeno: tingir e desenhar só o recorte deixa cada troca no PERSONALIZAR bem mais rápida.
+ */
+const crops = new Map<string, { cv: HTMLCanvasElement; x: number; y: number } | null>();
+function crop(scene: Phaser.Scene, name: string) {
+  if (crops.has(name)) return crops.get(name)!;
+  const img = scene.textures.get(key(name)).getSourceImage() as HTMLImageElement;
+  const full = document.createElement('canvas');
+  full.width = img.width;
+  full.height = img.height;
+  const fc = full.getContext('2d', { willReadFrequently: true })!;
+  fc.drawImage(img, 0, 0);
+  const d = fc.getImageData(0, 0, img.width, img.height).data;
+  let x0 = img.width, y0 = img.height, x1 = -1, y1 = -1;
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      if (d[(y * img.width + x) * 4 + 3] === 0) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  let r: { cv: HTMLCanvasElement; x: number; y: number } | null = null;
+  if (x1 >= 0) {
+    const cv = document.createElement('canvas');
+    cv.width = x1 - x0 + 1;
+    cv.height = y1 - y0 + 1;
+    cv.getContext('2d')!.drawImage(full, x0, y0, cv.width, cv.height, 0, 0, cv.width, cv.height);
+    r = { cv, x: x0, y: y0 };
+  }
+  crops.set(name, r);
+  return r;
+}
+
+/** Recortes já tingidos (cada cor de cada peça), com limite: os mais antigos saem. */
+const tinted = new Map<string, HTMLCanvasElement>();
+function tintedCrop(src: HTMLCanvasElement, name: string, tint: number) {
+  if (tint === 0xffffff) return src;
+  const k = `${name}|${tint}`;
+  const hit = tinted.get(k);
+  if (hit) {
+    tinted.delete(k);
+    tinted.set(k, hit);
+    return hit;
+  }
+  const cv = document.createElement('canvas');
+  cv.width = src.width;
+  cv.height = src.height;
+  const t = cv.getContext('2d')!;
+  t.drawImage(src, 0, 0);
+  t.globalCompositeOperation = 'multiply';
+  t.fillStyle = `#${tint.toString(16).padStart(6, '0')}`;
+  t.fillRect(0, 0, cv.width, cv.height);
+  t.globalCompositeOperation = 'destination-in';
+  t.drawImage(src, 0, 0);
+  tinted.set(k, cv);
+  if (tinted.size > 240) tinted.delete(tinted.keys().next().value!);
+  return cv;
+}
+
 /** Desenha uma camada tingida (multiply) no contexto, na posição dada. */
 function stamp(scene: Phaser.Scene, ctx: CanvasRenderingContext2D, name: string, tint: number, dx = 0, dy = 0, alpha = 1) {
   if (!scene.textures.exists(key(name))) return;
-  const img = scene.textures.get(key(name)).getSourceImage() as HTMLImageElement;
-  const tmp = document.createElement('canvas');
-  tmp.width = img.width;
-  tmp.height = img.height;
-  const t = tmp.getContext('2d')!;
-  t.drawImage(img, 0, 0);
-  if (tint !== 0xffffff) {
-    t.globalCompositeOperation = 'multiply';
-    t.fillStyle = `#${tint.toString(16).padStart(6, '0')}`;
-    t.fillRect(0, 0, tmp.width, tmp.height);
-    t.globalCompositeOperation = 'destination-in';
-    t.drawImage(img, 0, 0);
-  }
+  const c = crop(scene, name);
+  if (!c) return;
   ctx.globalAlpha = alpha;
-  ctx.drawImage(tmp, dx, dy);
+  ctx.drawImage(tintedCrop(c.cv, name, tint), dx + c.x, dy + c.y);
   ctx.globalAlpha = 1;
 }
 
@@ -136,6 +187,30 @@ function composite(scene: Phaser.Scene, layers: Layer[], digits?: number): strin
   return k;
 }
 
+/*
+ * Memória das texturas compostas: cada combinação de visual vira uma textura 200×400. Conta quantos
+ * corpos usam cada uma; as que ninguém usa ficam guardadas (as 40 mais recentes, para DESFAZER e voltar
+ * ao visual anterior serem instantâneos) e as mais antigas são apagadas.
+ */
+const refs = new Map<string, number>();
+const idle = new Set<string>();
+function retain(k: string) {
+  refs.set(k, (refs.get(k) ?? 0) + 1);
+  idle.delete(k);
+}
+function release(scene: Phaser.Scene, k: string | null) {
+  if (!k) return;
+  const n = (refs.get(k) ?? 1) - 1;
+  if (n > 0) return void refs.set(k, n);
+  refs.delete(k);
+  idle.add(k);
+  while (idle.size > 40) {
+    const old = idle.values().next().value!;
+    idle.delete(old);
+    if (scene.textures.exists(old)) scene.textures.remove(old);
+  }
+}
+
 export interface BodyLook {
   look: LookOptions;
   kit: KitDef;
@@ -148,6 +223,7 @@ export class PlayerBody extends Phaser.GameObjects.Container {
   private fg!: Phaser.GameObjects.Image;
   private faceObj!: PlayerFace;
   private cfg: BodyLook;
+  private keys: [string | null, string | null] = [null, null];
 
   /** (x, y) é o centro dos pés/base do corpo; a caixa fica 150×300 com `scale` 1. */
   constructor(scene: Phaser.Scene, x: number, y: number, cfg: BodyLook, scale = 1) {
@@ -160,6 +236,10 @@ export class PlayerBody extends Phaser.GameObjects.Container {
     this.add([this.bg, this.faceObj, this.fg]);
     this.setScale(scale);
     this.refresh();
+    this.once(Phaser.GameObjects.Events.DESTROY, () => {
+      this.keys.forEach((k) => release(scene, k));
+      this.keys = [null, null];
+    });
   }
 
   /** Troca qualquer parte do visual; só recompõe o que mudou (o resto vem do cache). */
@@ -172,8 +252,17 @@ export class PlayerBody extends Phaser.GameObjects.Container {
     const { look, kit, face, number } = this.cfg;
     const skinHex = face.skinTint ?? SKINS[face.skin % SKINS.length];
     const hairHex = face.hairTint ?? HAIR_COLORS[face.hairColor % HAIR_COLORS.length];
-    this.bg.setTexture(composite(this.scene, baseLayers(skinHex)));
-    this.fg.setTexture(composite(this.scene, topLayers(look, kit, number, hairHex), String(number).length));
+    const kb = composite(this.scene, baseLayers(skinHex));
+    const kf = composite(this.scene, topLayers(look, kit, number, hairHex), String(number).length);
+    // troca primeiro (a textura antiga só pode sair da memória depois que ninguém a mostra)
+    this.bg.setTexture(kb);
+    this.fg.setTexture(kf);
+    const [ob, of] = this.keys;
+    retain(kb);
+    retain(kf);
+    this.keys = [kb, kf];
+    release(this.scene, ob);
+    release(this.scene, of);
     // Dentro do capacete o rosto vai sem o cabelo em sprite (o cabelo para fora é a camada hair_*)
     this.faceObj.setLook({ ...face, hair: -1 });
   }
