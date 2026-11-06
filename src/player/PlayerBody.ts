@@ -70,10 +70,7 @@ function topLayers(look: LookOptions, kit: KitDef, num: number, hairColor: numbe
   const digits = String(num).split('');
   const outline = kit.outline ?? shade(kit.jersey, 0.45);
   digits.forEach((d) => L.push([`no_${d}`, outline]));
-  // número branco; só na camisa clara (uniforme branco) fica na cor do time, senão sumiria
-  const lj = ((kit.jersey >> 16) & 255) * 0.299 + ((kit.jersey >> 8) & 255) * 0.587 + (kit.jersey & 255) * 0.114;
-  const numFill = lj > 170 ? kit.number : WHITE;
-  digits.forEach((d) => L.push([`nf_${d}`, numFill]));
+  digits.forEach((d) => L.push([`nf_${d}`, kit.number]));
   L.push(['collar_v', kit.stripe]);
   if (on(look.towel)) L.push([`towel_${look.towel}`, look.towelC]);
   if (on(look.gloves)) L.push([`glove_${look.gloves}`, look.gloveC]);

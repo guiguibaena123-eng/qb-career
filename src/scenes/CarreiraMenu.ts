@@ -95,8 +95,8 @@ const CAT_H = 42;
 const PANE_Y = CAT_Y + CAT_H + 10;
 /** Zoom do palco por categoria: escala do jogador e a altura da arte (0–200) que fica no centro. */
 const ZOOM: Record<Cat, { s: number; ay: number }> = {
-  unif: { s: 0.86, ay: 100 },
-  extras: { s: 0.86, ay: 100 },
+  unif: { s: 0.8, ay: 104 },
+  extras: { s: 0.8, ay: 104 },
   capacete: { s: 2.0, ay: 24 },
   rosto: { s: 2.4, ay: 25 },
   corpo: { s: 1.25, ay: 92 },
@@ -787,12 +787,16 @@ export class CarreiraMenu extends Phaser.Scene {
       g.fillStyle(0xffffff, 0.022);
       g.fillEllipse(S.x + S.w / 2, S.y + S.h * 0.42, 330 - i * 40, 300 - i * 34);
     }
-    // piso na cor do time
-    plate(g, S.x, S.y + S.h - 46, S.w, 46, this.team.colors.primary, 1, false, true);
-    g.fillStyle(0x000000, 0.2);
-    g.fillRect(S.x, S.y + S.h - 46, S.w - 12, 3);
+    // piso: tudo dentro do quadrado cinza (antes era na cor do time e, num time azul, se misturava
+    // com o fundo da tela — as pernas pareciam fora do quadrado). Só um filete fino na cor do time.
+    g.fillStyle(0x000000, 0.18);
+    g.fillRect(S.x + 10, S.y + S.h - 40, S.w - 20, 1);
+    g.fillStyle(0x000000, 0.3);
+    g.fillEllipse(S.x + S.w / 2, S.y + S.h - 22, 150, 22);
+    g.fillStyle(this.team.colors.primary, 1);
+    g.fillRect(S.x + 14, S.y + S.h - 5, S.w - 30, 2);
     c.add(g);
-    c.add(tvText(this, S.x + S.w - 16, S.y + 64, `#${getSave().number}`, 64, hex(mix(TV.ink2, 0xffffff, 0.08)), 800, 0).setOrigin(1, 0.5));
+    c.add(tvText(this, S.x + S.w - 16, S.y + 64, `#${getSave().number}`, 64, C.white, 800, 0).setOrigin(1, 0.5));
     // jogador: fica FORA do container (o Phaser não aplica máscara em objeto dentro de container) e é
     // recortado no formato exato do palco, pontas inclinadas incluídas — no zoom não passa das bordas
     const z = ZOOM.unif;
@@ -812,7 +816,7 @@ export class CarreiraMenu extends Phaser.Scene {
     this.kitTagBg = this.add.graphics();
     this.kitTag = tvText(this, S.x + 22, S.y + S.h - 22, '', 13, C.ink, 800, 1.2).setOrigin(0, 0.5);
     f.add([this.kitTagBg, this.kitTag]);
-    this.persHint = tvText(this, S.x + S.w - 14, S.y + S.h - 22, 'TOQUE NO JOGADOR', 11, inkOn(this.team.colors.primary), 700, 1).setOrigin(1, 0.5).setAlpha(0.75);
+    this.persHint = tvText(this, S.x + S.w - 14, S.y + S.h - 22, 'TOQUE NO JOGADOR', 11, C.muted, 700, 1).setOrigin(1, 0.5).setAlpha(0.75);
     f.add(this.persHint);
     // tocar no jogador: abre a categoria da parte tocada (fora dele, volta ao uniforme)
     const zone = this.add.zone(S.x, S.y + 44, S.w, S.h - 44).setOrigin(0).setInteractive();

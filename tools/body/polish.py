@@ -13,10 +13,9 @@ aplicado igualzinho em todas, então tudo continua encaixando:
      sem degradê — em cada parte do corpo (braço, ombreira, tronco, coxa, perna)
   7. sombra de contato onde uma peça entra embaixo de outra (calça sob a camisa, meião sob a
      calça, pescoço sob o capacete); brilho só nas bordas de cima expostas
-  0. capacete: abertura do rosto 2 px mais larga de cada lado (casco, máscara, jugular e viseira
-     acompanham; o rosto em sprite fica no mesmo lugar e aparece mais) e 3 px mais alta embaixo
-     (barras de baixo da máscara e jugular descem: a boca aparece)
-  8. número da camisa no tom cheio (a cor do número sai exata)
+  0. capacete: abertura do rosto 1 px mais larga de cada lado (casco, máscara, jugular e viseira
+     acompanham; o rosto em sprite fica no mesmo lugar), acolchoado interno mais fino dos lados do
+     rosto (janela de 12 para 17 px) e forro escuro atrás do rosto
 
 Uso: python tools/body/polish.py
 """
@@ -129,7 +128,7 @@ def narrow(idx, a, b):
 # de parede junto da abertura somem). Onde a peça atravessa o meio (barras da máscara, viseira), o meio
 # é esticado em vez de abrir buraco.
 HEAD = ('helmet_', 'hstripe_', 'decal_', 'hdet', 'hgloss', 'visor', 'mask_', 'chin_')
-FK, FL, FR = 2, 37, 62  # quanto abre, parede esquerda e direita (colunas da arte)
+FK, FL, FR = 1, 37, 62  # quanto abre, parede esquerda e direita (colunas da arte)
 for n, a in layers.items():
     if not n.startswith(HEAD):
         continue
@@ -150,15 +149,24 @@ for n, a in layers.items():
         out[ok] = row[idx[ok]]
         a[y] = out
 
-# 0b. abertura mais alta: as barras de baixo da máscara e a jugular descem 3 px (a boca aparece);
-# as barras laterais esticam até elas
-FD = 3
+# 0a. acolchoado interno do capacete (camada pads): os dois retângulos ao lado do rosto ficam com 3 px
+# (eram 6 e 5) — a janela do rosto vai de 12 para 17 px, ainda dentro da largura da cabeça
+pd = layers['pads']
+pd[20:38, 41:44] = 0
+pd[20:38, 55:58] = 0
+
+# 0b. forro do capacete: atrás do rosto (na camada de base, abaixo do sprite do rosto), o vão entre as
+# paredes fica escuro — onde o rosto não cobre não aparece o fundo da tela
+liner = np.zeros((H, W), bool)
 for n, a in layers.items():
-    if not n.startswith(('mask_', 'chin_')):
+    if not n.startswith('helmet_'):
         continue
-    old = a.copy()
-    for y in range(H - 1, 31, -1):
-        a[y] = old[y - FD] if y - FD >= 32 else old[31]
+    for y in range(15, 37):
+        rs = runs(a[y, :, 3] > 0)
+        if len(rs) >= 2:
+            liner[y, rs[0][1] + 1:rs[-1][0]] = True
+sh = layers['shadow']
+sh[liner] = (24, 24, 24, 255)
 
 # 1. cintura (tronco central fica 1 px mais estreito de cada lado na cintura e no quadril)
 u = union()
@@ -293,12 +301,5 @@ OUT.mkdir(parents=True, exist_ok=True)
 for n, a in layers.items():
     Image.fromarray(a.repeat(2, 0).repeat(2, 1)).save(OUT / f'{n}.png', optimize=True)
 for n, a in small.items():
-    if n.startswith('nf_'):
-        # preenchimento do número no tom cheio (antes 214 = a cor saía a 84%: o branco ficava cinza)
-        on = (a[..., 3] > 0) & (a[..., 0] >= OUTLINE)
-        g = a[..., :3].astype(np.float32)
-        g[on] = np.clip(g[on] * (255 / 214), 0, 255)
-        a = a.copy()
-        a[..., :3] = np.round(g).astype(np.uint8)
     Image.fromarray(a).save(OUT / f'{n}.png', optimize=True)
 print('camadas geradas:', len(layers) + len(small))
