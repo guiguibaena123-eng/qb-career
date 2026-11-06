@@ -139,9 +139,11 @@ def dil(m):
 
 
 class Part:
-    def __init__(self, name, mat, mask, tone, group=None):
+    def __init__(self, name, mat, mask, tone, group=None, line_from=0):
         self.name, self.mat, self.mask, self.tone = name, mat, mask, tone
         self.group = group or name
+        # contorno seletivo só a partir desta linha (em cima, no ombro, braço e paletó são uma peça só)
+        self.line_from = line_from
 
 
 class Scene:
@@ -150,8 +152,8 @@ class Scene:
     def __init__(self):
         self.parts = []
 
-    def add(self, name, mat, mask, tone, group=None):
-        self.parts.append(Part(name, mat, mask, tone, group))
+    def add(self, name, mat, mask, tone, group=None, line_from=0):
+        self.parts.append(Part(name, mat, mask, tone, group, line_from))
         return self.parts[-1]
 
     def render(self, outline=True, base=None):
@@ -164,6 +166,8 @@ class Scene:
             # contorno seletivo: o que já existe em volta desta peça (de outro grupo) ganha linha escura
             if outline:
                 ring = dil(m) & ~m & (mat != '') & (grp != p.group)
+                if p.line_from:
+                    ring[:p.line_from] = False
                 tone[ring] = LINE
                 mat[ring] = p.mat
                 grp[ring] = p.group
@@ -191,18 +195,36 @@ class Scene:
 # ------------------------------------------------------------------ corpo
 
 
+# Linha de cima do paletó (gola → ombro → braço): para cada distância do centro, a primeira linha com
+# tecido. Degraus regulares de 1 px que vão ficando mais largos (curva convexa) e arredondam no deltoide,
+# onde a manga continua a mesma curva — sem calombo de "ombreira" nem degrau na gola.
+SHOULDER_CURVE = [(9, 41), (12, 42), (15, 43), (17, 44), (19, 45), (20, 46), (21, 47), (22, 48), (23, 49.5), (24, 51), (25, 53), (26, 56), (27, 60)]
+
+
+def top_at(x):
+    d = abs(x + 0.5 - CX)
+    pts = SHOULDER_CURVE
+    if d <= pts[0][0]:
+        return pts[0][1]
+    for (d0, y0), (d1, y1) in zip(pts, pts[1:]):
+        if d <= d1:
+            return y0 + (y1 - y0) * (d - d0) / (d1 - d0)
+    return 999
+
+
+TOP = np.array([[y >= round(top_at(x)) for x in range(W)] for y in range(H)])
+
+
 def torso_half(y):
-    """Meia-largura do paletó (do centro) em cada linha."""
-    if y < 42:
+    """Meia-largura do paletó (do centro) em cada linha (em cima, a linha do ombro corta)."""
+    if y < 41:
         return 0
-    if y < 48:  # caimento do pescoço até a ponta do ombro
-        return 8 + round((y - 42) / 6 * 14)
-    if y < 54:
-        return 22
-    if y < 60:
-        return 22 - round((y - 54) / 6 * 3)
+    if y < 56:
+        return 24
+    if y < 61:
+        return 24 - round((y - 56) / 5 * 5)
     if y < 82:
-        return 19 - round((y - 60) / 22 * 2)
+        return 19 - round((y - 61) / 21 * 2)
     if y < 100:
         return 17 + round((y - 82) / 18 * 2)
     return 19
@@ -210,9 +232,9 @@ def torso_half(y):
 
 def v_half(y):
     """Abertura em V do paletó (camisa e gravata), fecha no botão de cima."""
-    if y < 42 or y >= 86:
+    if y < 41 or y >= 86:
         return 0
-    return max(0, round(8 * (1 - (y - 42) / 44)))
+    return max(0, round(7 * (1 - (y - 41) / 45)))
 
 
 HEM = 120
@@ -278,11 +300,12 @@ def body_scene(color_shirt=True):
     s.add('tie', 'tie', tie, tt)
     # Paletó (tronco) com a abertura em V
     jk = blank()
-    for y in range(42, HEM):
+    for y in range(41, HEM):
         h = torso_half(y)
         v = v_half(y)
         jk[y, CX - h:CX - v] = True
         jk[y, CX + v:CX + h] = True
+    jk &= TOP
     # barra: as duas frentes se abrem em curva abaixo dos botões
     for i, y in enumerate(range(HEM - 6, HEM)):
         w = i + 1
@@ -333,10 +356,7 @@ def body_scene(color_shirt=True):
         paint(x, 101, HI)
         paint(99 - x, 100, LINE)
         paint(99 - x, 101, MID)
-    # costura do ombro e pregas da cintura
-    for i in range(6):
-        paint(36 - i, 46 + i // 3, MID)
-        paint(63 + i, 46 + i // 3, SH)
+    # pregas da cintura
     for y in range(74, 84):
         paint(35, y, MID)
         paint(64, y, SH)
@@ -494,7 +514,7 @@ def render_pose(name):
             grp = f'{g}_fore' if n == 'cuff' else f'{g}_{n}'
             if straight and n != 'cuff':
                 grp = f'{g}_up'  # braço reto: sem linha no cotovelo
-            s.add(f'{g}_{n}', mt, m, t, group=grp)
+            s.add(f'{g}_{n}', mt, m & TOP if n == 'up' else m, t, group=grp, line_from=57 if n == 'up' else 0)
         s.add(f'{g}_hand', 'skin', hm, ht, group=f'{g}_hand')
     return s
 
@@ -537,6 +557,32 @@ def jersey_scene():
     return s
 
 
+# ------------------------------------------------------------------ gola (vai por cima do pescoço)
+
+
+def collar_scene():
+    """Gola da camisa em pé dos dois lados do pescoço (x 45..54), pontas caindo para o centro e o nó."""
+    s = Scene()
+    band = blank()
+    for y in range(40, 47):
+        band[y, 43:45] = True
+    band[40, 43] = False
+    pt = poly([(43, 44), (48, 47), (49, 48), (47, 52), (44, 49)])
+    m = sym(band | pt)
+    t = np.full((H, W), 250, np.int32)
+    t[:, CX:] = 232
+    # vinco da ponta (luz/sombra)
+    for y in range(47, 52):
+        if m[y, 45]: t[y, 45] = 214
+    s.add('collar', 'collar', m, t, group='collar')
+    knot = poly([(48, 47), (51, 47), (51, 49), (50, 51), (49, 51), (48, 49)])
+    kt = np.full((H, W), BASE, np.int32)
+    kt[47:49, 48] = HI
+    kt[:, 50:] = MID
+    s.add('knot', 'knot', knot, kt, group='knot')
+    return s
+
+
 # ------------------------------------------------------------------ saída
 
 
@@ -576,6 +622,10 @@ def main():
         names.append(f's2_{mat}')
     up(det_body()).save(OUT / 's2_det.png')
     names.append('s2_det')
+    co = collar_scene().render()
+    for mat in ('collar', 'knot'):
+        save_layer(co, mat, f's2_{mat}')
+        names.append(f's2_{mat}')
     poses = ['rest', 'gest', 'hold'] + [f'clap{k}' for k in range(5)]
     arms_out = {}
     for p in poses:

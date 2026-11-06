@@ -123,7 +123,7 @@ export function commissioner(scene: Phaser.Scene, x: number, y: number, scale: n
   head.add(new PlayerFace(scene, 52 + 48, 9 + 48, COMMISH_FACE, 0.5));
   body.add(head);
   // Gola da camisa e nó da gravata por cima do pescoço
-  body.add(scene.add.image(0, 0, collarTexture(scene, COMMISH.tie, COMMISH.jacket, COMMISH_FACE.face)).setOrigin(0));
+  body.add(scene.add.image(0, 0, collarTexture(scene, COMMISH.tie)).setOrigin(0));
   c.add(body);
   if (clipBottom !== undefined) {
     const m = scene.make.graphics({}, false);

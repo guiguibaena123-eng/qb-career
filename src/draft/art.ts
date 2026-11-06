@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { addCanvasTex } from '../systems/perf';
 import type { CareerTeam } from '../data/TeamRepository';
 import { getSave } from '../player/PlayerSave';
-import { faceCell, PlayerFace, SHAPE } from '../player/PlayerFace';
+import { PlayerFace } from '../player/PlayerFace';
 import { SKINS } from '../player/PlayerFace';
 
 /*
@@ -116,7 +116,7 @@ export function suitFigure(scene: Phaser.Scene, x: number, y: number, team: Care
   // Rosto: célula de 192 a 0.5 com o canto em (52, 9) → centro em (100, 57)
   c.add(new PlayerFace(scene, 52 + 48, 9 + 48, saveFace(), 0.5));
   // Gola da camisa e nó da gravata por cima do pescoço (a cabeça "veste" o terno)
-  c.add(scene.add.image(0, 0, collarTexture(scene, team.colors.primary, suit.jacket, s.face)).setOrigin(0));
+  c.add(scene.add.image(0, 0, collarTexture(scene, team.colors.primary)).setOrigin(0));
   // Logo do time na barra da jersey
   c.add(scene.add.image(100, 206, team.logo.small).setDisplaySize(22, 22));
   return c;
@@ -212,112 +212,22 @@ function stamp(scene: Phaser.Scene, ctx: CanvasRenderingContext2D, key: string, 
 }
 
 /**
- * Gola da camisa por cima do pescoço (vai depois do rosto): as duas pontas brancas abraçando o pescoço,
- * a faixa da gola subindo dos lados, o nó da gravata no meio, a gola do paletó atrás e a sombra embaixo
- * do queixo. Desenhado com caminhos e depois "pixelado" (sem semitransparência nas bordas).
+ * Gola da camisa e nó da gravata (vão depois do rosto, por cima do pescoço): camadas s2_collar e s2_knot
+ * de tools/draft/suit.py, desenhadas junto com a linha do ombro do paletó (o pescoço é igual em todos
+ * os rostos), então gola e ombros ficam contínuos.
  */
-export function collarTexture(scene: Phaser.Scene, tie: number, jacket: number, face: number) {
-  const shape = SHAPE[((face % SHAPE.length) + SHAPE.length) % SHAPE.length];
-  const key = `draft_collar2_${tie}_${jacket}_${shape}`;
+export function collarTexture(scene: Phaser.Scene, tie: number) {
+  const key = `draft_collar3_${tie}`;
   if (scene.textures.exists(key)) return key;
   const cv = document.createElement('canvas');
   cv.width = 200;
   cv.height = 120;
   const ctx = cv.getContext('2d')!;
-  const poly = (pts: [number, number][], fill: string, stroke = '#0D0D12') => {
-    ctx.beginPath();
-    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    ctx.closePath();
-    ctx.fillStyle = fill;
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = stroke;
-    ctx.stroke();
-  };
-  const mirror = (pts: [number, number][]) => pts.map(([x, y]) => [200 - x, y] as [number, number]);
-  // Bordas reais do pescoço deste rosto, linha a linha (lidas do sprite da cabeça): a gola e o paletó
-  // são desenhados colados nelas, então não sobra fundo aparecendo entre o pescoço e a roupa
-  const edges = neckEdges(scene, shape);
-  const jk = hex(jacket);
-  for (let y = 86; y < 104; y += 2) {
-    const e = edges(y);
-    if (!e) continue;
-    const out = Math.min(22, 6 + Math.round((y - 86) * 1.5)); // paletó: largura sobe com o caimento do ombro
-    for (const side of [-1, 1]) {
-      const edge = side < 0 ? e.l : e.r;
-      const at = (d: number, w: number) => (side < 0 ? edge - d - w : edge + d + 1);
-      // Gola do paletó (fora) → contorno → faixa branca da gola (encostada no pescoço)
-      ctx.fillStyle = jk;
-      ctx.fillRect(at(6, out), y, out, 2);
-      ctx.fillStyle = '#0D0D12';
-      ctx.fillRect(at(4, 2), y, 2, 2);
-      ctx.fillStyle = y < 90 ? '#F4F1E8' : '#E2E4EA';
-      ctx.fillRect(at(0, 4), y, 4, 2);
-    }
-  }
-  // Contorno de cima da faixa da gola e sombra do queixo no alto do pescoço
-  const top = edges(86);
-  if (top) {
-    ctx.fillStyle = '#0D0D12';
-    ctx.fillRect(top.l - 6, 84, 6, 2);
-    ctx.fillRect(top.r + 1, 84, 6, 2);
-    ctx.fillStyle = 'rgba(60,30,10,0.28)';
-    ctx.fillRect(top.l + 1, 84, top.r - top.l - 1, 4);
-  }
-  // Pontas da gola (caem em direção ao centro, por cima do pescoço)
-  const pt: [number, number][] = [[87, 89], [100, 96], [95, 107], [86, 99]];
-  poly(pt, '#F4F1E8');
-  poly(mirror(pt), '#F4F1E8');
-  // Sombra embaixo das pontas
-  ctx.fillStyle = 'rgba(0,0,0,0.12)';
-  ctx.fillRect(88, 100, 6, 3);
-  ctx.fillRect(106, 100, 6, 3);
-  // Nó da gravata
-  poly([[96, 96], [104, 96], [102, 104], [98, 104]], hex(tie));
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.fillRect(97, 97, 2, 3);
-  // Sem semitransparência: cada pixel é cheio ou vazio (pixel art)
-  const img = ctx.getImageData(0, 0, 200, 120);
-  for (let i = 3; i < img.data.length; i += 4) {
-    const a = img.data[i];
-    if (a === 0) continue;
-    // Sombras (fracas de propósito) ficam; bordas suavizadas viram cheias
-    if (a > 110) img.data[i] = 255;
-    else if (a < 40) img.data[i] = 0;
-  }
-  ctx.putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  stamp(scene, ctx, 'drsuit_s2_collar', 0xf4f1e8);
+  stamp(scene, ctx, 'drsuit_s2_knot', tie);
   addCanvasTex(scene, key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
   return key;
-}
-
-/**
- * Bordas esquerda/direita do pescoço (px da figura) numa linha `y`, lidas do sprite da cabeça do
- * formato `shape` (célula de 192 posta a 0.5 com o canto em (52, 9), como em todas as figuras de terno).
- * Abaixo do fim do pescoço repete a última linha encontrada.
- */
-function neckEdges(scene: Phaser.Scene, shape: number) {
-  const src = scene.textures.get(faceCell(scene, 'heads', shape)).getSourceImage() as HTMLCanvasElement;
-  const c = document.createElement('canvas');
-  c.width = c.height = 192;
-  const x2 = c.getContext('2d')!;
-  x2.drawImage(src, 0, 0);
-  const d = x2.getImageData(0, 0, 192, 192).data;
-  let last: { l: number; r: number } | null = null;
-  const rows = new Map<number, { l: number; r: number } | null>();
-  for (let y = 80; y < 110; y++) {
-    const cy = Math.min(191, (y - 9) * 2);
-    let l = -1;
-    let r = -1;
-    for (let cx = 0; cx < 192; cx++) {
-      if (d[(cy * 192 + cx) * 4 + 3] > 0) {
-        if (l < 0) l = cx;
-        r = cx;
-      }
-    }
-    if (l >= 0) last = { l: Math.floor(52 + l / 2), r: Math.ceil(52 + r / 2) };
-    rows.set(y, last);
-  }
-  return (y: number) => rows.get(y) ?? last;
 }
 
 function shade(c: number, f: number) {
