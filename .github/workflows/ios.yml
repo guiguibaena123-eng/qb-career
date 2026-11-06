@@ -96,7 +96,14 @@ jobs:
             -allowProvisioningUpdates \
             -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8" \
             -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" || {
+              echo "---- detalhes do erro (logs de distribuição do Xcode) ----"
+              for d in $(find "${TMPDIR:-/tmp}" /var/folders -name '*.xcdistributionlogs' -maxdepth 6 2>/dev/null); do
+                tail -n 80 "$d/IDEDistribution.standard.log" 2>/dev/null
+                grep -iE "error|status|code|message|detail" "$d"/*.log 2>/dev/null | tail -n 60
+              done
+              exit 1
+            }
 
       - name: Apaga a chave
         if: always()
