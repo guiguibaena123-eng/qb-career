@@ -10,24 +10,35 @@
  * - Na partida e nos testes do Combine a música abaixa e pausa; no menu volta de onde parou.
  */
 
-/** `end` = onde a música acaba de verdade (antes do silêncio final), medido nos arquivos. */
-const TRACKS: { file: string; end: number }[] = [
-  { file: '01', end: 162.5 },
-  { file: '02', end: 164.7 },
-  { file: '03', end: 146.1 },
-  { file: '04', end: 142.4 },
-  { file: '05', end: 270.5 },
-  { file: '06', end: 128.5 },
-  { file: '07', end: 144.0 },
-  { file: '08', end: 164.4 },
-  { file: '09', end: 137.1 },
-  { file: '10', end: 151.5 },
-  { file: '11', end: 86.2 },
+/**
+ * Medido nos arquivos: `end` = onde o som acaba (antes do silêncio final); `out` = onde a parte cheia da
+ * música termina. Algumas faixas fecham com 8–15 s quase mudos (20 dB abaixo): a próxima entra ali, senão o
+ * menu ficava num "buraco" quase sem som antes da troca.
+ */
+const TRACKS: { file: string; end: number; out: number; start?: number }[] = [
+  { file: '01', end: 162.5, out: 162.0 },
+  { file: '02', end: 164.7, out: 161.0 },
+  // 03 e 08: pausa baixinha logo no começo (8–14 s / 9–16 s); logo após uma troca soava como buraco →
+  // começam depois dela (a entrada suave esconde o corte)
+  { file: '03', end: 146.1, out: 131.5, start: 14.2 },
+  { file: '04', end: 142.4, out: 128.5 },
+  { file: '05', end: 270.5, out: 270.5 },
+  { file: '06', end: 128.5, out: 128.5 },
+  { file: '07', end: 144.0, out: 131.0 },
+  { file: '08', end: 164.4, out: 148.0, start: 16.4 },
+  { file: '09', end: 137.1, out: 123.5 },
+  { file: '10', end: 151.5, out: 151.5 },
+  { file: '11', end: 86.2, out: 86.0 },
 ];
-/** Duração da transição entre faixas (s). */
-const XFADE = 6;
+/** Duração da transição entre faixas (s): longa, as duas se misturam devagar. */
+const XFADE = 9;
+/** Momento (s na faixa) em que a próxima começa a entrar. */
+// (com final baixo, a troca começa antes: quando a antiga cai, a nova já está quase no volume cheio)
+const xfadeAt = (t: number) => Math.min(TRACKS[t].end - XFADE, TRACKS[t].out - XFADE * 0.6);
 /** Entrada/saída ao ir para a partida e voltar ao menu (s). */
 const DUCK = 1.2;
+/** Volta da música ao sair da partida (s): sobe sem pressa. */
+const DUCK_IN = 2.5;
 /** Entrada da primeira música ao abrir o jogo (s): sobe devagar, sem susto. */
 const INTRO = 3.5;
 /** Volume da trilha (0–1). */
@@ -97,7 +108,16 @@ class MenuMusic {
   /** Fora de uma transição, o deck que não é o atual fica parado e mudo. */
   private settle() {
     const ctx = this.ctx;
-    if (!ctx || ctx.currentTime < this.xfadeEnd) return;
+    if (!ctx) return;
+    // Nunca deixa o menu sem música: faixa atual acabou/parou sem a próxima entrar → puxa a próxima
+    if (this.playing && !this.busy && !this.blocked && !this.hidden && ctx.state === 'running') {
+      const d = this.decks[this.cur];
+      if (d.track >= 0 && !d.handedOff) {
+        if (d.el.ended || d.el.currentTime >= xfadeAt(d.track) + 0.5) void this.next();
+        else if (d.el.paused) void d.el.play().catch(() => {});
+      }
+    }
+    if (ctx.currentTime < this.xfadeEnd) return;
     this.decks.forEach((d, i) => {
       if (i === this.cur || d.track < 0 || d === this.starting) return;
       if (!d.el.paused) d.el.pause();
@@ -269,8 +289,10 @@ class MenuMusic {
     const deck = this.decks[(this.cur + 1) % 2];
     let url: string;
     try {
-      // primeira faixa ainda baixando: toca direto do servidor enquanto baixa (não espera o arquivo inteiro)
-      url = first && !this.ready.has(t) ? this.fileUrl(t) : await this.load(t);
+      // Ainda baixando: toca direto do servidor enquanto baixa (não espera o arquivo inteiro). Na troca
+      // de faixa espera no máximo 1,2 s pelo arquivo guardado — nunca deixa a atual acabar em silêncio.
+      const have = this.ready.get(t);
+      url = have ?? (first ? this.fileUrl(t) : await Promise.race([this.load(t), new Promise<string>((r) => window.setTimeout(() => r(this.fileUrl(t)), 1200))]));
     } catch {
       // sem internet e sem cache: tenta de novo daqui a pouco
       this.pos--;
@@ -289,10 +311,8 @@ class MenuMusic {
     deck.gain.gain.cancelScheduledValues(ctx.currentTime);
     deck.gain.gain.setValueAtTime(0, ctx.currentTime);
     // já estava carregando esta faixa desde a abertura: não recomeça o download
-    if (!(deck.primed === t && url === this.fileUrl(t))) {
-      deck.el.src = url;
-      deck.el.currentTime = 0;
-    }
+    if (!(deck.primed === t && url === this.fileUrl(t))) deck.el.src = url;
+    deck.el.currentTime = TRACKS[t].start ?? 0;
     deck.primed = -1;
     this.starting = deck;
     const go = () => {
@@ -356,7 +376,7 @@ class MenuMusic {
   private onTime(deck: Deck) {
     if (!this.playing || deck.handedOff || deck.track < 0 || this.decks[this.cur] !== deck) return;
     const end = Math.min(TRACKS[deck.track].end, deck.el.duration || Infinity);
-    if (deck.el.currentTime >= end - XFADE) void this.next();
+    if (deck.el.currentTime >= Math.min(xfadeAt(deck.track), end - XFADE)) void this.next();
   }
 
   /** Decide tocar/pausar conforme menu, preferência e app em segundo plano. */
@@ -375,7 +395,7 @@ class MenuMusic {
     if (should) {
       void ctx.resume();
       // primeira vez: o volume geral já fica pronto (a faixa é que entra devagar); voltando da partida: sobe com calma
-      master.gain.linearRampToValueAtTime(LEVEL, now + (this.started ? DUCK : 0.05));
+      master.gain.linearRampToValueAtTime(LEVEL, now + (this.started ? DUCK_IN : 0.05));
       this.started = true;
       if (!this.playing) {
         this.playing = true;

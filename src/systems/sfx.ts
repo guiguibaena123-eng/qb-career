@@ -144,6 +144,8 @@ class MatchSfx {
   private base: LoopLayer | null = null;
   private hype: LoopLayer | null = null;
   private inMatch = false;
+  /** sons tocando agora (o fim da partida corta todos; comemoração dura até 20 s) */
+  private voices = new Set<{ src: AudioBufferSourceNode; g: GainNode }>();
   /** última reação grande da torcida (evita duas comemorações empilhadas) */
   private lastCrowd = { at: -9, rank: 0 };
 
@@ -258,7 +260,12 @@ class MatchSfx {
     }
     node.connect(mix.crowd ? this.crowdBus! : this.field!);
     src.start(ctx.currentTime + (o.delay ?? 0));
-    src.onended = () => g.disconnect();
+    const v = { src, g };
+    this.voices.add(v);
+    src.onended = () => {
+      this.voices.delete(v);
+      g.disconnect();
+    };
   }
 
   /**
@@ -326,6 +333,20 @@ class MatchSfx {
   /** Fim da partida (saiu da cena): ambiente sai suave. */
   endMatch() {
     this.inMatch = false;
+    const ctx = this.ctx;
+    if (ctx) {
+      const now = ctx.currentTime;
+      for (const v of this.voices) {
+        v.g.gain.cancelScheduledValues(now);
+        v.g.gain.setTargetAtTime(0, now, 0.12);
+        try {
+          v.src.stop(now + 0.7);
+        } catch {
+          /* já parou */
+        }
+      }
+      this.voices.clear();
+    }
     this.base?.stop();
     this.hype?.stop();
     this.base = this.hype = null;

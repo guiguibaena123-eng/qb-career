@@ -502,8 +502,17 @@ export class MatchScene extends Phaser.Scene {
       broadcast.prime = null;
       playoffLogo.key = null;
     }
+    // Sons da partida param na hora (torcida, comemorações longas ainda tocando)
+    sfx.endMatch();
     this.scene.start(this.career ? 'CarreiraMenu' : 'MainMenu');
-    this.game.scene.remove(key);
+    // Descarta a partida só depois que ela encerrou de verdade: remover na hora (toque chega entre quadros)
+    // destruía a cena sem o evento 'shutdown' — a torcida e outros desligamentos nunca rodavam.
+    const game = this.game;
+    const drop = () => {
+      if (game.scene.isActive(key) || game.scene.isPaused(key)) return void game.events.once(Phaser.Core.Events.POST_STEP, drop);
+      game.scene.remove(key);
+    };
+    game.events.once(Phaser.Core.Events.POST_STEP, drop);
   }
   private pauseInfo!: Phaser.GameObjects.Text;
 
