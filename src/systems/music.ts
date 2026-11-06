@@ -28,6 +28,8 @@ const TRACKS: { file: string; end: number }[] = [
 const XFADE = 6;
 /** Entrada/saída ao ir para a partida e voltar ao menu (s). */
 const DUCK = 1.2;
+/** Entrada da primeira música ao abrir o jogo (s): sobe devagar, sem susto. */
+const INTRO = 3.5;
 /** Volume da trilha (0–1). */
 const LEVEL = 0.55;
 const PREF_KEY = 'qb-career-music';
@@ -41,6 +43,8 @@ interface Deck {
   handedOff: boolean;
   /** já tocou dentro de um gesto (pode tocar sozinho depois) */
   unlocked: boolean;
+  /** faixa que este deck já está carregando antes do primeiro toque (-1 = nenhuma) */
+  primed: number;
 }
 
 class MenuMusic {
@@ -65,11 +69,18 @@ class MenuMusic {
   private blocked: (() => Promise<void>) | null = null;
   /** fim da transição em andamento (tempo do AudioContext); fora dela só o deck atual pode soar */
   private xfadeEnd = 0;
+  /** deck carregando a próxima faixa (o vigia não pode pausá-lo enquanto ela ainda não começou) */
+  private starting: Deck | null = null;
 
   constructor() {
-    // Já baixa a primeira faixa ao abrir o jogo (baixar não precisa de toque): no primeiro toque ela toca na hora
     this.shuffle();
-    void this.load(this.order[0]).catch(() => {});
+    // a primeira não é a faixa longa (05: o dobro do tamanho, demora mais para baixar)
+    if (TRACKS[this.order[0]].file === '05') [this.order[0], this.order[1]] = [this.order[1], this.order[0]];
+    // Cria o áudio já ao abrir: onde o navegador deixa (ex.: jogo instalado como app) a música começa sem
+    // esperar toque; onde não deixa, fica pronta e começa no primeiro toque.
+    this.unlock();
+    // Já carrega a primeira faixa ao abrir o jogo (carregar não precisa de toque): no toque ela toca na hora
+    this.preferCached();
     // Todo toque: cria/retoma o áudio (exigência dos navegadores) e tenta de novo o que foi bloqueado
     const kick = () => this.kick();
     window.addEventListener('pointerdown', kick, true);
@@ -88,7 +99,7 @@ class MenuMusic {
     const ctx = this.ctx;
     if (!ctx || ctx.currentTime < this.xfadeEnd) return;
     this.decks.forEach((d, i) => {
-      if (i === this.cur || d.track < 0) return;
+      if (i === this.cur || d.track < 0 || d === this.starting) return;
       if (!d.el.paused) d.el.pause();
       d.gain.gain.cancelScheduledValues(ctx.currentTime);
       d.gain.gain.setValueAtTime(0, ctx.currentTime);
@@ -103,7 +114,7 @@ class MenuMusic {
     // No toque, só alguns eventos contam como "gesto" (no celular: o dedo saindo da tela). Por isso a
     // tentativa fica guardada até dar certo, e os decks parados são destravados a cada toque.
     for (const d of this.decks) {
-      if (d.unlocked || d.track >= 0) continue;
+      if (d.unlocked || d.track >= 0 || d.primed >= 0) continue;
       d.el.src = SILENCE;
       d.el.play().then(() => {
         d.unlocked = true;
@@ -157,7 +168,7 @@ class MenuMusic {
       gain.gain.value = 0;
       ctx.createMediaElementSource(el).connect(gain);
       gain.connect(this.master);
-      const deck: Deck = { el, gain, track: -1, url: null, handedOff: false, unlocked: false };
+      const deck: Deck = { el, gain, track: -1, url: null, handedOff: false, unlocked: false, primed: -1 };
       el.addEventListener('timeupdate', () => this.onTime(deck));
       el.addEventListener('ended', () => {
         if (!deck.handedOff && this.decks[this.cur] === deck) this.next();
@@ -166,6 +177,35 @@ class MenuMusic {
     }
     void ctx.resume();
     this.apply();
+  }
+
+  /**
+   * Primeira faixa: se alguma já está guardada no aparelho, começa por ela (toca na hora, sem internet).
+   * Se nenhuma está, o deck que vai tocar já começa a carregar a primeira direto do servidor — um download
+   * só (antes eram dois ao mesmo tempo dividindo a internet), e ela começa a tocar com o começo carregado.
+   */
+  private preferCached() {
+    const prime = () => {
+      if (this.pos >= 0 || this.busy) return; // já começou
+      const d = this.decks[(this.cur + 1) % 2];
+      if (!d || d.track >= 0) return;
+      d.primed = this.order[0];
+      d.el.src = this.fileUrl(d.primed);
+      d.el.load();
+    };
+    if (!('caches' in window)) return prime();
+    void caches
+      .open('qb-career-music-v1')
+      .then((c) => c.keys())
+      .then((keys) => {
+        if (this.pos >= 0 || this.busy) return;
+        const have = new Set(keys.map((k) => (k.url.match(/music\/(\d+)\.mp3/) || [])[1]).filter(Boolean));
+        const i = this.order.findIndex((t) => have.has(TRACKS[t].file));
+        if (i < 0) return prime();
+        if (i > 0) [this.order[0], this.order[i]] = [this.order[i], this.order[0]];
+        void this.load(this.order[0]).catch(() => {});
+      })
+      .catch(prime);
   }
 
   private shuffle() {
@@ -248,14 +288,19 @@ class MenuMusic {
     deck.handedOff = false;
     deck.gain.gain.cancelScheduledValues(ctx.currentTime);
     deck.gain.gain.setValueAtTime(0, ctx.currentTime);
-    deck.el.src = url;
-    deck.el.currentTime = 0;
+    // já estava carregando esta faixa desde a abertura: não recomeça o download
+    if (!(deck.primed === t && url === this.fileUrl(t))) {
+      deck.el.src = url;
+      deck.el.currentTime = 0;
+    }
+    deck.primed = -1;
+    this.starting = deck;
     const go = () => {
       old.handedOff = true;
       this.cur = this.decks.indexOf(deck);
       const now = ctx.currentTime;
-      const dur = first ? 0.6 : XFADE;
-      fade(deck.gain.gain, now, dur, true);
+      const dur = first ? INTRO : XFADE;
+      fade(deck.gain.gain, now, dur, true, first);
       // a antiga sai junto; se já estava parada, fica muda de vez (senão voltaria tocando junto depois)
       if (old !== deck && old.track >= 0) {
         if (!old.el.paused) fade(old.gain.gain, now, dur, false);
@@ -279,15 +324,37 @@ class MenuMusic {
       if (went) return;
       went = true;
       this.blocked = null;
+      if (this.starting === deck) this.starting = null;
       go();
     };
-    deck.el.play().then(goOnce, () => {
-      this.blocked = () => deck.el.play().then(goOnce);
-    });
+    // Bloqueado pelo navegador (falta toque): tenta de novo no próximo toque. Interrompido por outro
+    // motivo (ainda carregando, rede lenta): tenta de novo sozinho.
+    // desiste desta tentativa sem travar: a faixa volta para a fila e começa de novo quando o menu pedir
+    const abandon = () => {
+      if (went || this.starting !== deck) return;
+      this.starting = null;
+      deck.el.pause();
+      deck.track = -1;
+      this.pos--;
+      this.busy = false;
+      if (this.playing) window.setTimeout(() => this.playing && this.decks[this.cur].track < 0 && this.next(true), 1500);
+    };
+    const attempt = (n: number): Promise<void> =>
+      deck.el.play().then(goOnce, (e: DOMException) => {
+        if (went || this.decks[(this.cur + 1) % 2] !== deck) return Promise.reject(e);
+        if (e && e.name === 'NotAllowedError') {
+          this.blocked = () => deck.el.play().then(goOnce);
+          return Promise.reject(e);
+        }
+        if (this.playing && n < 20) return new Promise<void>((r) => window.setTimeout(r, 400)).then(() => attempt(n + 1));
+        abandon();
+        return Promise.reject(e);
+      });
+    attempt(0).catch(() => {});
   }
 
   private onTime(deck: Deck) {
-    if (!this.playing || deck.handedOff || this.decks[this.cur] !== deck) return;
+    if (!this.playing || deck.handedOff || deck.track < 0 || this.decks[this.cur] !== deck) return;
     const end = Math.min(TRACKS[deck.track].end, deck.el.duration || Infinity);
     if (deck.el.currentTime >= end - XFADE) void this.next();
   }
@@ -307,8 +374,8 @@ class MenuMusic {
     }
     if (should) {
       void ctx.resume();
-      // primeira vez: entra rápido; voltando da partida: sobe com calma
-      master.gain.linearRampToValueAtTime(LEVEL, now + (this.started ? DUCK : 0.6));
+      // primeira vez: o volume geral já fica pronto (a faixa é que entra devagar); voltando da partida: sobe com calma
+      master.gain.linearRampToValueAtTime(LEVEL, now + (this.started ? DUCK : 0.05));
       this.started = true;
       if (!this.playing) {
         this.playing = true;
@@ -335,12 +402,13 @@ class MenuMusic {
 }
 
 /** Curva de potência igual (seno/cosseno): somadas, as duas faixas mantêm o volume no meio da troca. */
-function fade(p: AudioParam, at: number, dur: number, up: boolean) {
-  const n = 48;
+function fade(p: AudioParam, at: number, dur: number, up: boolean, intro = false) {
+  const n = 64;
   const curve = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const x = i / (n - 1);
-    curve[i] = up ? Math.sin((x * Math.PI) / 2) : Math.cos((x * Math.PI) / 2);
+    // entrada do zero (abrindo o jogo): começa bem baixinho e acelera no fim (o ouvido sente subida uniforme)
+    curve[i] = intro ? x * x * (3 - 2 * x) * x : up ? Math.sin((x * Math.PI) / 2) : Math.cos((x * Math.PI) / 2);
   }
   p.cancelScheduledValues(at);
   p.setValueAtTime(up ? 0 : p.value, at);

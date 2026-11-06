@@ -2,6 +2,7 @@
  * Efeitos sonoros da partida: torcida (ambiente em camadas + reações), bola, jogadores e juiz.
  *
  * Sons CC0 do Freesound (lista em public/sfx/CREDITOS.md), recortados e com volume igualado.
+ * Torcida de estádio grande (Millerntor, 29 mil torcedores + jogo universitário de futebol americano), em estéreo.
  * - Cada som tem variações: sorteia sem repetir a anterior, com leve variação de tom e volume
  *   (o mesmo som idêntico repetido soa robótico).
  * - Dois barramentos: campo (jogadores, bola, juiz) e torcida.
@@ -22,13 +23,13 @@ const BANK = {
   bounce: ['bounce_1', 'bounce_2', 'bounce_3', 'bounce_4', 'bounce_5'],
   whistle: ['whistle_1', 'whistle_2'],
   whistleLong: ['whistle_long'],
-  cheerBig: ['cheer_big'],
-  cheerMed: ['cheer_med'],
-  cheerSwell: ['cheer_swell'],
+  cheerBig: ['cheer_big_1', 'cheer_big_2'],
+  cheerMed: ['cheer_med_1', 'cheer_med_2'],
+  cheerSwell: ['cheer_swell_1', 'cheer_swell_2', 'cheer_swell_3'],
   crowdOof: ['oof_crowd_1', 'oof_crowd_2'],
   boo: ['boo'],
   aww: ['aww'],
-  ooh: ['ooh_1', 'ooh_2', 'ooh_3', 'ooh_4', 'ooh_5', 'ooh_6', 'ooh_7', 'ooh_8'],
+  ooh: ['ooh_1', 'ooh_2', 'ooh_3'],
 } as const;
 export type Sfx = keyof typeof BANK;
 
@@ -196,7 +197,9 @@ class MatchSfx {
     this.crowdBus.connect(this.master);
     this.applyMaster();
     void ctx.resume();
-    void this.load();
+    // baixa um pouco depois: no começo a internet fica livre para a música do menu começar logo
+    // (se a partida começar antes disso, startMatch já pede os sons)
+    window.setTimeout(() => void this.load(), 6000);
   }
 
   private load() {
@@ -208,7 +211,11 @@ class MatchSfx {
         fetch(`${import.meta.env.BASE_URL}sfx/${n}.mp3`)
           .then((r) => r.arrayBuffer())
           .then((a) => new Promise<AudioBuffer>((ok, bad) => ctx.decodeAudioData(a, ok, bad)))
-          .then((b) => void this.bufs.set(n, b))
+          .then((b) => {
+            this.bufs.set(n, b);
+            // o ambiente do estádio entra assim que as duas camadas chegam (não espera os outros sons)
+            if (this.inMatch && (n === 'amb_base' || n === 'amb_hype')) this.startAmbience();
+          })
           .catch(() => {}),
       ),
     ).then(() => {
@@ -273,6 +280,7 @@ class MatchSfx {
     this.crowdOn = crowd;
     this.paused = false;
     this.applyMaster();
+    void this.load();
     this.startAmbience();
   }
 

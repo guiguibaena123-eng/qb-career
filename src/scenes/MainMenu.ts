@@ -286,7 +286,7 @@ export class MainMenu extends Phaser.Scene {
       ['SAVES', 'ATÉ 3 CARREIRAS, GUARDADAS NESTE APARELHO'],
       ['OFFLINE', 'DEPOIS DA PRIMEIRA ABERTURA, JOGA SEM INTERNET'],
       ['TRILHA', '11 FAIXAS EMBARALHADAS COM TRANSIÇÃO SUAVE'],
-      ['SONS', 'GRAVAÇÕES REAIS DE FUTEBOL AMERICANO · CC0'],
+      ['SONS', 'GRAVAÇÕES REAIS DE ESTÁDIO E DE CAMPO · CC0'],
     ];
     const g = this.add.graphics();
     facts.forEach(([k, t], i) => {

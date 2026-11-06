@@ -24,13 +24,16 @@ Os arquivos foram recortados, filtrados e tiveram o volume igualado para o jogo.
 | whistle_1 | Referee whistle sound.wav | Rosa-Orenes256 | https://freesound.org/people/Rosa-Orenes256/sounds/538422/ |
 | whistle_2 | Whistle 07 | chaosportal | https://freesound.org/people/chaosportal/sounds/137106/ |
 | whistle_long | Coach whistle | Chaos-Kid | https://freesound.org/people/Chaos-Kid/sounds/817398/ |
-| cheer_big | AF Crowd Cheer  Natural Ending.wav | mglennsound | https://freesound.org/people/mglennsound/sounds/678541/ |
-| cheer_med | AF Crowd Cheer Clapping Natural Ending.wav | mglennsound | https://freesound.org/people/mglennsound/sounds/678543/ |
-| cheer_swell | Exp_Crowd Excited Swell_03 | mglennsound | https://freesound.org/people/mglennsound/sounds/725699/ |
-| oof_crowd_1 | AF Crowd Oof Wince 1.wav | mglennsound | https://freesound.org/people/mglennsound/sounds/678666/ |
-| oof_crowd_2 | AF Crowd Oof Wince 2.wav | mglennsound | https://freesound.org/people/mglennsound/sounds/678667/ |
-| boo | AF Crowd Boo Hiss Nat end .wav | mglennsound | https://freesound.org/people/mglennsound/sounds/678539/ |
-| aww | crowd `oh - - disappointed.mp3 | mrrap4food | https://freesound.org/people/mrrap4food/sounds/619007/ |
-| ooh_1, ooh_2, ooh_3, ooh_4, ooh_5, ooh_6, ooh_7, ooh_8 | Crowd Ooohs and Ahhhs in Excitement | noah0189 | https://freesound.org/people/noah0189/sounds/264499/ |
-| amb_base | S15-07 Football crowd.wav | craigsmith | https://freesound.org/people/craigsmith/sounds/675064/ |
-| amb_hype | AF Crowd Cheer Loop.wav | mglennsound | https://freesound.org/people/mglennsound/sounds/678545/ |
+| cheer_big_1, cheer_big_2, cheer_med_1, cheer_med_2 | CRWDReac-SOCCER_Millerntor Stadium Crowd Reaction Goal 01 (Philipp Feit, 29.546 torcedores) | itmightgetloud | https://freesound.org/people/itmightgetloud/sounds/829455/ |
+| cheer_swell_1, cheer_swell_2, cheer_swell_3 | CRWDReac-SOCCER_Millerntor Stadium Crowd Reaction Excited 01 (Philipp Feit) | itmightgetloud | https://freesound.org/people/itmightgetloud/sounds/829453/ |
+| amb_base, ooh_1, ooh_2, ooh_3, oof_crowd_1, oof_crowd_2 | CRWDReac-SOCCER_Millerntor Stadium Crowd Reaction Mood Waves 01 (Philipp Feit) | itmightgetloud | https://freesound.org/people/itmightgetloud/sounds/829456/ |
+| amb_hype | College Football Game.wav | timmyg62 | https://freesound.org/people/timmyg62/sounds/328623/ |
+| aww (camada principal) | Soccer stadium Oehh.wav | Sandermotions | https://freesound.org/people/Sandermotions/sounds/494362/ |
+| aww (camada) | crowd `oh - - disappointed.mp3 | mrrap4food | https://freesound.org/people/mrrap4food/sounds/619007/ |
+| boo (camada principal) | To_Be_Booed2_ses1.wav | freesound | https://freesound.org/people/freesound/sounds/25270/ |
+| boo (camada) | crowd booing | HowardV | https://freesound.org/people/HowardV/sounds/264378/ |
+| boo (camada) | JM_AMB_INT_Crowd Sport 01 - Booing.wav | Julien_Matthey | https://freesound.org/people/Julien_Matthey/sounds/557189/ |
+
+A torcida é de estádio grande: o som do Millerntor (Hamburgo, 29.546 torcedores) é a base; vaia e lamento
+foram montados empilhando várias gravações com pequenos atrasos e tons diferentes, como se faz em cinema
+para multiplicar uma multidão.
