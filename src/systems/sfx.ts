@@ -306,9 +306,10 @@ class MatchSfx {
   }
 
   /** Chamado todo quadro: a camada empolgada acompanha a arquibancada; jogada ao vivo = mais tensão. */
-  setExcite(excite: number, live: boolean) {
+  setExcite(excite: number, live: boolean, noise = false) {
     if (!this.base || !this.hype) return;
-    const e = Math.min(1, Math.max(0, excite)) * 0.85 + (live ? 0.15 : 0);
+    // `noise`: fora de casa, antes do snap a torcida grita para atrapalhar o nosso ataque
+    const e = Math.max(Math.min(1, Math.max(0, excite)) * 0.85 + (live ? 0.15 : 0), noise ? 0.6 : 0);
     const k = Math.min(1, e);
     // só mexe quando muda de verdade (setTargetAtTime todo quadro é desperdício)
     const hv = 0.08 + 0.72 * k * k;

@@ -1,6 +1,6 @@
-import { sfx } from '../systems/sfx';
+import { sfx, type Sfx } from '../systems/sfx';
 import Phaser from 'phaser';
-import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS, broadcast, finalGame, logoKey, matchConfig, playoffLogo, venue } from '../config';
+import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS, broadcast, finalGame, hostTeam, logoKey, matchConfig, playoffLogo, venue } from '../config';
 import {
   FORMATION_NAME,
   HOT_ROUTE_CYCLE,
@@ -794,7 +794,7 @@ export class MatchScene extends Phaser.Scene {
     // Pause: o botão fica visível só quando faz sentido
     this.pauseBtn.setVisible(!this.paused && (this.phase === 'kickoff' || this.phase === 'pre' || this.phase === 'live' || this.phase === 'post' || this.phase === 'kick'));
     if (this.paused) return;
-    sfx.setExcite(this.world.stand.excite, this.phase === 'live');
+    sfx.setExcite(this.world.stand.excite, this.phase === 'live', this.hostile && this.phase === 'pre');
     const real = Math.min(dtMs, 50) / 1000;
     const dt = this.feedback.tick(real);
     this.elapsed += dt;
@@ -1282,6 +1282,40 @@ export class MatchScene extends Phaser.Scene {
     return this.incomplete('INCOMPLETO', 'NINGUÉM NO LUGAR');
   }
 
+  /** Jogo fora de casa (estádio do adversário): a torcida é contra o nosso ataque. */
+  private get hostile() {
+    return !this.practice && hostTeam() === TEAMS.away;
+  }
+
+  /**
+   * Torcida num lance BOM do nosso ataque. Em casa: a arquibancada pula (`stand`) e vibra (`name`).
+   * Fora: a casa não comemora — `sev` 0 = fica quieta, 1 = lamenta, 2 = lamenta alto e só a pequena
+   * torcida visitante comemora, abafada, lá no canto.
+   */
+  private fansGood(stand: number, sev: 0 | 1 | 2, name: Sfx, rank: number, o: { vol?: number; delay?: number } = {}) {
+    if (!this.hostile) {
+      if (stand > 0) this.world.stand.cheer(stand);
+      sfx.crowd(name, rank, o);
+      return;
+    }
+    if (sev === 2) {
+      sfx.crowd('aww', rank, { vol: 0.8, delay: o.delay });
+      sfx.play('cheerMed', { vol: 0.2, delay: (o.delay ?? 0) + 0.1 });
+    } else if (sev === 1) sfx.crowd('aww', rank, { vol: 0.45, delay: o.delay });
+  }
+
+  /**
+   * Torcida num lance RUIM do nosso ataque. Em casa: `home` (lamento). Fora: a casa vibra e a arquibancada
+   * pula — `lvl` 0–1 (0,4 incompleto · 0,7 sack/FG errado · 1 interceptação, perder a bola, safety).
+   */
+  private fansBad(lvl: number, home: () => void) {
+    if (!this.hostile) return home();
+    this.world.stand.cheer(lvl);
+    if (lvl >= 0.9) sfx.crowd('cheerBig', 4, { delay: 0.08 });
+    else if (lvl >= 0.6) sfx.crowd('cheerSwell', 3, { delay: 0.08 });
+    else sfx.crowd('cheerMed', 2, { vol: 0.75, delay: 0.08 });
+  }
+
   private reception(r: Player, how: string) {
     const s = this.state;
     const t = this.thr!;
@@ -1294,10 +1328,9 @@ export class MatchScene extends Phaser.Scene {
     this.ui.pop(long ? 'QUE BOMBA!' : 'RECEPÇÃO!', UI.yellow, 26, 190);
     this.ui.caption(`${r.key} #${r.slot.num} SEGUROU ${how}`, 240);
     vibrate(VIBE.catch);
-    this.world.stand.cheer(long ? 1 : 0.5);
     sfx.play('catch', { x: r.x });
-    if (long) sfx.crowd('cheerSwell', 2, { delay: 0.08 });
-    else sfx.crowd('cheerMed', 1, { vol: 0.6, delay: 0.1 });
+    if (long) this.fansGood(1, 1, 'cheerSwell', 2, { delay: 0.08 });
+    else this.fansGood(0.5, 0, 'cheerMed', 1, { vol: 0.6, delay: 0.1 });
     r.pose = 'catch';
     if (long) {
       r.angle = r.x < MID ? -35 : 35; // estica o corpo para pegar
@@ -1327,8 +1360,10 @@ export class MatchScene extends Phaser.Scene {
     this.ui.pop('INTERCEPTADO!', '#E5484D', 22, 190, 1100);
     vibrate(VIBE.turnover);
     sfx.play('catch', { x: d.x, vol: 0.8 });
-    sfx.crowd('aww', 3, { delay: 0.1 });
-    sfx.play('boo', { vol: 0.7, delay: 1.1 });
+    this.fansBad(1, () => {
+      sfx.crowd('aww', 3, { delay: 0.1 });
+      sfx.play('boo', { vol: 0.7, delay: 1.1 });
+    });
     this.feedback.shake(0.01, 240);
     d.pose = 'catch';
     d.hop = 0.6;
@@ -1349,10 +1384,11 @@ export class MatchScene extends Phaser.Scene {
     this.ball.state = 'loose';
     // bola no chão; a torcida lamenta (quase: "ohh"; longe: "aww" baixo; jogou fora: nada)
     sfx.play('bounce', { x: this.ball.x, delay: 0.05 });
-    if (!this.ballAway) {
-      if (big === 'ESCAPOU!' || big === 'DESVIADO!') sfx.crowd('ooh', 2, { delay: 0.05 });
-      else sfx.crowd('aww', 1, { vol: 0.55, delay: 0.08 });
-    }
+    if (!this.ballAway)
+      this.fansBad(0.4, () => {
+        if (big === 'ESCAPOU!' || big === 'DESVIADO!') sfx.crowd('ooh', 2, { delay: 0.05 });
+        else sfx.crowd('aww', 1, { vol: 0.55, delay: 0.08 });
+      });
     this.endPlay('inc');
   }
 
@@ -1369,7 +1405,7 @@ export class MatchScene extends Phaser.Scene {
     sfx.play('pads', { x: qb.x });
     sfx.play('fall', { x: qb.x, delay: 0.12 });
     sfx.play('oof', { delay: 0.06 });
-    sfx.crowd('crowdOof', 2, { delay: 0.1 });
+    this.fansBad(0.7, () => sfx.crowd('crowdOof', 2, { delay: 0.1 }));
     this.feedback.shake(0.014, 260);
     this.feedback.slowmo(0.25, 0.3);
     qb.angle = qb.x < d.x ? -80 : 80;
@@ -1397,12 +1433,11 @@ export class MatchScene extends Phaser.Scene {
   private onBroken(_d: Player, how: 'juke' | 'spin' | 'stiff') {
     this.ui.pop(how === 'juke' ? 'JUKE!' : how === 'spin' ? 'SPIN!' : 'ESCAPOU!', UI.yellow, 16, 230, 420);
     vibrate(VIBE.block);
-    this.world.stand.cheer(0.4);
     const bc = this.live?.carrier;
     if (how === 'stiff') sfx.play('pads', { x: bc?.x, vol: 0.55 });
     else sfx.play('throw', { x: bc?.x, vol: 0.8 });
     if (Math.random() < 0.6) sfx.play('effort', { vol: 0.8 });
-    sfx.crowd('cheerMed', 1, { vol: 0.45 });
+    this.fansGood(0.4, 0, 'cheerMed', 1, { vol: 0.45 });
     this.gainXp(how === 'stiff' ? 3 : 8, this.live?.carrier ?? undefined);
   }
 
@@ -1436,7 +1471,7 @@ export class MatchScene extends Phaser.Scene {
         r.cel = 0;
         p.vx = p.vy = 0;
         p.pose = 'catch';
-        this.world.stand.cheer(0.8);
+        if (!this.hostile) this.world.stand.cheer(0.8);
       }
       r.cel += dt;
       const T = 1.05;
@@ -1590,14 +1625,13 @@ export class MatchScene extends Phaser.Scene {
         s.score.home += 2;
         if (c) this.startTdRun(c, 1, ranIn);
         this.ui.pop('CONVERTEU! +2', UI.yellow, 20, 200, 1300);
-        sfx.crowd('cheerBig', 4);
-        this.ui.burst(50);
+        this.fansGood(0.8, 2, 'cheerBig', 4);
+        if (!this.hostile) this.ui.burst(50); // fora de casa: sem brilhos
         vibrate(VIBE.td);
-        this.world.stand.cheer(0.8);
         this.gainXp(30);
       } else {
         this.ui.pop('NÃO CONVERTEU', '#FFFFFF', 16, 200, 1100);
-        sfx.crowd('aww', 3);
+        this.fansBad(0.8, () => sfx.crowd('aww', 3));
       }
       this.hud.setResult('CONVERSÃO DE 2', good ? '+2' : 'X', good ? 0x3ccb5a : 0xe5484d, ['2 PTS', 0xffd23f, '#0D0D12']);
       this.hud.setBar('result');
@@ -1612,12 +1646,14 @@ export class MatchScene extends Phaser.Scene {
       if (passComplete) s.stats.td++;
       s.confidence = Math.min(5, s.confidence + 1);
       this.ui.pop('TOUCHDOWN!', UI.yellow, 26, 200, 1300);
-      this.ui.burst(80);
-      this.world.stand.erupt(TEAMS.home.color);
-      sfx.crowd('cheerBig', 4);
+      // fora de casa: sem fogos nem brilhos; a casa lamenta e só os visitantes comemoram
+      if (!this.hostile) {
+        this.ui.burst(80);
+        this.world.stand.erupt(TEAMS.home.color);
+      }
+      this.fansGood(1, 2, 'cheerBig', 4);
       this.feedback.shake(0.012, 400);
       vibrate(VIBE.td);
-      this.world.stand.cheer(1);
       if (c) this.startTdRun(c, 1, ranIn);
       this.gainXp(60);
       text = passComplete ? `PASSE DE ${gained} JDS · TD` : `CORRIDA DE ${gained} JDS · TD`;
@@ -1648,7 +1684,7 @@ export class MatchScene extends Phaser.Scene {
         // Derrubado na própria end zone: safety (+2 para eles) e eles recebem a bola
         s.score.away += 2;
         this.ui.pop('SAFETY!', '#E5484D', 24, 200, 1200);
-        sfx.crowd('boo', 3, { delay: 0.08 });
+        this.fansBad(1, () => sfx.crowd('boo', 3, { delay: 0.08 }));
         vibrate(VIBE.turnover);
         text = `SAFETY · +2 ${TEAMS.away.name}`;
         yardsText = '';
@@ -1673,14 +1709,14 @@ export class MatchScene extends Phaser.Scene {
       s.down = 1;
       s.distance = Math.min(10, 100 - s.los);
       this.time.delayedCall(350, () => this.ui.pop('1ª DESCIDA!', '#3CCB5A', 16, 300, 600));
-      sfx.crowd('cheerMed', 1, { vol: 0.55, delay: 0.08 });
+      this.fansGood(0, 0, 'cheerMed', 1, { vol: 0.55, delay: 0.08 });
     } else {
       s.distance -= gained;
       s.down++;
       if (s.down > 4) {
         // 4ª descida falhou: a bola vira para eles ali mesmo
         this.time.delayedCall(350, () => this.ui.caption('PERDEU NAS DESCIDAS', 300, 1200, '#FFFFFF', 0x5a1418));
-        sfx.crowd('aww', 3, { delay: 0.08 });
+        this.fansBad(1, () => sfx.crowd('aww', 3, { delay: 0.08 }));
         this.postTimer = 2;
         const at = s.los;
         this.afterPost = () => this.opponentDrive(at, false);
@@ -2071,7 +2107,7 @@ export class MatchScene extends Phaser.Scene {
     this.postTimer = 2.2;
     this.ui.pop('BLOQUEADO!', '#E5484D', 26, 200, 1300);
     sfx.play('pads');
-    sfx.crowd('crowdOof', 3);
+    this.fansBad(1, () => sfx.crowd('crowdOof', 3));
     this.ui.edgeFlash(0xe5484d, 0.7);
     this.feedback.shake(0.012, 300);
     vibrate(VIBE.turnover);
@@ -2119,16 +2155,15 @@ export class MatchScene extends Phaser.Scene {
       const pts = kk.kind === 'pat' ? 1 : 3;
       s.score.home += pts;
       this.ui.pop('É BOA!', '#3CCB5A', 28, 200, 1100);
-      sfx.crowd(kk.kind === 'fg' ? 'cheerBig' : 'cheerMed', 3);
+      this.fansGood(kk.kind === 'fg' ? 1 : 0.6, kk.kind === 'fg' ? 1 : 0, kk.kind === 'fg' ? 'cheerBig' : 'cheerMed', 3);
       this.ui.edgeFlash(0x3ccb5a, 0.5);
-      this.world.stand.cheer(kk.kind === 'fg' ? 1 : 0.6);
       vibrate(VIBE.td);
       this.gainXp(kk.kind === 'fg' ? 30 : 10);
       this.hud.setResult(kk.kind === 'pat' ? 'PONTO EXTRA' : `FIELD GOAL DE ${this.kickDist()} JDS`, `+${pts}`, 0x3ccb5a, kk.kind === 'pat' ? ['PONTO EXTRA', 0xffd23f, '#0D0D12'] : ['FG', 0xffd23f, '#0D0D12']);
       this.afterPost = () => this.opponentDrive(25, true);
     } else {
       this.ui.pop(kk.short ? 'CURTO!' : kk.post ? 'NA TRAVE!' : 'PRA FORA!', '#E5484D', 24, 200, 1100);
-      sfx.crowd(kk.post ? 'ooh' : 'aww', 3);
+      this.fansBad(0.7, () => sfx.crowd(kk.post ? 'ooh' : 'aww', 3));
       vibrate(VIBE.turnover);
       this.hud.setResult(kk.kind === 'pat' ? 'PONTO EXTRA PERDIDO' : 'FIELD GOAL ERRADO', 'X', 0xe5484d, kk.kind === 'pat' ? ['PONTO EXTRA', 0xffd23f, '#0D0D12'] : ['FG', 0xffd23f, '#0D0D12']);
       const at = Math.max(20, s.los - 7);
@@ -2227,10 +2262,19 @@ export class MatchScene extends Phaser.Scene {
       head: `${TEAMS.home.name} ${where} · 1ª & ${Math.min(10, 100 - los)}`,
       onFinish: () => {
         s.score.away += drive.points;
-        if (drive.points) this.world.stand.cheer(0.3);
-        // eles pontuaram: vaia; a defesa segurou: aplauso
-        if (drive.points) sfx.crowd('boo', 3, { vol: drive.points >= 6 ? 1 : 0.7 });
-        else sfx.crowd('cheerMed', 2, { vol: 0.8 });
+        if (this.hostile) {
+          // fora de casa: o time da casa pontuou → festa (TD com fogos nas cores deles); a defesa segurou → lamento
+          if (drive.points) {
+            this.world.stand.cheer(1);
+            if (drive.points >= 6) this.world.stand.erupt(TEAMS.away.color);
+            sfx.crowd(drive.points >= 6 ? 'cheerBig' : 'cheerMed', 3);
+          } else sfx.crowd('aww', 3, { vol: 0.7 });
+        } else {
+          if (drive.points) this.world.stand.cheer(0.3);
+          // eles pontuaram: vaia; a defesa segurou: aplauso
+          if (drive.points) sfx.crowd('boo', 3, { vol: drive.points >= 6 ? 1 : 0.7 });
+          else sfx.crowd('cheerMed', 2, { vol: 0.8 });
+        }
         this.tickClock(drive.seconds);
         if (this.ot) {
           this.ot.poss++;
@@ -2534,13 +2578,25 @@ export class MatchScene extends Phaser.Scene {
         if (ko.stage === 'end' && ko.td) {
           this.startTdRun(returner, dirR > 0 ? 1 : -1);
           this.ui.pop('TOUCHDOWN!', UI.yellow, 26, 200, 1300);
-          this.ui.burst(80);
           this.feedback.shake(0.012, 400);
           vibrate(VIBE.td);
-          if (ko.receive) this.world.stand.erupt(TEAMS.home.color);
-          else this.world.stand.cheer(0.4);
-          if (ko.receive) sfx.crowd('cheerBig', 4);
-          else sfx.crowd('boo', 3);
+          if (ko.receive) {
+            // nosso TD: fora de casa sem fogos/brilhos e a casa lamenta
+            if (!this.hostile) {
+              this.ui.burst(80);
+              this.world.stand.erupt(TEAMS.home.color);
+            }
+            this.fansGood(0, 2, 'cheerBig', 4);
+          } else if (this.hostile) {
+            // TD do time da casa
+            this.world.stand.erupt(TEAMS.away.color);
+            this.world.stand.cheer(1);
+            sfx.crowd('cheerBig', 4);
+          } else {
+            this.ui.burst(80);
+            this.world.stand.cheer(0.4);
+            sfx.crowd('boo', 3);
+          }
         } else if (ko.stage === 'end') {
           returner.vx = returner.vy = 0;
           this.feedback.shake(0.01, 200);
@@ -2839,6 +2895,9 @@ export class MatchScene extends Phaser.Scene {
     const win = h > a;
     if (win) {
       this.ui.burst(90);
+      this.fansGood(1, 2, 'cheerBig', 5);
+    } else if (h < a && this.hostile) {
+      // perdemos fora de casa: a casa comemora
       this.world.stand.cheer(1);
       sfx.crowd('cheerBig', 5);
     }
