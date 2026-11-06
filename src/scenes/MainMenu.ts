@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { isDome, STAND_NAMES, stadiumOf } from '../data/stadiums';
-import { pixelPhoto } from '../ui/pixelPhoto';
+import { stadiumPhoto, stadiumSlot } from '../ui/stadiumPhoto';
 import { type SkyWeather, type TimeChoice, type TimeOfDay } from '../systems/daytime';
 import { GAME_H, GAME_W, applyMatchup, broadcast, finalGame, getFavorite, logoKey, matchRecords, setFavorite, playoffLogo, matchConfig, saveMatchConfig, venue, type PrimeKey, type WeatherChoice } from '../config';
 import { PRIME } from '../career/season';
@@ -648,7 +648,7 @@ export class MainMenu extends Phaser.Scene {
     fr.fillRect(0, py, W, ph);
     v.add(fr);
     const photo = hostR.stadium.image;
-    if (photo && this.textures.exists(photo)) v.add(this.add.image(W / 2, py + ph / 2, pixelPhoto(this, photo, W, ph, 130)).setDisplaySize(W, ph));
+    if (photo) v.add(stadiumSlot(this, photo, (slot) => slot.add(this.add.image(W / 2, py + ph / 2, stadiumPhoto(this, photo, W, ph)).setDisplaySize(W, ph))));
     const mood = this.add.rectangle(W / 2, py + ph / 2, W, ph, 0x000000, 0);
     v.add(mood);
     const wShown = (): SkyWeather => (lockWx ? 'clear' : matchConfig.weather === 'rain' || matchConfig.weather === 'snow' ? matchConfig.weather : 'clear');

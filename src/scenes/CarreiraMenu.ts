@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { stadiumPhoto, stadiumSlot } from '../ui/stadiumPhoto';
 import { careerTeam, coachOf, contractOf, ensureSeason, finalInfo, mi, newsFeed, nextGame, passerRating, PRIME, passLeaders, roster, schedule, seasonOver, seasonResult, seasonStats, seasonYear, standings, startNextSeason, type Game } from '../career/season';
 import { Pane } from '../career/pane';
 import { devSimWeeks } from '../integration/MatchBridge';
@@ -669,10 +670,12 @@ export class CarreiraMenu extends Phaser.Scene {
     const t = this.team;
     const W = GAME_W - 32;
     let y = 4;
-    // Estádio real da cidade (foto pixelada) com nome fictício e capacidade
+    // Estádio real da cidade (ilustração) com nome fictício e capacidade
     this.card(16, y, W, 200, 0x262a36, 1);
-    if (t.stadium.image && this.textures.exists(t.stadium.image)) {
-      this.body.add(this.add.image(16, y, t.stadium.image).setOrigin(0).setDisplaySize(W, 200));
+    if (t.stadium.image) {
+      const key = t.stadium.image;
+      const sy = y; // a ilustração pode chegar depois: guarda a altura de agora (y continua andando)
+      this.body.add(stadiumSlot(this, key, (slot) => slot.add(this.add.image(16, sy, stadiumPhoto(this, key, W, 200)).setOrigin(0).setDisplaySize(W, 200))));
     } else {
       // Sem foto: arquibancada simples na cor do time
       const g = this.add.graphics();

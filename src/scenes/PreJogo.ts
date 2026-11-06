@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { stadiumPhoto, stadiumSlot } from '../ui/stadiumPhoto';
 import { divisionOf, league } from '../career/league';
 import { ROUND_INFO } from '../career/playoffs';
 import { KIT_IDS, kitAccents, type KitId } from '../career/kits';
@@ -144,16 +145,20 @@ export class PreJogo extends Phaser.Scene {
       const tg = this.add.graphics();
       plate(tg, 16, y3, tw, sh, 0x10163a, 1, true, true);
       this.add.image(16 + tw / 2, y3 + sh / 2, 'logoQflBowl').setDisplaySize(sh - 10, sh - 10);
-    } else if (host.stadium.image && this.textures.exists(host.stadium.image)) {
-      // foto recortada na placa inclinada (máscara geométrica)
-      const img = this.add.image(16, y3, host.stadium.image).setOrigin(0).setDisplaySize(tw, sh);
+    } else if (host.stadium.image) {
+      // ilustração recortada na placa inclinada (máscara geométrica no lugar reservado)
+      const key = host.stadium.image;
+      const slot = stadiumSlot(this, key, (sl) => {
+        sl.add(this.add.image(16, y3, stadiumPhoto(this, key, tw, sh)).setOrigin(0).setDisplaySize(tw, sh));
+        if (g.tod === 'night') {
+          const nt = this.add.graphics();
+          plate(nt, 16, y3, tw, sh, 0x0a1030, 0.42, true, true);
+          sl.add(nt);
+        }
+      });
       const mk = this.make.graphics({ x: 0, y: 0 }, false);
       plate(mk, 16, y3, tw, sh, 0xffffff, 1, true, true);
-      img.setMask(mk.createGeometryMask());
-      if (g.tod === 'night') {
-        const nt = this.add.graphics();
-        plate(nt, 16, y3, tw, sh, 0x0a1030, 0.42, true, true);
-      }
+      slot.setMask(mk.createGeometryMask());
     }
     const tx = 16 + tw + 12;
     const colR = W - 16 - 104;

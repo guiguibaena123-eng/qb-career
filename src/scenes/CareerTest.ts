@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { stadiumPhoto, stadiumSlot } from '../ui/stadiumPhoto';
 import { GAME_H, GAME_W } from '../config';
 import { TeamRepository } from '../data/TeamRepository';
 import { getSave, resetSave, updateSave, calcOvr } from '../player/PlayerSave';
@@ -79,8 +80,9 @@ export class CareerTest extends Phaser.Scene {
       this.add.existing(label(this, 66, ry + 32, t.stadium.name, 7, '#9AA3C0').setOrigin(0, 0.5));
       // Miniatura do estádio (ou o quadro padrão em código)
       const sx = W - 14 - 72;
-      if (t.stadium.image && this.textures.exists(t.stadium.image)) {
-        this.add.image(sx, ry + 4, t.stadium.image).setOrigin(0).setDisplaySize(72, 40);
+      if (t.stadium.image) {
+        const key = t.stadium.image;
+        stadiumSlot(this, key, (slot) => slot.add(this.add.image(sx, ry + 4, stadiumPhoto(this, key, 72, 40)).setOrigin(0).setDisplaySize(72, 40)));
       } else {
         g.fillStyle(t.colors.primary, 0.6);
         g.fillRect(sx, ry + 4, 72, 40);

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { stadiumSlot } from './stadiumPhoto';
 import { GAME_H, GAME_W } from '../config';
 import { TeamRepository } from '../data/TeamRepository';
 
@@ -378,12 +379,17 @@ export function feed(scene: Phaser.Scene, teamId: string | null, dim = 0.7) {
   base.fillRect(0, 0, W, H);
   c.add(base);
   const key = teamId ? TeamRepository.get(teamId).stadium.image : null;
-  if (key && scene.textures.exists(key)) {
-    const img = scene.add.image(W / 2, H * 0.27, key);
-    const s = Math.max(W / img.width, (H * 0.56) / img.height);
-    img.setScale(s);
-    c.add(img);
-    if (!reduced()) scene.tweens.add({ targets: img, scale: s * 1.09, x: W / 2 - 18, duration: 26000, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+  if (key) {
+    // ilustração do estádio (baixada quando aparece), com um "movimento de câmera" bem lento
+    c.add(
+      stadiumSlot(scene, key, (slot) => {
+        const img = scene.add.image(W / 2, H * 0.27, key);
+        const s = Math.max(W / img.width, (H * 0.56) / img.height);
+        img.setScale(s);
+        slot.add(img);
+        if (!reduced()) scene.tweens.add({ targets: img, scale: s * 1.09, x: W / 2 - 18, duration: 26000, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      }),
+    );
   }
   // Escurece e funde na tinta (mais escuro embaixo, onde ficam os botões)
   const veil = scene.add.graphics();
