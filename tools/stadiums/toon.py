@@ -1,5 +1,6 @@
-# Foto → ilustração (versão 3): segmentação mean-shift (manchas de cor de pintura), luz em degraus firmes,
-# contorno de tinta colorido nas bordas das manchas e nos detalhes, céu redesenhado em degradê limpo.
+# Foto → desenho animado: paleta própria (cores chapadas e vivas), formas limpas, sombra em 2–3 tons,
+# contorno preto grosso entre as áreas de cor e traço fino nos detalhes, céu em degradê.
+# Feito em 2560 px e reduzido para 1280 no fim (traços lisos, sem serrilhado).
 import sys
 import cv2
 import numpy as np
@@ -8,7 +9,6 @@ OW, OH = 1280, 715
 
 
 def crop(img, r=179 / 100, cx=0.5, cy=0.5, zoom=1.0):
-    """Recorte 179:100 centrado em (cx, cy) (fração da foto); zoom > 1 aproxima."""
     h, w = img.shape[:2]
     cw, ch = (h * r, h) if w / h > r else (w, w / r)
     cw, ch = cw / zoom, ch / zoom
@@ -22,89 +22,106 @@ def local_std(x, k):
 
 
 def sky_mask(lab, T):
-    """Céu: região lisa e clara ligada à borda de cima."""
     H, W = T.shape
-    L, B = lab[..., 0], lab[..., 2]
+    L = lab[..., 0]
     cand = ((T < 4.0) & (L > 90)).astype(np.uint8)
     cand = cv2.morphologyEx(cand, cv2.MORPH_CLOSE, np.ones((9, 41), np.uint8))
-    cand = cv2.morphologyEx(cand, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    cand = cv2.morphologyEx(cand, cv2.MORPH_OPEN, np.ones((7, 7), np.uint8))
     n, lbl = cv2.connectedComponents(cand)
     top = set(np.unique(lbl[0, :])) - {0}
     m = np.isin(lbl, list(top))
-    # só o que fica acima do primeiro "não céu" de cada coluna (céu não tem buraco embaixo de prédio)
     out = np.zeros_like(m)
     for x in range(W):
         col = m[:, x]
         k = np.argmin(col) if not col.all() else H
         out[:k, x] = col[:k]
-    if out.mean() < 0.03:
-        return np.zeros_like(out)
-    return out
+    return out if out.mean() > 0.03 else np.zeros_like(out)
 
 
-def toon(img, levels=6, sat=1.2, frame=(0.5, 0.5, 1.0)):
+def kmeans_lab(lab, K, seed=1):
+    flat = lab.reshape(-1, 3)
+    sample = flat[np.random.default_rng(seed).choice(len(flat), min(len(flat), 80000), replace=False)]
+    _, _, centers = cv2.kmeans(sample, K, None, (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 40, 0.3), 4, cv2.KMEANS_PP_CENTERS)
+    lbl = np.empty(len(flat), np.int32)
+    for i in range(0, len(flat), 250000):
+        b = flat[i:i + 250000]
+        lbl[i:i + 250000] = np.argmin(((b[:, None, :] - centers[None]) ** 2).sum(-1), 1)
+    return lbl.reshape(lab.shape[:2]), centers
+
+
+def toon(img, K=28, sat=1.3, frame=(0.5, 0.5, 1.0), line=1.0):
     img = crop(img, 179 / 100, *frame)
-    W = 1920
+    W = 2560
     img = cv2.resize(img, (W, int(round(W * 100 / 179))), interpolation=cv2.INTER_AREA if img.shape[1] > W else cv2.INTER_CUBIC)
     H = img.shape[0]
-    base = cv2.bilateralFilter(img, 7, 25, 5)
-    # 1) manchas de cor (mean-shift): cada área vira uma mancha de cor chapada, bordas preservadas
-    ms = cv2.pyrMeanShiftFiltering(base, 7, 20, maxLevel=1)
-    ms = cv2.edgePreservingFilter(ms, flags=cv2.NORMCONV_FILTER, sigma_s=12, sigma_r=0.15)
+    # balanço de branco (meio caminho do "mundo cinza"): tira o tom esverdeado/azulado de algumas fotos
+    m = img.reshape(-1, 3).astype(np.float32).mean(0)
+    img = np.clip(img.astype(np.float32) * (1 + 0.5 * (m.mean() / m - 1)), 0, 255).astype(np.uint8)
+    base = cv2.bilateralFilter(img, 9, 30, 7)
+    base = cv2.bilateralFilter(base, 9, 30, 7)
+    labb = cv2.cvtColor(base, cv2.COLOR_BGR2LAB).astype(np.float32)
+    T = local_std(cv2.GaussianBlur(labb[..., 0], (0, 0), 1.2), 17)
+    # 1) formas: mean-shift em escala menor (mais rápido, formas maiores) e de volta
+    small = cv2.resize(base, (W // 2, H // 2), interpolation=cv2.INTER_AREA)
+    ms = cv2.pyrMeanShiftFiltering(small, 6, 22, maxLevel=1)
+    ms = cv2.resize(ms, (W, H), interpolation=cv2.INTER_LINEAR)
     lab = cv2.cvtColor(ms, cv2.COLOR_BGR2LAB).astype(np.float32)
-    # versão lisa (sem os degraus do mean-shift): degradês de céu, telhado, gramado continuam contínuos
-    labs = cv2.GaussianBlur(cv2.cvtColor(base, cv2.COLOR_BGR2LAB).astype(np.float32), (0, 0), 2.2)
-    L = lab[..., 0]
-    T = local_std(cv2.GaussianBlur(labs[..., 0], (0, 0), 1.0), 13)
-    w = cv2.GaussianBlur(np.clip((T - 3.5) / 7.0, 0, 1), (0, 0), 4)
-    # 2) luz em degraus firmes onde há detalhe; liso continua liso
-    step = 255 / levels
-    q = L / step
-    f = q - np.floor(q)
-    Lp = (np.floor(q) + np.clip((f - 0.5) * 10 + 0.5, 0, 1)) * step
-    Lc = w * Lp + (1 - w) * labs[..., 0]
-    Lc = np.clip((Lc - 128) * 1.1 + 131, 0, 255)
-    A = (w * lab[..., 1] + (1 - w) * labs[..., 1] - 128) * sat + 128
-    B = (w * lab[..., 2] + (1 - w) * labs[..., 2] - 128) * sat + 128
-    out = cv2.cvtColor(np.clip(np.dstack([Lc, A, B]), 0, 255).astype(np.uint8), cv2.COLOR_LAB2BGR).astype(np.float32)
-    # leve granulação removida: o degradê vai com um pontilhado sutil (evita faixas no WebP/8 bits)
-    out += np.random.default_rng(7).normal(0, 0.8, out.shape).astype(np.float32) * (1 - w[..., None])
-    # 3) céu redesenhado: degradê vertical limpo com as cores do próprio céu (sem faixas, sem ruído)
-    sky = sky_mask(cv2.cvtColor(base, cv2.COLOR_BGR2LAB).astype(np.float32), T)
+    # 2) paleta: K cores da própria imagem (desenho animado = poucas cores chapadas)
+    lbl, centers = kmeans_lab(lab, K)
+    lbl = lbl.astype(np.uint8)
+    for _ in range(2):
+        lbl = cv2.medianBlur(lbl, 7)  # contornos das formas limpos (sem pontinhos)
+    # cores da paleta mais vivas e com um pouco mais de contraste
+    C = centers.copy()
+    # sombras mais claras (cenário de desenho animado é luminoso) e um pouco mais de contraste
+    C[:, 0] = np.clip(255 * (C[:, 0] / 255) ** 0.8, 0, 255)
+    C[:, 0] = np.clip((C[:, 0] - 128) * 1.08 + 132, 0, 255)
+    C[:, 1:] = np.clip((C[:, 1:] - 128) * sat + 128, 0, 255)
+    flat = C[lbl]
+    # 3) volume leve: 20% da luz original dentro da forma (o desenho não fica "chapado demais")
+    flat[..., 0] = np.clip(flat[..., 0] + (cv2.GaussianBlur(labb[..., 0], (0, 0), 3) - lab[..., 0]) * 0.22, 0, 255)
+    out = cv2.cvtColor(flat.astype(np.uint8), cv2.COLOR_LAB2BGR).astype(np.float32)
+    # 4) céu em degradê limpo, com as cores do próprio céu
+    sky = sky_mask(labb, T)
     if sky.any():
-        rows = np.where(sky.any(1))[0]
-        cols_mean = np.array([out[y][sky[y]].mean(0) if sky[y].any() else [np.nan] * 3 for y in range(H)])
+        means = np.array([out[y][sky[y]].mean(0) if sky[y].sum() > 20 else [np.nan] * 3 for y in range(H)])
+        ok = ~np.isnan(means[:, 0])
         ys = np.arange(H)
-        ok = ~np.isnan(cols_mean[:, 0])
-        grad = np.zeros((H, 3), np.float32)
-        for c in range(3):
-            p = np.polyfit(ys[ok], cols_mean[ok, c], 2)
-            grad[:, c] = np.polyval(p, ys)
-        gimg = np.repeat(grad[:, None, :], W, 1)
-        sm = cv2.GaussianBlur(sky.astype(np.float32), (0, 0), 2.0)[..., None]
-        out = gimg * sm + out * (1 - sm)
-    # 4) tinta: bordas das manchas (Canny no mean-shift) + detalhes (XDoG), cor = tom escuro do lugar
-    g = cv2.cvtColor(ms, cv2.COLOR_BGR2GRAY)
-    can = cv2.Canny(g, 28, 70).astype(np.float32) / 255
-    can = cv2.GaussianBlur(can, (0, 0), 0.6) * 1.6
-    gf = cv2.cvtColor(base, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255
-    dog = cv2.GaussianBlur(gf, (0, 0), 0.9) - 0.99 * cv2.GaussianBlur(gf, (0, 0), 1.5)
-    xd = np.clip((-dog - 0.008) * 70, 0, 1)
-    e = np.clip(np.maximum(can * 0.75, xd * 0.8), 0, 1) * np.clip(0.25 + w, 0, 1)
-    # tira rabiscos soltos: traços de tinta pequenos e isolados (textura de mato, ruído) somem
-    bw = (e > 0.18).astype(np.uint8)
-    n, lbl, st, _ = cv2.connectedComponentsWithStats(bw, connectivity=8)
-    keep = np.zeros(n, bool)
-    keep[1:] = (st[1:, cv2.CC_STAT_AREA] >= 45) | (np.maximum(st[1:, cv2.CC_STAT_WIDTH], st[1:, cv2.CC_STAT_HEIGHT]) >= 16)
-    e *= cv2.GaussianBlur(keep[lbl].astype(np.float32), (0, 0), 0.6)
+        grad = np.stack([np.polyval(np.polyfit(ys[ok], means[ok, c], 2), ys) for c in range(3)], 1).astype(np.float32)
+        hsv = cv2.cvtColor(np.clip(grad[None], 0, 255).astype(np.uint8), cv2.COLOR_BGR2HSV).astype(np.float32)
+        hsv[..., 1] = np.clip(hsv[..., 1] * 1.25, 0, 255)
+        grad = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)[0].astype(np.float32)
+        sm = cv2.GaussianBlur(sky.astype(np.float32), (0, 0), 3)[..., None]
+        out = np.repeat(grad[:, None, :], W, 1) * sm + out * (1 - sm)
+    # 5) contorno grosso: borda entre cores bem diferentes da paleta
+    dl = np.zeros((H, W), np.float32)
+    for dy, dx in ((0, 1), (1, 0)):
+        a = lbl[: H - dy, : W - dx]; b = lbl[dy:, dx:]
+        de = np.sqrt(((centers[a] - centers[b]) ** 2).sum(-1))
+        dl[: H - dy, : W - dx] = np.maximum(dl[: H - dy, : W - dx], de)
+    bold = (dl > 20).astype(np.uint8)
+    # remove contornos minúsculos (sujeira) e engrossa
+    n, cc, st, _ = cv2.connectedComponentsWithStats(bold, connectivity=8)
+    keep = np.zeros(n, bool); keep[1:] = st[1:, cv2.CC_STAT_AREA] >= 140
+    bold = keep[cc].astype(np.uint8)
+    bold = cv2.dilate(bold, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
+    # 6) traço fino nos detalhes (fileiras de cadeiras, janelas): XDoG só onde há textura
+    g = labb[..., 0] / 255
+    dog = cv2.GaussianBlur(g, (0, 0), 1.2) - 0.99 * cv2.GaussianBlur(g, (0, 0), 2.0)
+    fine = np.clip((-dog - 0.006) * 70, 0, 1) * np.clip((T - 2.5) / 5, 0, 1)
+    fb = (fine > 0.3).astype(np.uint8)
+    n, cc, st, _ = cv2.connectedComponentsWithStats(fb, connectivity=8)
+    keep = np.zeros(n, bool); keep[1:] = st[1:, cv2.CC_STAT_AREA] >= 25
+    fine *= keep[cc]
     if sky.any():
-        e *= 1 - cv2.GaussianBlur(sky.astype(np.float32), (0, 0), 3)
-    dark = out * np.array([0.2, 0.22, 0.3], np.float32)  # tinta puxada para o azul-escuro
-    res = out * (1 - e[..., None]) + dark * e[..., None]
+        nos = 1 - cv2.GaussianBlur(sky.astype(np.float32), (0, 0), 4)
+        bold = bold * (nos > 0.5); fine *= nos
+    ink = np.maximum(cv2.GaussianBlur(bold.astype(np.float32), (0, 0), 0.8) * 0.95, fine * 0.78) * line
+    # tinta: tom bem escuro da própria cor do lugar, misturado com azul-marinho (linha colorida de animação)
+    inkc = out * 0.28 * 0.5 + np.array([46, 30, 26], np.float32) * 0.5
+    res = out * (1 - ink[..., None]) + inkc * ink[..., None]
     res = np.clip(res, 0, 255).astype(np.uint8)
-    res = cv2.resize(res, (OW, OH), interpolation=cv2.INTER_AREA)
-    bl = cv2.GaussianBlur(res, (0, 0), 0.8)
-    return cv2.addWeighted(res, 1.25, bl, -0.25, 0)
+    return cv2.resize(res, (OW, OH), interpolation=cv2.INTER_AREA)
 
 
 if __name__ == '__main__':

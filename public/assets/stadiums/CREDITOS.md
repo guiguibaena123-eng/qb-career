@@ -1,39 +1,39 @@
-# Créditos das ilustrações dos estádios
+# Origem das ilustrações dos estádios
 
-Cada imagem é uma ilustração feita a partir de uma foto do Wikimedia Commons (processamento por
-tools/stadiums/toon.py: manchas de cor, luz em degraus, contorno de tinta e céu redesenhado; em Tampa o
-letreiro do time foi apagado). As obras derivadas seguem a licença da foto original (CC BY-SA continua
-CC BY-SA).
+Todas as 30 ilustrações foram desenhadas (tools/stadiums/toon.py, estilo desenho animado) a partir de fotos
+do Wikimedia Commons em **domínio público ou CC0**: nenhuma exige licença nem crédito. A lista fica aqui só
+como registro de origem. Marcas de times reais foram apagadas onde apareciam em destaque (Kansas City e
+Washington).
 
-| Arquivo | Foto original | Autor | Licença |
+| Arquivo | Foto original | Autor | Situação |
 |---|---|---|---|
-| atlanta.webp | [Mercedes Benz Stadium time lapse capture 2017-08-13.jpg](https://commons.wikimedia.org/wiki/File:Mercedes_Benz_Stadium_time_lapse_capture_2017-08-13.jpg) | Atlanta Falcons | CC BY 3.0 |
-| baltimore.webp | [M&T Bank Stadium in Baltimore.jpg](https://commons.wikimedia.org/wiki/File:M%26T_Bank_Stadium_in_Baltimore.jpg) | Quintin Soloviev | CC BY 4.0 |
-| buffalo.webp | [Highmark Stadium, autumn 2022.jpg](https://commons.wikimedia.org/wiki/File:Highmark_Stadium,_autumn_2022.jpg) | Quintin Soloviev | CC BY 4.0 |
+| atlanta.webp | [Mercedes-Benz Stadium, Atlanta, GA (46558862035).jpg](https://commons.wikimedia.org/wiki/File:Mercedes-Benz_Stadium,_Atlanta,_GA_(46558862035).jpg) | Warren LeMay from Cincinnati, OH, United States | CC0 |
+| baltimore.webp | [M&T Bank Stadium DoD.jpg](https://commons.wikimedia.org/wiki/File:M%26T_Bank_Stadium_DoD.jpg) | United States Department of Defense Cherie Cullen | Public domain |
+| buffalo.webp | [Bills Stadium May26.jpg](https://commons.wikimedia.org/wiki/File:Bills_Stadium_May26.jpg) | Dekema | CC0 |
 | charlotte.webp | [Bank of America Stadium.jpg](https://commons.wikimedia.org/wiki/File:Bank_of_America_Stadium.jpg) | Photo by Capt. Wayne Capps, USAFR | Public domain |
-| chicago.webp | [Soldier Field, Chicago, Illinois (14207354361).jpg](https://commons.wikimedia.org/wiki/File:Soldier_Field,_Chicago,_Illinois_(14207354361).jpg) | Ken Lund from Reno, Nevada, USA | CC BY-SA 2.0 |
+| chicago.webp | [Soldier Field Chicago aerial view.jpg](https://commons.wikimedia.org/wiki/File:Soldier_Field_Chicago_aerial_view.jpg) | Dale Fisher, U.S. Army Corps of Engineers | Public domain |
 | cincinnati.webp | [Cincinnati-paul-brown-stadium2.jpg](https://commons.wikimedia.org/wiki/File:Cincinnati-paul-brown-stadium2.jpg) | — | Public domain |
-| cleveland.webp | [Cleveland Browns Stadium (6252665773).jpg](https://commons.wikimedia.org/wiki/File:Cleveland_Browns_Stadium_(6252665773).jpg) | Erik Drost | CC BY 2.0 |
-| dallas.webp | [Arlington June 2020 4 (AT&T Stadium).jpg](https://commons.wikimedia.org/wiki/File:Arlington_June_2020_4_(AT%26T_Stadium).jpg) | Michael Barera | CC BY-SA 4.0 |
-| denver.webp | [Invesco Field at Mile High.jpg](https://commons.wikimedia.org/wiki/File:Invesco_Field_at_Mile_High.jpg) | David Shankbone | CC BY 3.0 |
-| detroit.webp | [Aerial View of Downtown Detroit - Ford Field and Comerica Park.jpg](https://commons.wikimedia.org/wiki/File:Aerial_View_of_Downtown_Detroit_-_Ford_Field_and_Comerica_Park.jpg) | Barbara Eckstein | CC BY 2.0 |
-| foxborough.webp | [Gillette Stadium (Top View).jpg](https://commons.wikimedia.org/wiki/File:Gillette_Stadium_(Top_View).jpg) | Art N. | CC BY 2.0 |
-| green-bay.webp | [Lambeau Field, Green Bay, Wisconsin (9179627749).jpg](https://commons.wikimedia.org/wiki/File:Lambeau_Field,_Green_Bay,_Wisconsin_(9179627749).jpg) | Ken Lund from Reno, Nevada, USA | CC BY-SA 2.0 |
-| houston.webp | [Reliant park aerial.jpeg](https://commons.wikimedia.org/wiki/File:Reliant_park_aerial.jpeg) | Amble | CC BY-SA 3.0 |
+| cleveland.webp | [FirstEnergy Stadium, Cleveland, OH (27420324777).jpg](https://commons.wikimedia.org/wiki/File:FirstEnergy_Stadium,_Cleveland,_OH_(27420324777).jpg) | Warren LeMay from Cincinnati, OH, United States | CC0 |
+| dallas.webp | [Cowboysstadium js crop.jpg](https://commons.wikimedia.org/wiki/File:Cowboysstadium_js_crop.jpg) | Dopefish; cropped by Beyond My Ken (talk) 02:58, 6 December 2009 (UTC) | Public domain |
+| denver.webp | [Army vs Air Force NCAA Football Game (8163023).jpg](https://commons.wikimedia.org/wiki/File:Army_vs_Air_Force_NCAA_Football_Game_(8163023).jpg) | U.S. Space Force B-GAR by Airman 1st Class Joshua Hollis | Public domain |
+| detroit.webp | [Areial view of Detroit, Michigan, with a focus on Ford Field.png](https://commons.wikimedia.org/wiki/File:Areial_view_of_Detroit,_Michigan,_with_a_focus_on_Ford_Field.png) | US Federal Goverment | Public domain |
+| foxborough.webp | [Gillette Stadium Outside Looking.jpg](https://commons.wikimedia.org/wiki/File:Gillette_Stadium_Outside_Looking.jpg) | Yunner | Public domain |
+| green-bay.webp | [Lambeau Field in December 2016 during a game versus the Seattle Seahawks.jpg](https://commons.wikimedia.org/wiki/File:Lambeau_Field_in_December_2016_during_a_game_versus_the_Seattle_Seahawks.jpg) | Mtyson84 | CC0 |
+| houston.webp | [NRG Stadium, Houston, Texas, United States.jpg](https://commons.wikimedia.org/wiki/File:NRG_Stadium,_Houston,_Texas,_United_States.jpg) | https://www.cbp.gov/ | Public domain |
 | indianapolis.webp | [Aerial view of Indianapolis, Indiana, with a focus on Lucas Oil Stadium, highsm.40934.jpg](https://commons.wikimedia.org/wiki/File:Aerial_view_of_Indianapolis,_Indiana,_with_a_focus_on_Lucas_Oil_Stadium,_highsm.40934.jpg) | Carol M. Highsmith | Public domain |
 | jacksonville.webp | [JacksonvilleMunicipalStadiumsatusgs.png](https://commons.wikimedia.org/wiki/File:JacksonvilleMunicipalStadiumsatusgs.png) | The original uploader was Betp at French Wikipedia. | Public domain |
-| kansas-city.webp | [Aerial view of Arrowhead Stadium 08-31-2013 crop.jpg](https://commons.wikimedia.org/wiki/File:Aerial_view_of_Arrowhead_Stadium_08-31-2013_crop.jpg) | https://en.wikipedia.org/wiki/User:Ichabod | CC BY-SA 4.0 |
-| las-vegas.webp | [Allegiant Stadium, Las Vegas, Nevada (51426794436).jpg](https://commons.wikimedia.org/wiki/File:Allegiant_Stadium,_Las_Vegas,_Nevada_(51426794436).jpg) | Ken Lund from Reno, Nevada, USA | CC BY-SA 2.0 |
-| los-angeles.webp | [SoFi Stadium 2021.jpg](https://commons.wikimedia.org/wiki/File:SoFi_Stadium_2021.jpg) | Troutfarm27 | CC BY-SA 4.0 |
-| miami.webp | [Hard Rock Stadium for Super Bowl LIV (49606710103).jpg](https://commons.wikimedia.org/wiki/File:Hard_Rock_Stadium_for_Super_Bowl_LIV_(49606710103).jpg) | elisfkc2 | CC BY-SA 2.0 |
-| minneapolis.webp | [U.S. Bank Stadium (53164481575).jpg](https://commons.wikimedia.org/wiki/File:U.S._Bank_Stadium_(53164481575).jpg) | Joe Passe | CC BY-SA 2.0 |
-| nashville.webp | [Aerial view of Nissan Stadium (Tennessee Titans).jpg](https://commons.wikimedia.org/wiki/File:Aerial_view_of_Nissan_Stadium_(Tennessee_Titans).jpg) | Quintin Soloviev | CC BY 4.0 |
+| kansas-city.webp | [Truman Sports Complex Aerial.jpg](https://commons.wikimedia.org/wiki/File:Truman_Sports_Complex_Aerial.jpg) | U.S. Air National Guard photo by Staff Sgt. Patrick Evenson | Public domain |
+| las-vegas.webp | [CBP Super Bowl 58 (53526137205).jpg](https://commons.wikimedia.org/wiki/File:CBP_Super_Bowl_58_(53526137205).jpg) | CBP Photography | Public domain |
+| los-angeles.webp | [2026 FIFA World Cup Match 98, Spain v Belgium.jpg](https://commons.wikimedia.org/wiki/File:2026_FIFA_World_Cup_Match_98,_Spain_v_Belgium.jpg) | Alexis Doine | CC0 |
+| miami.webp | [Cleveland Browns 17-39 Miami Dolphins (Nov 13, 2022) - Hard Rock Stadium - file 25.jpg](https://commons.wikimedia.org/wiki/File:Cleveland_Browns_17-39_Miami_Dolphins_(Nov_13,_2022)_-_Hard_Rock_Stadium_-_file_25.jpg) | Elbert Hampton | CC0 |
+| minneapolis.webp | [Blustery Winter Morning in Downtown Minneapolis.jpg](https://commons.wikimedia.org/wiki/File:Blustery_Winter_Morning_in_Downtown_Minneapolis.jpg) | Groveland Media | CC0 |
+| nashville.webp | [LP Field 2009 crop.jpg](https://commons.wikimedia.org/wiki/File:LP_Field_2009_crop.jpg) | Kaldari | CC0 |
 | new-orleans.webp | [DHS Agencies Support Super Bowl LIX Security February 2025 - 75.jpg](https://commons.wikimedia.org/wiki/File:DHS_Agencies_Support_Super_Bowl_LIX_Security_February_2025_-_75.jpg) | DHSgov | Public domain |
-| new-york.webp | [Metlife stadium.jpg](https://commons.wikimedia.org/wiki/File:Metlife_stadium.jpg) | Anthony Quintano from Hillsborough, NJ, United States | CC BY 2.0 |
-| philadelphia.webp | [Lincoln Financial Field (Aerial view).jpg](https://commons.wikimedia.org/wiki/File:Lincoln_Financial_Field_(Aerial_view).jpg) | Ron Reiring | CC BY 2.0 |
-| phoenix.webp | [State Farm Stadium 2022.jpg](https://commons.wikimedia.org/wiki/File:State_Farm_Stadium_2022.jpg) | Troutfarm27 | CC BY-SA 4.0 |
-| pittsburgh.webp | [Ptr-HeinzField-FILE.jpg](https://commons.wikimedia.org/wiki/File:Ptr-HeinzField-FILE.jpg) | Fo2grfr | CC BY-SA 4.0 |
-| san-francisco.webp | [San Francisco Bay Area Stadium east view.jpg](https://commons.wikimedia.org/wiki/File:San_Francisco_Bay_Area_Stadium_east_view.jpg) | Mxn | CC BY-SA 4.0 |
-| seattle.webp | [Aerial CenturyLink Field November 2011.jpg](https://commons.wikimedia.org/wiki/File:Aerial_CenturyLink_Field_November_2011.jpg) | Jelson25 | CC BY-SA 3.0 |
-| tampa.webp | [Raymond James Stadium Aerial.jpg](https://commons.wikimedia.org/wiki/File:Raymond_James_Stadium_Aerial.jpg) | Devin Morris | CC BY-SA 4.0 |
+| new-york.webp | [OAM Helicopter Helps Patrol over MetLife Stadium prior to Super Bowl XLVIII (12244377354).jpg](https://commons.wikimedia.org/wiki/File:OAM_Helicopter_Helps_Patrol_over_MetLife_Stadium_prior_to_Super_Bowl_XLVIII_(12244377354).jpg) | U.S. Customs and Border Protection | Public domain |
+| philadelphia.webp | [The Army-Navy NCAA College Football Game (45536265154).jpg](https://commons.wikimedia.org/wiki/File:The_Army-Navy_NCAA_College_Football_Game_(45536265154).jpg) | The White House from Washington, DC | Public domain |
+| phoenix.webp | [CBP provides security for Super Bowl LVII (7624269).jpg](https://commons.wikimedia.org/wiki/File:CBP_provides_security_for_Super_Bowl_LVII_(7624269).jpg) | CBP Photo by Glenn Fawcett | Public domain |
+| pittsburgh.webp | [Acrisure Stadium, 2022-11-01, 01.jpg](https://commons.wikimedia.org/wiki/File:Acrisure_Stadium,_2022-11-01,_01.jpg) | Cbaile19 | CC0 |
+| san-francisco.webp | [160201-H-NI589-1393 (24680335991).jpg](https://commons.wikimedia.org/wiki/File:160201-H-NI589-1393_(24680335991).jpg) | U.S. Customs and Border Protection | Public domain |
+| seattle.webp | [VMM-161 DFT 130822-M-ZS579-032.jpg](https://commons.wikimedia.org/wiki/File:VMM-161_DFT_130822-M-ZS579-032.jpg) | Sgt. Nathan Sotelo | Public domain |
+| tampa.webp | [Raymondjames2005.JPG](https://commons.wikimedia.org/wiki/File:Raymondjames2005.JPG) | User Doctorindy on en.wikipedia | Public domain |
 | washington.webp | [Clark Construction - FEDEX Field (Jack Kent Cooke Stadium) Looking NW.jpg](https://commons.wikimedia.org/wiki/File:Clark_Construction_-_FEDEX_Field_(Jack_Kent_Cooke_Stadium)_Looking_NW.jpg) | Duane Lempke | CC0 |
