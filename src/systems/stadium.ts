@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CAMERA, GAME_H, GAME_W, guestTeam, hostTeam } from '../config';
+import { CAMERA, GAME_H, VIEW, guestTeam, hostTeam } from '../config';
 import { STAND_GAP } from './grandstand';
 import { todInfo, type SkyWeather, type TimeOfDay } from './daytime';
 import { PLANE, type Projection } from './projection';
@@ -25,6 +25,7 @@ uniform vec3 uSkyTop;
 uniform vec3 uSkyHor;
 uniform vec3 uBg;
 uniform vec3 uSurround;
+uniform vec2 uOff;
 varying vec2 fragCoord;
 
 // Recuo do muro/gramado no fundo, acompanhando a arquibancada (px do plano)
@@ -50,12 +51,13 @@ bool topRounded(vec2 p, float x0, float x1, float t0, float r) {
 }
 
 void main() {
-  vec2 s = vec2(fragCoord.x, resolution.y - fragCoord.y);
+  // pixel do quad (que cobre a tela inteira) → coordenada do palco 390×844
+  vec2 s = vec2(fragCoord.x, resolution.y - fragCoord.y) + uOff;
   vec2 p = toPlane(s);
 
   // Céu acima do muro (gradiente pelo horário); fora dele, o chão de fundo
   vec3 col = uBg;
-  if (p.y < 89.0 - GAP) col = mix(uSkyTop, uSkyHor, clamp(s.y / (resolution.y * 0.42), 0.0, 1.0));
+  if (p.y < 89.0 - GAP) col = mix(uSkyTop, uSkyHor, clamp(s.y / ${(GAME_H * 0.42).toFixed(1)}, 0.0, 1.0));
 
   // Muro em volta do gramado (cantos arredondados) com faixas nas cores dos times
   if (topRounded(p, -139.0, 772.0, 89.0 - GAP, 169.0)) {
@@ -90,10 +92,11 @@ export class StadiumShader {
       uSkyHor: { type: '3f', value: v3(t.skyHor) },
       uBg: { type: '3f', value: v3(t.bg) },
       // Gramado em volta do campo; na neve vira um branco azulado um pouco mais escuro que os montes
+      uOff: { type: '2f', value: { x: VIEW.x, y: VIEW.y } },
       uSurround: { type: '3f', value: weather === 'snow' ? v3([0.7, 0.75, 0.83]) : v3([0.176, 0.416, 0.169]) },
     });
     this.shader = scene.add
-      .shader(base, GAME_W / 2, GAME_H / 2, GAME_W, GAME_H)
+      .shader(base, VIEW.x + VIEW.w / 2, VIEW.y + VIEW.h / 2, VIEW.w, VIEW.h)
       .setDepth(-2);
   }
 

@@ -1,6 +1,6 @@
 import { sfx, type Sfx } from '../systems/sfx';
 import Phaser from 'phaser';
-import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS, broadcast, finalGame, hostTeam, logoKey, matchConfig, playoffLogo, venue } from '../config';
+import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS, broadcast, finalGame, hostTeam, logoKey, matchConfig, playoffLogo, venue, VIEW } from '../config';
 import {
   FORMATION_NAME,
   HOT_ROUTE_CYCLE,
@@ -402,7 +402,7 @@ export class MatchScene extends Phaser.Scene {
     btn.onTap = () => this.setPaused(true);
 
     // Menu
-    const dim = this.add.rectangle(0, 0, W, H, TV.ink, 0.88).setOrigin(0).setDepth(200).setInteractive();
+    const dim = this.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, TV.ink, 0.88).setOrigin(0).setDepth(200).setInteractive();
     const D = 201;
     // chamada: PAUSA numa placa amarela, igual à abertura do jogo
     const lg = this.add.graphics().setDepth(D);

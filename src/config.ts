@@ -3,8 +3,63 @@ import type { StandChoice } from './data/stadiums';
 import type { TimeChoice } from './systems/daytime';
 import { autoUniform, fgOn, teamById, uiColor, uniformsOf, type TeamDef, type Uniform } from './data/teams';
 
+/** Área de desenho do jogo (o "palco" do design). Fica SEMPRE inteira dentro da área segura da tela. */
 export const GAME_W = 390;
 export const GAME_H = 844;
+
+/**
+ * Tela real do aparelho, em unidades do jogo. O palco 390×844 é encaixado inteiro na área segura
+ * (abaixo do notch / Dynamic Island, acima da barra de início, entre as bordas arredondadas) e o que
+ * sobra em volta vira "borda" (VIEW maior que o palco): os fundos se estendem até lá, então a tela
+ * fica toda preenchida e nada do conteúdo é cortado. No computador, borda limitada (o resto vira
+ * faixa escura, como antes).
+ * `?safe=59,34` na URL simula um iPhone com notch (topo, baixo) para teste no computador.
+ */
+export const VIEW = (() => {
+  const full = { x: 0, y: 0, w: GAME_W, h: GAME_H, top: 0, bottom: 0, inset: { t: 0, r: 0, b: 0, l: 0 }, screen: { w: GAME_W, h: GAME_H } };
+  if (typeof window === 'undefined' || typeof document === 'undefined') return full;
+  const W = window.innerWidth || GAME_W;
+  const H = window.innerHeight || GAME_H;
+  let t = 0, b = 0, l = 0, r = 0;
+  const q = new URLSearchParams(location.search).get('safe');
+  if (q) {
+    [t, b] = q.split(',').map((v) => Number(v) || 0);
+  } else {
+    ({ t, r, b, l } = readSafeInsets());
+  }
+  const sw = Math.max(1, W - l - r);
+  const sh = Math.max(1, H - t - b);
+  const s = Math.min(sw / GAME_W, sh / GAME_H); // px da tela por unidade do jogo
+  // tela inteira em unidades do jogo, com o palco centrado na área segura
+  let vw = W / s;
+  let vh = H / s;
+  let vx = -(l + (sw - GAME_W * s) / 2) / s;
+  let vy = -(t + (sh - GAME_H * s) / 2) / s;
+  // limites (janela larga/alta no computador): o excesso vira faixa escura
+  const MAX_X = 60;
+  const MAX_Y = 130;
+  if (vw > GAME_W + 2 * MAX_X) {
+    vw = GAME_W + 2 * MAX_X;
+    vx = -MAX_X;
+  }
+  if (vh > GAME_H + 2 * MAX_Y) {
+    vh = GAME_H + 2 * MAX_Y;
+    vy = -MAX_Y;
+  }
+  return { x: vx, y: vy, w: vw, h: vh, top: -vy, bottom: vy + vh - GAME_H, inset: { t, r, b, l }, screen: { w: W, h: H } };
+})();
+
+/** Área segura do aparelho em px da tela (notch, barra de início, bordas), lida do CSS env(). */
+export function readSafeInsets() {
+  if (typeof document === 'undefined' || !document.body) return { t: 0, r: 0, b: 0, l: 0 };
+  const p = document.createElement('div');
+  p.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+  document.body.appendChild(p);
+  const cs = getComputedStyle(p);
+  const out = { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
+  p.remove();
+  return out;
+}
 
 /** Parâmetros da projeção pseudo-3D (mundo em jardas → tela em px). */
 export const CAMERA = {

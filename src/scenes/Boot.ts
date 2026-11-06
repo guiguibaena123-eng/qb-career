@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_H, GAME_W, logoKey } from '../config';
+import { GAME_H, GAME_W, logoKey, VIEW } from '../config';
 import { TEAM_LIST } from '../data/teams';
 import { queueCareerAssets, sharpenCareerAssets } from '../systems/careerAssets';
 import { setupHiRes } from '../systems/hires';
@@ -19,7 +19,7 @@ export class Boot extends Phaser.Scene {
     const H = GAME_H;
     const bg = this.add.graphics();
     bg.fillStyle(TV.ink, 1);
-    bg.fillRect(0, 0, W, H);
+    bg.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
     const lx = 40;
     const ly = H / 2 - 120;
     plateShadow(bg, lx, ly, 120, 80);

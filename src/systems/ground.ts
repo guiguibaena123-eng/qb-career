@@ -1,5 +1,13 @@
 import Phaser from 'phaser';
 import type { Projection, ScreenPoint } from './projection';
+import { VIEW } from '../config';
+
+// Tela visível (com folga): peças do chão inteiras fora dela não são desenhadas (o Phaser refaz cada
+// triângulo de cada Graphics a cada quadro, mesmo os que estão fora da tela)
+const CL = VIEW.x - 6;
+const CR = VIEW.x + VIEW.w + 6;
+const CT = VIEW.y - 6;
+const CB = VIEW.y + VIEW.h + 6;
 
 const tmp: ScreenPoint[] = Array.from({ length: 8 }, () => ({ x: 0, y: 0, s: 0 }));
 /** Arrays pré-alocados por tamanho (evita lixo de memória a cada frame). */
@@ -7,6 +15,10 @@ const byLen = Array.from({ length: 9 }, (_, n) => tmp.slice(0, n));
 
 /** Quadrilátero como dois triângulos (bem mais barato que fillPoints, que triangula com earcut). */
 export function fillQuad(g: Phaser.GameObjects.Graphics, a: ScreenPoint, b: ScreenPoint, c: ScreenPoint, d: ScreenPoint) {
+  if (a.x < CL && b.x < CL && c.x < CL && d.x < CL) return;
+  if (a.x > CR && b.x > CR && c.x > CR && d.x > CR) return;
+  if (a.y < CT && b.y < CT && c.y < CT && d.y < CT) return;
+  if (a.y > CB && b.y > CB && c.y > CB && d.y > CB) return;
   g.fillTriangle(a.x, a.y, b.x, b.y, c.x, c.y);
   g.fillTriangle(a.x, a.y, c.x, c.y, d.x, d.y);
 }

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_TITLE, GAME_H, GAME_W } from '../config';
+import { FONT_TITLE, GAME_H, GAME_W, VIEW } from '../config';
 import type { CareerTeam } from '../data/TeamRepository';
 import { setupHiRes } from '../systems/hires';
 import { UI } from '../ui/widgets';
@@ -17,13 +17,25 @@ export const hexStr = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
 
 export function draftScene(scene: Phaser.Scene, team: CareerTeam, party = false) {
   setupHiRes(scene);
-  scene.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0c1a).setOrigin(0);
-  scene.add.image(-1, 0, stageTexture(scene, team, party)).setOrigin(0).setDisplaySize(STAGE_W * 4, STAGE_H * 4);
-  // Escurece o topo (atrás da barra)
+  scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0x0a0c1a).setOrigin(0);
+  const key = stageTexture(scene, team, party);
+  const sw = STAGE_W * 4;
+  const sh = STAGE_H * 4;
+  scene.add.image(-1, 0, key).setOrigin(0).setDisplaySize(sw, sh);
+  // Bordas da tela (laterais do iPhone): o salão continua espelhado, sem emenda (a borda encosta na borda)
+  if (VIEW.x < -1) {
+    scene.add.image(-1, 0, key).setOrigin(1, 0).setDisplaySize(sw, sh).setFlipX(true);
+    scene.add.image(-1 + sw, 0, key).setOrigin(0, 0).setDisplaySize(sw, sh).setFlipX(true);
+  }
+  // Escurece o topo (atrás da barra e do notch)
   const g = scene.add.graphics();
+  if (VIEW.y < 0) {
+    g.fillStyle(0x0a0c1a, 0.95);
+    g.fillRect(VIEW.x, VIEW.y, VIEW.w, -VIEW.y);
+  }
   for (let i = 0; i < 26; i++) {
     g.fillStyle(0x0a0c1a, 0.95 * (1 - i / 26));
-    g.fillRect(0, i * 3, GAME_W, 3);
+    g.fillRect(VIEW.x, i * 3, VIEW.w, 3);
   }
 }
 
@@ -84,8 +96,11 @@ export function bigButton(scene: Phaser.Scene, text: string, color: number, onTa
   const g = scene.add.graphics().setDepth(84);
   for (let i = 0; i < 60; i++) {
     g.fillStyle(TV.ink, Math.min(1, (i / 60) * 1.6));
-    g.fillRect(0, GAME_H - 180 + i * 3, GAME_W, 3);
+    g.fillRect(VIEW.x, GAME_H - 180 + i * 3, VIEW.w, 3);
   }
+  // até a borda de baixo da tela (barra de início do iPhone)
+  g.fillStyle(TV.ink, 1);
+  g.fillRect(VIEW.x, GAME_H, VIEW.w, VIEW.y + VIEW.h - GAME_H + 1);
   const c = btnColor(color);
   const fg = inkOn(c);
   const bw = GAME_W - 32;

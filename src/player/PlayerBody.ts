@@ -105,17 +105,26 @@ function crop(scene: Phaser.Scene, name: string) {
   full.height = img.height;
   const fc = full.getContext('2d', { willReadFrequently: true })!;
   fc.drawImage(img, 0, 0);
-  const d = fc.getImageData(0, 0, img.width, img.height).data;
-  let x0 = img.width, y0 = img.height, x1 = -1, y1 = -1;
-  for (let y = 0; y < img.height; y++) {
-    for (let x = 0; x < img.width; x++) {
-      if (d[(y * img.width + x) * 4 + 3] === 0) continue;
-      if (x < x0) x0 = x;
-      if (x > x1) x1 = x;
-      if (y < y0) y0 = y;
-      if (y > y1) y1 = y;
-    }
+  // Caixa dos pixels visíveis: lê 4 bytes por vez (Uint32) e para cada busca assim que acha a borda
+  const W = img.width;
+  const H = img.height;
+  const px = new Uint32Array(fc.getImageData(0, 0, W, H).data.buffer);
+  const A = 0xff000000; // canal alfa (little-endian: RGBA → 0xAABBGGRR)
+  const rowHas = (y: number) => {
+    for (let i = y * W, e = i + W; i < e; i++) if (px[i] & A) return true;
+    return false;
+  };
+  let y0 = 0;
+  while (y0 < H && !rowHas(y0)) y0++;
+  let y1 = H - 1;
+  while (y1 >= y0 && !rowHas(y1)) y1--;
+  let x0 = W, x1 = -1;
+  for (let y = y0; y <= y1; y++) {
+    const r = y * W;
+    for (let x = 0; x < x0; x++) if (px[r + x] & A) { x0 = x; break; }
+    for (let x = W - 1; x > x1; x--) if (px[r + x] & A) { x1 = x; break; }
   }
+  if (y0 >= H) x1 = -1;
   let r: { cv: HTMLCanvasElement; x: number; y: number } | null = null;
   if (x1 >= 0) {
     const cv = document.createElement('canvas');

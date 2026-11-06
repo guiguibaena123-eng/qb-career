@@ -4,7 +4,7 @@ import { divisionOf, league } from '../career/league';
 import { ROUND_INFO } from '../career/playoffs';
 import { KIT_IDS, kitAccents, type KitId } from '../career/kits';
 import { careerTeam, coachOf, nextGame, PRIME } from '../career/season';
-import { GAME_H, GAME_W } from '../config';
+import { GAME_H, GAME_W, VIEW } from '../config';
 import type { CareerTeam } from '../data/TeamRepository';
 import { teamById } from '../data/teams';
 import { startCareerMatch } from '../integration/MatchBridge';
@@ -52,9 +52,9 @@ export class PreJogo extends Phaser.Scene {
     let top = 66;
     if (pr) {
       const pg = this.add.graphics();
-      plate(pg, 0, 60, W, 30, TV.plate, 1, false, false);
+      plate(pg, VIEW.x, 60, VIEW.w, 30, TV.plate, 1, false, false);
       pg.fillStyle(TV.yellow, 1);
-      pg.fillRect(0, 88, W, 3);
+      pg.fillRect(VIEW.x, 88, VIEW.w, 3);
       tvText(this, W / 2, 75, `${pr.pt} · ${g.when}`, 16, C.ink, 800, 2.4).setOrigin(0.5);
       top = 96;
     }
@@ -71,9 +71,10 @@ export class PreJogo extends Phaser.Scene {
     const panel = (t: CareerTeam, left: boolean) => {
       const col = t.colors.primary;
       const fg = inkOn(col);
+      // painéis vão até as bordas da tela
       const pts = left
-        ? [[0, top], [mid + sk - 3, top], [mid - sk - 3, top + ph], [0, top + ph]]
-        : [[mid + sk + 3, top], [W, top], [W, top + ph], [mid - sk + 3, top + ph]];
+        ? [[VIEW.x, top], [mid + sk - 3, top], [mid - sk - 3, top + ph], [VIEW.x, top + ph]]
+        : [[mid + sk + 3, top], [VIEW.x + VIEW.w, top], [VIEW.x + VIEW.w, top + ph], [mid - sk + 3, top + ph]];
       const pg = this.add.graphics();
       pg.fillStyle(col, 1);
       pg.fillPoints(pts.map(([x, y]) => new Phaser.Math.Vector2(x, y)), true);
@@ -94,7 +95,7 @@ export class PreJogo extends Phaser.Scene {
     const sameDiv = divisionOf(me).div === divisionOf(opp).div;
     const ig = this.add.graphics();
     ig.fillStyle(TV.ink, 0.94);
-    ig.fillRect(0, top + ph, W, 28);
+    ig.fillRect(VIEW.x, top + ph, VIEW.w, 28);
     tvText(this, W / 2, top + ph + 14, sameDiv ? `CLÁSSICO DA ${divisionOf(me).full}` : `${divisionOf(opp).full} · TÉC. ${coachOf(opp).name}`, 14, sameDiv ? C.yellow : C.muted, 700, 1.2).setOrigin(0.5);
 
     // Cartão escuro padrão das faixas de informação (mesma margem, mesma cor, traço amarelo no topo)

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_H, GAME_W, TEAMS } from '../config';
+import { GAME_H, GAME_W, TEAMS, VIEW } from '../config';
 import type { DriveResult } from '../systems/oppdrive';
 import { C, inkOn, plate, plateLine, plateShadow, TV, TvButton, tvText } from './tv';
 
@@ -75,7 +75,7 @@ export class DefenseScreen {
     sc.game.renderer.snapshot((img) => {
       if (!this.o) return;
       this.build(img as HTMLImageElement);
-    });
+    }, 'image/jpeg', 0.6); // vai ser desfocado: JPEG é bem mais rápido de gerar que PNG
   }
 
   private build(img: HTMLImageElement) {
@@ -83,23 +83,25 @@ export class DefenseScreen {
     const o = this.o!;
     const W = GAME_W;
     const H = GAME_H;
-    // Desfoque barato: reduz 10x e amplia com suavização
+    // Desfoque barato: reduz 10x e amplia com suavização (o print é da tela inteira, VIEW)
+    const VW = Math.round(VIEW.w);
+    const VH = Math.round(VIEW.h);
     const small = document.createElement('canvas');
-    small.width = Math.max(1, Math.round(W / 10));
-    small.height = Math.max(1, Math.round(H / 10));
+    small.width = Math.max(1, Math.round(VW / 10));
+    small.height = Math.max(1, Math.round(VH / 10));
     const sctx = small.getContext('2d')!;
     sctx.imageSmoothingEnabled = true;
     sctx.drawImage(img, 0, 0, small.width, small.height);
     if (sc.textures.exists(this.bgKey)) sc.textures.remove(this.bgKey);
-    const tex = sc.textures.createCanvas(this.bgKey, W, H)!;
+    const tex = sc.textures.createCanvas(this.bgKey, VW, VH)!;
     const ctx = tex.getContext();
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(small, 0, 0, W, H);
+    ctx.drawImage(small, 0, 0, VW, VH);
     tex.refresh();
 
     const root = (this.root = sc.add.container(0, 0).setDepth(99));
-    const bg = sc.add.image(0, 0, this.bgKey).setOrigin(0);
-    const dim = sc.add.rectangle(0, 0, W, H, TV.ink, 0.58).setOrigin(0);
+    const bg = sc.add.image(VIEW.x, VIEW.y, this.bgKey).setOrigin(0).setDisplaySize(VIEW.w, VIEW.h);
+    const dim = sc.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, TV.ink, 0.58).setOrigin(0);
     root.add([bg, dim]);
 
     const L = 16;

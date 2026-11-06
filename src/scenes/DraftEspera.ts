@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_H, GAME_W } from '../config';
+import { GAME_H, GAME_W, VIEW } from '../config';
 import { TeamRepository } from '../data/TeamRepository';
 import { podium } from '../draft/art';
 import { ord, picksBefore, runDraft } from '../draft/logic';
@@ -101,7 +101,7 @@ export class DraftEspera extends Phaser.Scene {
       c.setScale(0.5).setAlpha(0);
       this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 260, ease: 'Back.Out' });
       // clarão curto e suave (tela branca inteira cegava no celular)
-      const fl = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xffffff, 0.22).setOrigin(0).setDepth(68);
+      const fl = this.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0xffffff, 0.22).setOrigin(0).setDepth(68);
       this.tweens.add({ targets: fl, alpha: 0, duration: 220, ease: 'Quad.Out', onComplete: () => fl.destroy() });
       vibrate(VIBE.td);
       sfx.cue('applause', { vol: 0.6 });

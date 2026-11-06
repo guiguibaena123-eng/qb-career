@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_LABEL, FONT_TITLE, GAME_H, GAME_W } from '../config';
+import { FONT_LABEL, FONT_TITLE, GAME_H, GAME_W, VIEW } from '../config';
 
 /*
  * Componentes de interface do design: botões de "vidro fosco" arredondados
@@ -179,7 +179,11 @@ export function bottomGradient(scene: Phaser.Scene, height: number, depth: numbe
     const [t0, a0] = stops[i];
     const [t1, a1] = stops[i + 1];
     g.fillGradientStyle(c, c, c, c, a0, a0, a1, a1);
-    g.fillRect(0, top + t0 * height, W, (t1 - t0) * height + 1);
+    g.fillRect(VIEW.x, top + t0 * height, VIEW.w, (t1 - t0) * height + 1);
   }
+  // de ponta a ponta e até a borda de baixo da tela (barra de início do iPhone)
+  g.fillStyle(c, 1);
+  g.fillRect(VIEW.x, H, VIEW.w, VIEW.y + VIEW.h - H + 1);
+  void W;
   return g;
 }

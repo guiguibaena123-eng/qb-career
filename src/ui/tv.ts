@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { stadiumSlot } from './stadiumPhoto';
-import { GAME_H, GAME_W } from '../config';
+import { GAME_H, GAME_W, VIEW } from '../config';
 import { TeamRepository } from '../data/TeamRepository';
 
 /*
@@ -374,17 +374,21 @@ export function feed(scene: Phaser.Scene, teamId: string | null, dim = 0.7) {
   const W = GAME_W;
   const H = GAME_H;
   const c = scene.add.container(0, 0).setDepth(-20);
+  // cobre a tela inteira (inclusive atrás do notch e nas bordas)
+  const V = VIEW;
   const base = scene.add.graphics();
   base.fillStyle(TV.ink, 1);
-  base.fillRect(0, 0, W, H);
+  base.fillRect(V.x, V.y, V.w, V.h);
   c.add(base);
   const key = teamId ? TeamRepository.get(teamId).stadium.image : null;
   if (key) {
     // ilustração do estádio (baixada quando aparece), com um "movimento de câmera" bem lento
     c.add(
       stadiumSlot(scene, key, (slot) => {
-        const img = scene.add.image(W / 2, H * 0.27, key);
-        const s = Math.max(W / img.width, (H * 0.56) / img.height);
+        // preso no topo da tela (atrás do notch) e largo o bastante para as bordas
+        const top = Math.min(-8, V.y);
+        const img = scene.add.image(W / 2, top, key).setOrigin(0.5, 0);
+        const s = Math.max((V.w + 40) / img.width, (H * 0.52 - top) / img.height);
         img.setScale(s);
         slot.add(img);
         if (!reduced()) scene.tweens.add({ targets: img, scale: s * 1.09, x: W / 2 - 18, duration: 26000, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
@@ -394,16 +398,16 @@ export function feed(scene: Phaser.Scene, teamId: string | null, dim = 0.7) {
   // Escurece e funde na tinta (mais escuro embaixo, onde ficam os botões)
   const veil = scene.add.graphics();
   veil.fillStyle(TV.ink, dim);
-  veil.fillRect(0, 0, W, H);
+  veil.fillRect(V.x, V.y, V.w, H * 0.18 - V.y);
   // funde na tinta antes de a foto acabar (sem emenda)
   const steps = 28;
   for (let i = 0; i < steps; i++) {
     const t = i / steps;
-    veil.fillStyle(TV.ink, Math.min(1, t * t * 1.2));
-    veil.fillRect(0, H * 0.18 + t * H * 0.34, W, (H * 0.34) / steps + 1);
+    veil.fillStyle(TV.ink, Math.min(1, dim + (1 - dim) * Math.min(1, t * t * 1.2)));
+    veil.fillRect(V.x, H * 0.18 + t * H * 0.34, V.w, (H * 0.34) / steps + 1);
   }
   veil.fillStyle(TV.ink, 1);
-  veil.fillRect(0, H * 0.52, W, H * 0.48 + 2);
+  veil.fillRect(V.x, H * 0.52, V.w, V.y + V.h - H * 0.52 + 2);
   c.add(veil);
   return c;
 }
@@ -483,14 +487,17 @@ export function scoreBug(scene: Phaser.Scene, o: BugOpts) {
 
 /** Faixa de notícias rolando no rodapé. */
 export function ticker(scene: Phaser.Scene, y: number, items: string[], tag = 'QFL', depth = 700) {
-  const W = GAME_W;
   const h = 30;
+  // de ponta a ponta da tela; no rodapé, desce até a borda de baixo (barra de início do iPhone)
+  const x0 = VIEW.x;
+  const W = VIEW.x + VIEW.w;
+  const fillTo = y + h >= GAME_H - 1 ? VIEW.y + VIEW.h : y + h;
   const c = scene.add.container(0, 0).setDepth(depth);
   const g = scene.add.graphics();
   g.fillStyle(TV.ink2, 1);
-  g.fillRect(0, y, W, h);
+  g.fillRect(x0, y, W - x0, fillTo - y);
   g.fillStyle(TV.rule, 1);
-  g.fillRect(0, y, W, 1);
+  g.fillRect(x0, y, W - x0, 1);
   c.add(g);
   const text = items.join('     ▪     ');
   const t1 = tvText(scene, 0, y + h / 2, text, 14, C.white, 600, 0.6).setOrigin(0, 0.5);
@@ -498,6 +505,11 @@ export function ticker(scene: Phaser.Scene, y: number, items: string[], tag = 'Q
   const t2 = tvText(scene, 0, y + h / 2, text, 14, C.white, 600, 0.6).setOrigin(0, 0.5);
   const mg = scene.make.graphics({}, false);
   mg.fillRect(70, y, W - 70, h);
+  // etiqueta: a cor amarela continua até a borda esquerda da tela
+  if (x0 < 0) {
+    g.fillStyle(TV.yellow, 1);
+    g.fillRect(x0, y, -x0 + 1, h);
+  }
   const mask = mg.createGeometryMask();
   t1.setMask(mask);
   t2.setMask(mask);

@@ -10,6 +10,7 @@ import Phaser from 'phaser';
  * sem diferença visível.
  */
 export function patchGraphicsPerf() {
+  patchDepth();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const G = Phaser.GameObjects.Graphics.prototype as any;
 
@@ -122,4 +123,29 @@ export function fontWarmJobs(family: string, sizes: number[], weights: number[],
     });
   }
   return jobs;
+}
+
+/**
+ * Profundidade só "conta" quando muda. O Phaser reordena a cena inteira (mais de mil objetos na
+ * partida) sempre que alguém recebe setDepth, mesmo com o mesmo valor; os billboards (jogadores,
+ * reservas, fotógrafos) recebem a profundidade a cada quadro.
+ */
+function patchDepth() {
+  const G = Phaser.GameObjects;
+  const classes = [G.Image, G.Sprite, G.Text, G.Graphics, G.Container, G.Rectangle, G.Ellipse, G.Arc, G.Shader, G.Zone, G.TileSprite, G.RenderTexture, G.Polygon, G.Triangle, G.Line, G.Star, G.Particles?.ParticleEmitter].filter(Boolean);
+  for (const C of classes) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const proto = (C as any).prototype;
+    let o = proto;
+    let d: PropertyDescriptor | undefined;
+    while (o && !(d = Object.getOwnPropertyDescriptor(o, 'depth'))) o = Object.getPrototypeOf(o);
+    if (!d || !d.set || (d.set as unknown as { __same?: boolean }).__same) continue;
+    const set = d.set;
+    const guarded = function (this: { _depth: number }, v: number) {
+      if (v === this._depth) return;
+      set.call(this, v);
+    };
+    (guarded as unknown as { __same: boolean }).__same = true;
+    Object.defineProperty(proto, 'depth', { get: d.get, set: guarded, configurable: true, enumerable: d.enumerable });
+  }
 }

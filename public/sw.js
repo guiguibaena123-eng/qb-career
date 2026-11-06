@@ -1,10 +1,10 @@
-// Caminhos relativos: funciona tanto na raiz (npm run dev) quanto em /qb-career/ (GitHub Pages).
+﻿// Caminhos relativos: funciona tanto na raiz (npm run dev) quanto em /qb-career/ (GitHub Pages).
 // Modo offline: guarda cada arquivo do jogo na primeira abertura e serve do cache depois.
-const CACHE = 'qb-career-v51';
-// Trilha dos menus: cache próprio, que não é apagado a cada versão (são ~27 MB; baixa só uma vez).
+const CACHE = 'qb-career-v52';
+// Trilha dos menus: cache prÃ³prio, que nÃ£o Ã© apagado a cada versÃ£o (sÃ£o ~27 MB; baixa sÃ³ uma vez).
 // Se as faixas mudarem, troque o nome (music-v2) para baixar de novo.
 const MUSIC = 'qb-career-music-v1';
-// Efeitos sonoros da partida (~1,5 MB): idem, cache próprio (troque para sfx-v2 se os sons mudarem).
+// Efeitos sonoros da partida (~1,5 MB): idem, cache prÃ³prio (troque para sfx-v2 se os sons mudarem).
 const SFX = 'qb-career-sfx-v4';
 
 self.addEventListener('install', (e) => {
@@ -23,7 +23,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
-  // Páginas: tenta a rede (versão nova) e cai no cache se estiver offline. Arquivos: cache primeiro.
+  // PÃ¡ginas: tenta a rede (versÃ£o nova) e cai no cache se estiver offline. Arquivos: cache primeiro.
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req)

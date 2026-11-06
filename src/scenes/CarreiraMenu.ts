@@ -5,7 +5,7 @@ import { Pane } from '../career/pane';
 import { devSimWeeks } from '../integration/MatchBridge';
 import { awardsReady, finalMvp, seasonAwards, type AwardWinner } from '../career/awards';
 import { teamTitles, trophyCase } from '../career/trophies';
-import { GAME_H, GAME_W } from '../config';
+import { GAME_H, GAME_W, VIEW } from '../config';
 import { TeamRepository, type CareerTeam } from '../data/TeamRepository';
 import { fgOn } from '../data/teams';
 import { KIT_IDS, kitAccents, kitInfo } from '../career/kits';
@@ -289,19 +289,24 @@ export class CarreiraMenu extends Phaser.Scene {
     const base = l > 150 ? mix(pc, TV.ink, 0.5) : l > 100 ? mix(pc, TV.ink, 0.3) : pc;
     const g = this.add.graphics().setDepth(-12);
     g.fillStyle(base, 1);
-    g.fillRect(0, 0, W, H);
+    g.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
     // faixas diagonais na cor secundária (textura de transmissão, bem discretas)
     g.fillStyle(this.team.colors.secondary, 0.07);
-    for (let i = -2; i < 8; i++) {
+    const y0 = VIEW.y;
+    const y1 = VIEW.y + VIEW.h;
+    const sl = (y1 - y0) * 0.25;
+    for (let i = -3; i < 9; i++) {
       const x0 = i * 90;
-      g.fillPoints([new Phaser.Math.Vector2(x0, 0), new Phaser.Math.Vector2(x0 + 34, 0), new Phaser.Math.Vector2(x0 + 34 - H * 0.25, H), new Phaser.Math.Vector2(x0 - H * 0.25, H)], true);
+      g.fillPoints([new Phaser.Math.Vector2(x0, y0), new Phaser.Math.Vector2(x0 + 34, y0), new Phaser.Math.Vector2(x0 + 34 - sl, y1), new Phaser.Math.Vector2(x0 - sl, y1)], true);
     }
     const steps = 30;
     for (let i = 0; i < steps; i++) {
       const t = i / steps;
       g.fillStyle(TV.ink, 0.1 + t * t * 0.55);
-      g.fillRect(0, H * 0.3 + t * H * 0.7, W, (H * 0.7) / steps + 1);
+      g.fillRect(VIEW.x, H * 0.3 + t * H * 0.7, VIEW.w, (H * 0.7) / steps + 1);
     }
+    g.fillStyle(TV.ink, 0.65);
+    g.fillRect(VIEW.x, H, VIEW.w, VIEW.y + VIEW.h - H + 1);
     if (this.textures.exists(this.team.logo.large)) {
       const img = this.add.image(W - 40, H * 0.6, this.team.logo.large).setDepth(-11).setAlpha(0.08);
       img.setScale(300 / Math.max(img.width, img.height));
@@ -485,10 +490,10 @@ export class CarreiraMenu extends Phaser.Scene {
     const g = this.add.graphics().setDepth(30);
     for (let i = 0; i < 30; i++) {
       g.fillStyle(TV.ink, Math.min(1, (i / 30) * 1.5));
-      g.fillRect(0, GAME_H - 104 + i * 2, GAME_W, 2);
+      g.fillRect(VIEW.x, GAME_H - 104 + i * 2, VIEW.w, 2);
     }
     g.fillStyle(TV.ink, 1);
-    g.fillRect(0, GAME_H - 44, GAME_W, 44);
+    g.fillRect(VIEW.x, GAME_H - 44, VIEW.w, VIEW.y + VIEW.h - GAME_H + 44 + 1);
     const n = nextGame();
     const over = !n && seasonOver();
     const done = !!getSave().career.seasonDone;
@@ -1101,8 +1106,8 @@ export class CarreiraMenu extends Phaser.Scene {
         y += Math.ceil(pal.length / per) * (SZ + GP) - GP;
       } else if (r.button) {
         const g = add(this.add.graphics());
-        plate(g, 0, y, W, 40, TV.ink3, 1);
-        plateLine(g, 0, y, W, 40, TV.rule, 1, 1);
+        plate(g, VIEW.x, y, VIEW.w, 40, TV.ink3, 1);
+        plateLine(g, VIEW.x, y, VIEW.w, 40, TV.rule, 1, 1);
         add(tvText(this, W / 2, y + 20, r.button.text, 15, C.white, 800, 1.2).setOrigin(0.5));
         p.hit(0, y, W, 40, r.button.fn);
         this.persPaint.push(() => {});

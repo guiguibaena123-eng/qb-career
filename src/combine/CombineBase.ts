@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { sfx } from '../systems/sfx';
-import { GAME_H, GAME_W } from '../config';
+import { GAME_H, GAME_W, VIEW } from '../config';
 import { CombineStage } from './stage';
 import { getSave, updateSave, type TestId } from '../player/PlayerSave';
 import { setupHiRes } from '../systems/hires';
@@ -91,7 +91,7 @@ export abstract class CombineBase extends Phaser.Scene {
   private instructionCard() {
     const W = GAME_W;
     const c = this.add.container(0, 0).setDepth(60);
-    c.add(this.add.rectangle(0, 0, W, GAME_H, TV.ink, 0.78).setOrigin(0));
+    c.add(this.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, TV.ink, 0.78).setOrigin(0));
     const idx = TESTS.findIndex((t) => t.id === this.testId);
     // As instruções vêm com linhas vazias de espaçamento; no cartão viram passos numerados
     const steps = this.instructions.filter((l) => l.trim());
@@ -120,7 +120,7 @@ export abstract class CombineBase extends Phaser.Scene {
     c.add(tip);
     this.tweens.add({ targets: tip, alpha: 0.35, yoyo: true, repeat: -1, duration: 600 });
     let gone = false;
-    const zone = this.add.zone(0, 0, W, GAME_H).setOrigin(0).setInteractive().setDepth(61);
+    const zone = this.add.zone(VIEW.x, VIEW.y, VIEW.w, VIEW.h).setOrigin(0).setInteractive().setDepth(61);
     const go = () => {
       if (gone) return;
       gone = true;
@@ -168,7 +168,7 @@ export abstract class CombineBase extends Phaser.Scene {
     const g = grade(score);
     const gc = gradeTv(g);
     const c = this.add.container(0, 0).setDepth(70);
-    c.add(this.add.rectangle(0, 0, W, GAME_H, TV.ink, 0.82).setOrigin(0));
+    c.add(this.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, TV.ink, 0.82).setOrigin(0));
     const top = 150;
     const card = this.add.graphics();
     plateShadow(card, 20, top, W - 40, 300);

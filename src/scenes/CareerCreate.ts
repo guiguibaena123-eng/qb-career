@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_H, GAME_W } from '../config';
+import { GAME_H, GAME_W, VIEW } from '../config';
 import { COLLEGES, hexNum } from '../data/colleges';
 import type { KitDef } from '../data/TeamRepository';
 import { PlayerBody } from '../player/PlayerBody';
@@ -220,11 +220,12 @@ export class CareerCreate extends Phaser.Scene {
   /** Coloca cada <input> exatamente sobre o campo desenhado (acompanha a escala do canvas). */
   private placeInputs() {
     const r = this.game.canvas.getBoundingClientRect();
-    const k = r.width / GAME_W;
+    // o canvas mostra a tela inteira (VIEW); o palco começa em (-VIEW.x, -VIEW.y) unidades dentro dele
+    const k = r.width / VIEW.w;
     for (const [which, el] of Object.entries(this.inputs)) {
       const f = CareerCreate.FIELDS[which as 'first' | 'last' | 'num'];
       if (!el) continue;
-      Object.assign(el.style, { left: `${r.left + f.x * k}px`, top: `${r.top + f.y * k}px`, width: `${f.w * k}px`, height: `${f.h * k}px` });
+      Object.assign(el.style, { left: `${r.left + (f.x - VIEW.x) * k}px`, top: `${r.top + (f.y - VIEW.y) * k}px`, width: `${f.w * k}px`, height: `${f.h * k}px` });
     }
   }
 

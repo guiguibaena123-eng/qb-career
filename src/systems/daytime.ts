@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { matchConfig } from '../config';
+import { matchConfig, VIEW } from '../config';
 
 /*
  * Horário da partida: DIA (céu azul, refletores apagados), TARDE (pôr do sol alaranjado, refletores
@@ -94,7 +94,7 @@ export class Daylight {
       this.night(scene, w, h);
       return;
     }
-    this.rect = scene.add.rectangle(0, 0, w, h, c, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    this.rect = scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, c, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
   }
 
   /**
@@ -107,10 +107,12 @@ export class Daylight {
     const mk = (key: string, draw: (ctx: CanvasRenderingContext2D) => void) => {
       if (scene.textures.exists(key)) scene.textures.remove(key);
       const cv = document.createElement('canvas');
-      cv.width = w * k;
-      cv.height = h * k;
+      // cobre a tela inteira (VIEW); os gradientes continuam medidos no palco 390×844
+      cv.width = Math.ceil(VIEW.w * k);
+      cv.height = Math.ceil(VIEW.h * k);
       const ctx = cv.getContext('2d')!;
       ctx.scale(k, k);
+      ctx.translate(-VIEW.x, -VIEW.y);
       draw(ctx);
       scene.textures.addCanvas(key, cv);
       return key;
@@ -118,14 +120,14 @@ export class Daylight {
     // Luz (multiplica): centro quase branco, bordas azul-escuras, topo (arquibancada) na penumbra
     const shade = mk('night_shade', (ctx) => {
       ctx.fillStyle = '#4b5384';
-      ctx.fillRect(0, 0, w, h);
+      ctx.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
       const g = ctx.createRadialGradient(w / 2, h * 0.52, h * 0.08, w / 2, h * 0.52, h * 0.62);
       g.addColorStop(0, '#fbfcff');
       g.addColorStop(0.55, '#dfe5fb');
       g.addColorStop(0.85, '#8f98c6');
       g.addColorStop(1, '#4b5384');
       ctx.fillStyle = g;
-      ctx.fillRect(0, 0, w, h);
+      ctx.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
       // laterais (fora das linhas) um pouco mais escuras
       const side = ctx.createLinearGradient(0, 0, w, 0);
       side.addColorStop(0, 'rgba(60,66,110,0.55)');
@@ -134,9 +136,9 @@ export class Daylight {
       side.addColorStop(1, 'rgba(60,66,110,0.55)');
       ctx.globalCompositeOperation = 'multiply';
       ctx.fillStyle = side;
-      ctx.fillRect(0, 0, w, h);
+      ctx.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
     });
-    scene.add.image(0, 0, shade).setOrigin(0).setDisplaySize(w, h).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    scene.add.image(VIEW.x, VIEW.y, shade).setOrigin(0).setDisplaySize(VIEW.w, VIEW.h).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
     // Fachos e brilho (soma)
     const glow = mk('night_glow', (ctx) => {
       // Sem fachos dos refletores: só o gramado bem iluminado
@@ -145,8 +147,8 @@ export class Daylight {
       p.addColorStop(0, 'rgba(255,250,235,0.1)');
       p.addColorStop(1, 'rgba(255,250,235,0)');
       ctx.fillStyle = p;
-      ctx.fillRect(0, 0, w, h);
+      ctx.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
     });
-    scene.add.image(0, 0, glow).setOrigin(0).setDisplaySize(w, h).setDepth(59.6).setBlendMode(Phaser.BlendModes.ADD);
+    scene.add.image(VIEW.x, VIEW.y, glow).setOrigin(0).setDisplaySize(VIEW.w, VIEW.h).setDepth(59.6).setBlendMode(Phaser.BlendModes.ADD);
   }
 }

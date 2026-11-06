@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_H, GAME_W } from '../config';
+import { GAME_H, GAME_W, VIEW } from '../config';
 import { TeamRepository } from '../data/TeamRepository';
 import { currentDraft } from '../draft/logic';
 import { bigButton, draftScene, teamLogo, topBar } from '../draft/ui';
@@ -26,7 +26,7 @@ export class DraftTelefone extends Phaser.Scene {
     const team = TeamRepository.get(d.teamId);
     const s = getSave();
     draftScene(this, team);
-    this.add.rectangle(0, 0, GAME_W, GAME_H, TV.ink, 0.9).setOrigin(0);
+    this.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, TV.ink, 0.9).setOrigin(0);
     topBar(this, 'LIGAÇÃO', `PICK ${d.pick}`, () => wipeTo(this, 'DraftEspera'));
 
     // Chamada recebida: o logo do time dentro de um círculo na cor dele, anéis pulsando e o selo verde

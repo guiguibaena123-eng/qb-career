@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_H, GAME_W, TEAMS, broadcast, logoKey } from '../config';
+import { GAME_H, GAME_W, TEAMS, broadcast, logoKey, VIEW } from '../config';
 import type { Rng } from '../systems/rng';
 import { C, onInk, plate, plateShadow, TV, TvButton, tvText } from './tv';
 import { UI } from './widgets';
@@ -37,7 +37,7 @@ export class Intro {
     const W = GAME_W;
     const H = GAME_H;
     const root = (this.root = sc.add.container(0, 0).setDepth(150));
-    const dim = sc.add.rectangle(0, 0, W, H, 0x0a0c1a, 0.93).setOrigin(0);
+    const dim = sc.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0x0a0c1a, 0.93).setOrigin(0);
     root.add(dim);
     this.presentation(() => this.toss(onDone));
   }
@@ -69,13 +69,13 @@ export class Intro {
     const W = GAME_W;
     const band = this.add(sc.add.graphics());
     band.fillStyle(pr.color, 0.35);
-    band.fillRect(0, 34, W, 76);
+    band.fillRect(VIEW.x, 34, VIEW.w, 76);
     band.fillStyle(pr.color, 1);
-    band.fillRect(0, 34, W, 4);
-    band.fillRect(0, 106, W, 4);
+    band.fillRect(VIEW.x, 34, VIEW.w, 4);
+    band.fillRect(VIEW.x, 106, VIEW.w, 4);
     band.fillStyle(pr.glow, 1);
-    band.fillRect(0, 38, W, 2);
-    band.fillRect(0, 104, W, 2);
+    band.fillRect(VIEW.x, 38, VIEW.w, 2);
+    band.fillRect(VIEW.x, 104, VIEW.w, 2);
     for (let i = 0; i < 12; i++) {
       const x = 14 + ((i * 97) % (W - 28));
       const y = 46 + ((i * 37) % 52);

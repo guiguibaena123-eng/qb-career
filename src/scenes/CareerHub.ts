@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_H, GAME_W } from '../config';
+import { GAME_H, GAME_W, VIEW } from '../config';
 import { getSave } from '../player/PlayerSave';
 import { TeamRepository } from '../data/TeamRepository';
 import { setupHiRes } from '../systems/hires';
@@ -18,7 +18,7 @@ export class CareerHub extends Phaser.Scene {
     setupHiRes(this);
     const W = GAME_W;
     const H = GAME_H;
-    this.add.rectangle(0, 0, W, H, 0x0a0c1a).setOrigin(0);
+    this.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0x0a0c1a).setOrigin(0);
     this.add.existing(title(this, W / 2, 60, 'CARREIRA', 20, UI.yellow).setOrigin(0.5));
     const s = getSave();
     this.add.existing(label(this, W / 2, 96, `${s.name} #${s.number} · OVR ${s.ovr}`, 9, '#C9CEE0').setOrigin(0.5));

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { isDome, STAND_NAMES, stadiumOf } from '../data/stadiums';
 import { stadiumPhoto, stadiumSlot } from '../ui/stadiumPhoto';
 import { type SkyWeather, type TimeChoice, type TimeOfDay } from '../systems/daytime';
-import { GAME_H, GAME_W, applyMatchup, broadcast, finalGame, getFavorite, logoKey, matchRecords, setFavorite, playoffLogo, matchConfig, saveMatchConfig, venue, type PrimeKey, type WeatherChoice } from '../config';
+import { GAME_H, GAME_W, applyMatchup, broadcast, finalGame, getFavorite, logoKey, matchRecords, setFavorite, playoffLogo, matchConfig, saveMatchConfig, venue, type PrimeKey, type WeatherChoice, VIEW } from '../config';
 import { PRIME } from '../career/season';
 import { ROUND_INFO } from '../career/playoffs';
 import { TeamRepository, type KitDef } from '../data/TeamRepository';
@@ -467,16 +467,19 @@ export class MainMenu extends Phaser.Scene {
       const t = side === 'home' ? h : a;
       const col = uiColor(t);
       const fg = inkOn(col);
+      // painéis vão até as bordas da tela
+      const L0 = VIEW.x;
+      const R0 = VIEW.x + VIEW.w;
       const pts = side === 'home'
-        ? [[0, top], [mid + sk - 3, top], [mid - sk - 3, top + ph], [0, top + ph]]
-        : [[mid + sk + 3, top], [W, top], [W, top + ph], [mid - sk + 3, top + ph]];
+        ? [[L0, top], [mid + sk - 3, top], [mid - sk - 3, top + ph], [L0, top + ph]]
+        : [[mid + sk + 3, top], [R0, top], [R0, top + ph], [mid - sk + 3, top + ph]];
       const g = this.add.graphics();
       g.fillStyle(col, 1);
       g.fillPoints(pts.map(([x, y]) => new Phaser.Math.Vector2(x, y)), true);
       // faixa diagonal mais escura
       g.fillStyle(0x000000, 0.14);
-      const sx = side === 'home' ? 0 : mid + 20;
-      g.fillPoints([[sx, top + ph * 0.72], [sx + W / 2 - 18, top + ph * 0.72], [sx + W / 2 - 18 - sk * 0.56, top + ph], [sx, top + ph]].map(([x, y]) => new Phaser.Math.Vector2(x, y)), true);
+      if (side === 'home') g.fillPoints([[L0, top + ph * 0.72], [W / 2 - 18, top + ph * 0.72], [W / 2 - 18 - sk * 0.56, top + ph], [L0, top + ph]].map(([x, y]) => new Phaser.Math.Vector2(x, y)), true);
+      else g.fillPoints([[mid + 20, top + ph * 0.72], [R0, top + ph * 0.72], [R0, top + ph], [mid + 20 - sk * 0.56, top + ph]].map(([x, y]) => new Phaser.Math.Vector2(x, y)), true);
       v.add(g);
       const cx = side === 'home' ? W * 0.25 - 6 : W * 0.75 + 6;
       if (side === 'home') {
@@ -512,7 +515,7 @@ export class MainMenu extends Phaser.Scene {
     const ty = top + ph + 12;
     const tg = this.add.graphics();
     tg.fillStyle(TV.ink, 0.9);
-    tg.fillRect(0, ty, W, 76);
+    tg.fillRect(VIEW.x, ty, VIEW.w, 76);
     v.add(tg);
     const rows: [string, number, number][] = [
       ['ATAQUE', h.atk, a.atk],
@@ -645,11 +648,14 @@ export class MainMenu extends Phaser.Scene {
     const ph = 232;
     const fr = this.add.graphics();
     fr.fillStyle(TV.ink2, 1);
-    fr.fillRect(0, py, W, ph);
+    // foto de ponta a ponta da tela (bordas do iPhone incluídas)
+    const PW = Math.ceil(VIEW.w);
+    const PX = VIEW.x + VIEW.w / 2;
+    fr.fillRect(VIEW.x, py, VIEW.w, ph);
     v.add(fr);
     const photo = hostR.stadium.image;
-    if (photo) v.add(stadiumSlot(this, photo, (slot) => slot.add(this.add.image(W / 2, py + ph / 2, stadiumPhoto(this, photo, W, ph)).setDisplaySize(W, ph))));
-    const mood = this.add.rectangle(W / 2, py + ph / 2, W, ph, 0x000000, 0);
+    if (photo) v.add(stadiumSlot(this, photo, (slot) => slot.add(this.add.image(PX, py + ph / 2, stadiumPhoto(this, photo, PW, ph)).setDisplaySize(PW, ph))));
+    const mood = this.add.rectangle(PX, py + ph / 2, PW, ph, 0x000000, 0);
     v.add(mood);
     const wShown = (): SkyWeather => (lockWx ? 'clear' : matchConfig.weather === 'rain' || matchConfig.weather === 'snow' ? matchConfig.weather : 'clear');
     const todShown = (): TimeOfDay => (matchConfig.time === 'random' ? 'dusk' : matchConfig.time);
@@ -663,9 +669,9 @@ export class MainMenu extends Phaser.Scene {
     paintMood();
     // tarja do estádio
     const lt = this.add.graphics();
-    plateShadow(lt, 0, py + ph - 62, W - 70, 50, false, true);
-    plate(lt, 0, py + ph - 62, W - 70, 50, TV.ink, 0.94, false, true);
-    plate(lt, 0, py + ph - 62, 56, 50, uiColor(host), 1, false, true);
+    plateShadow(lt, VIEW.x, py + ph - 62, W - 70 - VIEW.x, 50, false, true);
+    plate(lt, VIEW.x, py + ph - 62, W - 70 - VIEW.x, 50, TV.ink, 0.94, false, true);
+    plate(lt, VIEW.x, py + ph - 62, 56 - VIEW.x, 50, uiColor(host), 1, false, true);
     v.add(lt);
     v.add(this.add.image(26, py + ph - 37, logoKey(host.id, 's')).setDisplaySize(32, 32));
     const sn = tvText(this, 66, py + ph - 47, fin ? 'QFL BOWL · ' + hostR.stadium.name : hostR.stadium.name, 19, C.white, 800, 0.6).setOrigin(0, 0.5);

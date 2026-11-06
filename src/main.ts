@@ -7,7 +7,7 @@ import '@fontsource/silkscreen';
 import '@fontsource/saira-condensed/600.css';
 import '@fontsource/saira-condensed/700.css';
 import '@fontsource/saira-condensed/800.css';
-import { GAME_H, GAME_W, RES } from './config';
+import { RES, VIEW, readSafeInsets } from './config';
 import { patchText } from './systems/hires';
 import { patchGraphicsPerf } from './systems/perf';
 import { music } from './systems/music';
@@ -47,8 +47,9 @@ async function boot() {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    width: GAME_W * RES,
-    height: GAME_H * RES,
+    // canvas do tamanho da tela inteira (palco + bordas); a câmera põe o palco na área segura
+    width: Math.round(VIEW.w * RES),
+    height: Math.round(VIEW.h * RES),
     backgroundColor: '#0B0E14',
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, powerPreference: 'high-performance' },
@@ -71,6 +72,20 @@ async function boot() {
 }
 
 boot();
+
+// O iPhone às vezes informa o notch / a tela um instante depois de abrir: se mudou, recarrega uma vez
+// com a medida certa (senão o jogo ficaria com a área segura errada até fechar o app).
+if (typeof window !== 'undefined' && !new URLSearchParams(location.search).has('safe')) {
+  setTimeout(() => {
+    const now = readSafeInsets();
+    const was = VIEW.inset;
+    const moved = Math.abs(now.t - was.t) + Math.abs(now.b - was.b) + Math.abs(now.l - was.l) + Math.abs(now.r - was.r) > 3 || Math.abs(window.innerHeight - VIEW.screen.h) > 40 || Math.abs(window.innerWidth - VIEW.screen.w) > 40;
+    if (moved && !sessionStorage.getItem('qb-view-reload')) {
+      sessionStorage.setItem('qb-view-reload', '1');
+      location.reload();
+    }
+  }, 900);
+}
 
 // Modo offline (só na versão publicada no site): o service worker guarda o jogo para abrir sem internet.
 // No app de iPhone o jogo já vem dentro do app, então não precisa.

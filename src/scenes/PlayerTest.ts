@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_H, GAME_W } from '../config';
+import { GAME_H, GAME_W, VIEW } from '../config';
 import { TeamRepository } from '../data/TeamRepository';
 import { PlayerBody } from '../player/PlayerBody';
 import { BEARD_COUNT, FACE_COUNT, HAIR_COLORS, HAIR_COUNT, PlayerFace, SKINS } from '../player/PlayerFace';
@@ -21,7 +21,7 @@ export class PlayerTest extends Phaser.Scene {
     setupHiRes(this);
     const W = GAME_W;
     const H = GAME_H;
-    this.add.rectangle(0, 0, W, H, 0x0a0c1a).setOrigin(0);
+    this.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0x0a0c1a).setOrigin(0);
     this.add.existing(title(this, W / 2, 24, 'TESTE DO JOGADOR', 13, UI.yellow).setOrigin(0.5));
 
     const s = defaultSave();
