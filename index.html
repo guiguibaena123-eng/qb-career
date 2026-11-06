@@ -15,7 +15,8 @@
     <title>QB Career</title>
     <style>
       html, body { margin: 0; height: 100%; background: #0B0E14; overflow: hidden; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
-      #game { width: 100%; height: 100%; }
+      /* O jogo começa abaixo do notch / Dynamic Island (área segura do iPhone); a faixa de cima fica na cor de fundo */
+      #game { position: fixed; left: 0; right: 0; top: env(safe-area-inset-top, 0px); bottom: 0; }
     </style>
   </head>
   <body>
