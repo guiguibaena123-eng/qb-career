@@ -1,4 +1,4 @@
-# Baixa a foto escolhida (2200 px de largura) e guarda licença/autor para os créditos.
+# Baixa a foto escolhida (até 3840 px de largura) e guarda licença/autor para os créditos.
 import json, sys, urllib.parse, urllib.request, urllib.error, re, html
 from pathlib import Path
 import time
@@ -11,12 +11,12 @@ def fetch(url, t=60):
             time.sleep(5 * (k + 1))
 UA = {'User-Agent': 'QBCareerStadiumArt/1.0 (https://github.com/guiguibaena123-eng/qb-career; game asset research)'}
 key, title = sys.argv[1], sys.argv[2]
-q = 'https://commons.wikimedia.org/w/api.php?' + urllib.parse.urlencode({'action': 'query', 'format': 'json', 'titles': title, 'prop': 'imageinfo', 'iiprop': 'url|extmetadata|size', 'iiurlwidth': 2200})
+q = 'https://commons.wikimedia.org/w/api.php?' + urllib.parse.urlencode({'action': 'query', 'format': 'json', 'titles': title, 'prop': 'imageinfo', 'iiprop': 'url|extmetadata|size', 'iiurlwidth': 3840})
 d = json.loads(fetch(q))
 ii = list(d['query']['pages'].values())[0]['imageinfo'][0]
 m = ii['extmetadata']
 strip = lambda v: html.unescape(re.sub('<[^>]+>', '', v or '')).strip()
-src = ii.get('thumburl') if ii['width'] > 2200 else ii['url']
+src = ii.get('thumburl') if ii['width'] > 3840 else ii['url']
 Path('orig').mkdir(exist_ok=True)
 Path(f'orig/{key}.jpg').write_bytes(fetch(src, 120))
 cr = json.loads(Path('credits.json').read_text()) if Path('credits.json').exists() else {}
