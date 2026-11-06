@@ -210,21 +210,24 @@ export function jerseyTexture(scene: Phaser.Scene, o: JerseyOpts): string {
 
   // Número (só nas costas): sombra, contorno duplo e brilho dentro do número
   const num = o.number || '?';
+  // número branco (contorno na cor secundária); camisa clara mantém a tinta escura
+  const nInk = lum(P) > 0.62 ? ink : 0xffffff;
+  const nTrim = nInk === ink ? trim : Math.abs(lum(S) - 1) > 0.2 ? S : 0x0d0d12;
   c.font = `${num.length > 1 ? 84 : 96}px "Press Start 2P", monospace`;
   const ny = 206;
   c.lineWidth = 18;
   c.strokeStyle = 'rgba(0,0,0,0.55)';
   c.strokeText(num, 153, ny + 4);
   c.lineWidth = 14;
-  c.strokeStyle = css(trim);
+  c.strokeStyle = css(nTrim);
   c.strokeText(num, 150, ny);
   c.lineWidth = 6;
-  c.strokeStyle = css(mix(ink, 0x000000, 0.25));
+  c.strokeStyle = css(mix(nTrim, 0x000000, 0.25));
   c.strokeText(num, 150, ny);
   const ng = c.createLinearGradient(0, ny - 42, 0, ny + 42);
-  ng.addColorStop(0, css(mix(ink, 0xffffff, 0.35)));
-  ng.addColorStop(0.5, css(ink));
-  ng.addColorStop(1, css(mix(ink, 0x000000, 0.15)));
+  ng.addColorStop(0, css(mix(nInk, 0xffffff, 0.35)));
+  ng.addColorStop(0.5, css(nInk));
+  ng.addColorStop(1, css(mix(nInk, 0x000000, 0.15)));
   c.fillStyle = ng;
   c.fillText(num, 150, ny);
   c.restore();

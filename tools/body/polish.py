@@ -14,7 +14,9 @@ aplicado igualzinho em todas, então tudo continua encaixando:
   7. sombra de contato onde uma peça entra embaixo de outra (calça sob a camisa, meião sob a
      calça, pescoço sob o capacete); brilho só nas bordas de cima expostas
   0. capacete: abertura do rosto 2 px mais larga de cada lado (casco, máscara, jugular e viseira
-     acompanham; o rosto em sprite fica no mesmo lugar e aparece mais)
+     acompanham; o rosto em sprite fica no mesmo lugar e aparece mais) e 3 px mais alta embaixo
+     (barras de baixo da máscara e jugular descem: a boca aparece)
+  8. número da camisa no tom cheio (a cor do número sai exata)
 
 Uso: python tools/body/polish.py
 """
@@ -147,6 +149,16 @@ for n, a in layers.items():
         ok = idx >= 0
         out[ok] = row[idx[ok]]
         a[y] = out
+
+# 0b. abertura mais alta: as barras de baixo da máscara e a jugular descem 3 px (a boca aparece);
+# as barras laterais esticam até elas
+FD = 3
+for n, a in layers.items():
+    if not n.startswith(('mask_', 'chin_')):
+        continue
+    old = a.copy()
+    for y in range(H - 1, 31, -1):
+        a[y] = old[y - FD] if y - FD >= 32 else old[31]
 
 # 1. cintura (tronco central fica 1 px mais estreito de cada lado na cintura e no quadril)
 u = union()
@@ -281,5 +293,12 @@ OUT.mkdir(parents=True, exist_ok=True)
 for n, a in layers.items():
     Image.fromarray(a.repeat(2, 0).repeat(2, 1)).save(OUT / f'{n}.png', optimize=True)
 for n, a in small.items():
+    if n.startswith('nf_'):
+        # preenchimento do número no tom cheio (antes 214 = a cor saía a 84%: o branco ficava cinza)
+        on = (a[..., 3] > 0) & (a[..., 0] >= OUTLINE)
+        g = a[..., :3].astype(np.float32)
+        g[on] = np.clip(g[on] * (255 / 214), 0, 255)
+        a = a.copy()
+        a[..., :3] = np.round(g).astype(np.uint8)
     Image.fromarray(a).save(OUT / f'{n}.png', optimize=True)
 print('camadas geradas:', len(layers) + len(small))

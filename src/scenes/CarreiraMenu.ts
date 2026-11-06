@@ -17,7 +17,7 @@ import { DEFAULT_LOOK, getSave, recordText, updateSave, type LookOptions } from 
 import { setupHiRes } from '../systems/hires';
 import { portrait as drawPortrait } from '../ui/portrait';
 import { weatherIcon } from '../ui/weatherIcon';
-import { arrowAfter, C, fillPlate, inkOn, label, lum, mix, plate, plateLine, plateShadow, sectionHead, star, strokePlate, trophy, title, TV, tvCard as gradCard, tvEnter, TvButton as GlassButton, tvText, wipeTo } from '../ui/tv';
+import { arrowAfter, C, fillPlate, inkOn, label, lum, mix, plate, plateLine, platePts, plateShadow, sectionHead, star, strokePlate, trophy, title, TV, tvCard as gradCard, tvEnter, TvButton as GlassButton, tvText, wipeTo } from '../ui/tv';
 
 /*
  * CarreiraMenu — hub da carreira (como no design): cabeçalho com o jogador, time, OVR e retrospecto;
@@ -198,6 +198,7 @@ export class CarreiraMenu extends Phaser.Scene {
   private persButtons: GlassButton[] = [];
   private preview!: PlayerBody;
   private catBar!: Phaser.GameObjects.Container;
+  private persFront!: Phaser.GameObjects.Container;
   private persHint!: Phaser.GameObjects.Text;
   private undoBtn!: GlassButton;
   private persNow: PersRow[] = [];
@@ -574,6 +575,8 @@ export class CarreiraMenu extends Phaser.Scene {
     this.body.setVisible(!pers);
     this.persPane.setVisible(pers);
     this.persFixed.setVisible(pers);
+    this.persFront.setVisible(pers);
+    this.preview.setVisible(pers);
     this.persButtons.forEach((b) => {
       b.setVisible(pers);
       if (b.input) b.input.enabled = pers;
@@ -604,10 +607,13 @@ export class CarreiraMenu extends Phaser.Scene {
     if (pers) {
       const pc = this.persPane.content;
       const base = 16;
-      this.tweens.killTweensOf([pc, this.persFixed]);
+      this.tweens.killTweensOf([pc, this.persFixed, this.persFront]);
       pc.setAlpha(0).setX(base - 28);
       this.persFixed.setAlpha(0).setX(-28);
-      this.tweens.add({ targets: this.persFixed, x: 0, alpha: 1, duration: 360, ease: 'Expo.Out' });
+      this.persFront.setAlpha(0).setX(-28);
+      this.preview.setAlpha(0);
+      this.tweens.add({ targets: [this.persFixed, this.persFront], x: 0, alpha: 1, duration: 360, ease: 'Expo.Out' });
+      this.tweens.add({ targets: this.preview, alpha: 1, duration: 360, ease: 'Quad.Out' });
       this.tweens.add({ targets: pc, x: base, alpha: 1, duration: 360, delay: 60, ease: 'Expo.Out' });
     }
   }
@@ -787,24 +793,27 @@ export class CarreiraMenu extends Phaser.Scene {
     g.fillRect(S.x, S.y + S.h - 46, S.w - 12, 3);
     c.add(g);
     c.add(tvText(this, S.x + S.w - 16, S.y + 64, `#${getSave().number}`, 64, hex(mix(TV.ink2, 0xffffff, 0.08)), 800, 0).setOrigin(1, 0.5));
-    // jogador (recortado no palco: no zoom ele passa das bordas)
+    // jogador: fica FORA do container (o Phaser não aplica máscara em objeto dentro de container) e é
+    // recortado no formato exato do palco, pontas inclinadas incluídas — no zoom não passa das bordas
     const z = ZOOM.unif;
-    this.preview = new PlayerBody(this, S.x + S.w / 2, this.feetY(z), this.bodyCfg(getSave().look), z.s);
+    this.preview = new PlayerBody(this, S.x + S.w / 2, this.feetY(z), this.bodyCfg(getSave().look), z.s).setDepth(6.2);
     const mg = this.make.graphics({}, false);
-    mg.fillRect(S.x + 2, S.y + 2, S.w - 4, S.h - 4);
+    mg.fillStyle(0xffffff, 1);
+    mg.fillPoints(platePts(S.x + 1, S.y + 1, S.w - 2, S.h - 2), true);
     this.preview.setMask(mg.createGeometryMask());
-    c.add(this.preview);
+    // o que fica por cima do jogador (faixa do topo, selo, dica, toque, categorias)
+    const f = (this.persFront = this.add.container(0, 0).setDepth(6.4));
     // faixa escura no alto: o jogador ampliado passa por baixo dos botões sem embolar
     const shade = this.add.graphics();
     shade.fillGradientStyle(TV.ink2, TV.ink2, TV.ink2, TV.ink2, 0.96, 0.96, 0, 0);
     shade.fillRect(S.x + 2, S.y + 2, S.w - 4, 58);
-    c.add(shade);
+    f.add(shade);
     // nome do uniforme (selo no piso) e dica
     this.kitTagBg = this.add.graphics();
     this.kitTag = tvText(this, S.x + 22, S.y + S.h - 22, '', 13, C.ink, 800, 1.2).setOrigin(0, 0.5);
-    c.add([this.kitTagBg, this.kitTag]);
+    f.add([this.kitTagBg, this.kitTag]);
     this.persHint = tvText(this, S.x + S.w - 14, S.y + S.h - 22, 'TOQUE NO JOGADOR', 11, inkOn(this.team.colors.primary), 700, 1).setOrigin(1, 0.5).setAlpha(0.75);
-    c.add(this.persHint);
+    f.add(this.persHint);
     // tocar no jogador: abre a categoria da parte tocada (fora dele, volta ao uniforme)
     const zone = this.add.zone(S.x, S.y + 44, S.w, S.h - 44).setOrigin(0).setInteractive();
     zone.on('pointerup', (p: Phaser.Input.Pointer) => {
@@ -812,7 +821,7 @@ export class CarreiraMenu extends Phaser.Scene {
       const cat = this.partAt(p.worldX, p.worldY);
       this.pickCat(cat ?? 'unif');
     });
-    c.add(zone);
+    f.add(zone);
     // botões do palco
     const btn = (x: number, w: number, text: string, fn: () => void) => {
       const b = new GlassButton(this, x, S.y + 24, { w, h: 32, fill: TV.ink3, fillAlpha: 0.94 }).setDepth(7);
@@ -826,7 +835,7 @@ export class CarreiraMenu extends Phaser.Scene {
     btn(S.x + S.w - 12 - 56, 112, 'ALEATÓRIO', () => this.randomLook());
     // barra de categorias (fixa)
     this.catBar = this.add.container(0, 0);
-    c.add(this.catBar);
+    f.add(this.catBar);
     this.drawCatBar();
     this.updateKitTag();
     this.updateUndo();
