@@ -313,13 +313,14 @@ class MatchSfx {
     // só mexe quando muda de verdade (setTargetAtTime todo quadro é desperdício)
     const hv = 0.08 + 0.72 * k * k;
     const bv = 0.6 - 0.18 * k;
+    // sobe rápido (a torcida explode junto com o lance) e desce devagar
     if (Math.abs(hv - this.hypeV) > 0.01) {
+      this.hype.level(hv, hv > this.hypeV ? 0.12 : 0.5);
       this.hypeV = hv;
-      this.hype.level(hv, 0.4);
     }
     if (Math.abs(bv - this.baseV) > 0.01) {
+      this.base.level(bv, bv > this.baseV ? 0.2 : 0.4);
       this.baseV = bv;
-      this.base.level(bv, 0.6);
     }
   }
   private hypeV = -1;

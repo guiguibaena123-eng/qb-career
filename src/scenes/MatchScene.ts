@@ -1351,7 +1351,7 @@ export class MatchScene extends Phaser.Scene {
     sfx.play('bounce', { x: this.ball.x, delay: 0.05 });
     if (!this.ballAway) {
       if (big === 'ESCAPOU!' || big === 'DESVIADO!') sfx.crowd('ooh', 2, { delay: 0.05 });
-      else sfx.crowd('aww', 1, { vol: 0.55, delay: 0.15 });
+      else sfx.crowd('aww', 1, { vol: 0.55, delay: 0.08 });
     }
     this.endPlay('inc');
   }
@@ -1648,7 +1648,7 @@ export class MatchScene extends Phaser.Scene {
         // Derrubado na própria end zone: safety (+2 para eles) e eles recebem a bola
         s.score.away += 2;
         this.ui.pop('SAFETY!', '#E5484D', 24, 200, 1200);
-        sfx.crowd('boo', 3, { delay: 0.3 });
+        sfx.crowd('boo', 3, { delay: 0.08 });
         vibrate(VIBE.turnover);
         text = `SAFETY · +2 ${TEAMS.away.name}`;
         yardsText = '';
@@ -1673,14 +1673,14 @@ export class MatchScene extends Phaser.Scene {
       s.down = 1;
       s.distance = Math.min(10, 100 - s.los);
       this.time.delayedCall(350, () => this.ui.pop('1ª DESCIDA!', '#3CCB5A', 16, 300, 600));
-      sfx.crowd('cheerMed', 1, { vol: 0.55, delay: 0.3 });
+      sfx.crowd('cheerMed', 1, { vol: 0.55, delay: 0.08 });
     } else {
       s.distance -= gained;
       s.down++;
       if (s.down > 4) {
         // 4ª descida falhou: a bola vira para eles ali mesmo
         this.time.delayedCall(350, () => this.ui.caption('PERDEU NAS DESCIDAS', 300, 1200, '#FFFFFF', 0x5a1418));
-        sfx.crowd('aww', 3, { delay: 0.35 });
+        sfx.crowd('aww', 3, { delay: 0.08 });
         this.postTimer = 2;
         const at = s.los;
         this.afterPost = () => this.opponentDrive(at, false);
