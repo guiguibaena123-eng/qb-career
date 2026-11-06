@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from '../systems/sfx';
 import { CombineBase } from '../combine/CombineBase';
 import { clamp, scoreArm } from '../combine/scoring';
 import { Actor, CombineStage, MID, playerLook } from '../combine/stage';
@@ -156,6 +157,7 @@ export class CombineForca extends CombineBase {
     const p = this.screenAt(ball.x, ball.y);
     ball.state = 'held';
     ball.hide();
+    sfx.play('bounce', { vol: 0.7, x: ball.x });
     this.puff(p.x, p.y);
     this.popText(p.x, p.y - 50, `${this.yds.toFixed(0)} JARDAS`, '#FFFFFF');
     this.buzz(20);

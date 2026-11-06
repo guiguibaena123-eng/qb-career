@@ -104,7 +104,7 @@ export class DraftEspera extends Phaser.Scene {
       const fl = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xffffff, 0.22).setOrigin(0).setDepth(68);
       this.tweens.add({ targets: fl, alpha: 0, duration: 220, ease: 'Quad.Out', onComplete: () => fl.destroy() });
       vibrate(VIBE.td);
-      sfx.cue('cheerMed', { vol: 0.45 });
+      sfx.cue('applause', { vol: 0.6 });
       // Depois vai para a linha do ticker
       this.time.delayedCall(1250, () => {
         this.tweens.add({
@@ -146,7 +146,7 @@ export class DraftEspera extends Phaser.Scene {
       this.tweens.add({ targets: btn, alpha: 1, duration: 250 });
       btn.setEnabled(true);
       vibrate(VIBE.tap);
-      sfx.cue('cheerSwell', { vol: 0.4 });
+      sfx.cue('applause', { vol: 0.45 });
       // Relógio do pick no telão (como na TV): 10:00 descendo
       let left = 600;
       const clock = () => B.s.setText(`NO RELÓGIO · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`);

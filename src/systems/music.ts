@@ -15,23 +15,31 @@
  * música termina. Algumas faixas fecham com 8–15 s quase mudos (20 dB abaixo): a próxima entra ali, senão o
  * menu ficava num "buraco" quase sem som antes da troca.
  */
-const TRACKS: { file: string; end: number; out: number; start?: number }[] = [
-  { file: '01', end: 162.5, out: 162.0 },
-  { file: '02', end: 164.7, out: 161.0 },
+const TRACKS: { file: string; end: number; out: number; start?: number; lv: number; inDb: number; outDb: number }[] = [
+  // lv = volume médio da faixa (dB RMS); inDb = volume dos primeiros 12 s (a partir de `start`);
+  // outDb = volume do trecho onde ela sai. Medidos nos arquivos (servem para casar a entrada com a saída).
+  { file: '01', end: 162.5, out: 162.0, lv: -10.5, inDb: -11.4, outDb: -14.6 },
+  { file: '02', end: 164.7, out: 161.0, lv: -14.0, inDb: -15.2, outDb: -23.4 },
   // 03 e 08: pausa baixinha logo no começo (8–14 s / 9–16 s); logo após uma troca soava como buraco →
   // começam depois dela (a entrada suave esconde o corte)
-  { file: '03', end: 146.1, out: 131.5, start: 14.2 },
-  { file: '04', end: 142.4, out: 128.5 },
-  { file: '05', end: 270.5, out: 270.5 },
-  { file: '06', end: 128.5, out: 128.5 },
-  { file: '07', end: 144.0, out: 131.0 },
-  { file: '08', end: 164.4, out: 148.0, start: 16.4 },
-  { file: '09', end: 137.1, out: 123.5 },
-  { file: '10', end: 151.5, out: 151.5 },
-  { file: '11', end: 86.2, out: 86.0 },
+  { file: '03', end: 146.1, out: 131.5, start: 14.2, lv: -9.0, inDb: -7.8, outDb: -10.3 },
+  { file: '04', end: 142.4, out: 128.5, lv: -10.3, inDb: -15.4, outDb: -11.5 },
+  { file: '05', end: 270.5, out: 270.5, lv: -10.9, inDb: -16.1, outDb: -21.9 },
+  { file: '06', end: 128.5, out: 128.5, lv: -10.0, inDb: -9.6, outDb: -10.0 },
+  { file: '07', end: 144.0, out: 131.0, lv: -10.0, inDb: -16.1, outDb: -11.3 },
+  { file: '08', end: 164.4, out: 148.0, start: 16.4, lv: -11.2, inDb: -11.1, outDb: -12.5 },
+  { file: '09', end: 137.1, out: 123.5, lv: -12.9, inDb: -17.1, outDb: -14.9 },
+  { file: '10', end: 151.5, out: 151.5, lv: -9.7, inDb: -16.2, outDb: -9.4 },
+  { file: '11', end: 86.2, out: 86.0, lv: -10.9, inDb: -11.0, outDb: -11.5 },
 ];
+/** Volume médio alvo de todas as faixas (dB): cada uma ganha um ajuste para chegar nele. */
+const TARGET_DB = -11;
+/** Ajuste de volume (ganho) de uma faixa para todas soarem iguais. */
+const normGain = (t: number) => Math.min(1.45, Math.pow(10, (TARGET_DB - TRACKS[t].lv) / 20));
+/** Depois da troca, a faixa nova sobe do volume "casado" até o dela durante este tempo (s). */
+const SETTLE = 10;
 /** Duração da transição entre faixas (s): longa, as duas se misturam devagar. */
-const XFADE = 9;
+const XFADE = 12;
 /** Momento (s na faixa) em que a próxima começa a entrar. */
 // (com final baixo, a troca começa antes: quando a antiga cai, a nova já está quase no volume cheio)
 const xfadeAt = (t: number) => Math.min(TRACKS[t].end - XFADE, TRACKS[t].out - XFADE * 0.6);
@@ -56,6 +64,8 @@ interface Deck {
   unlocked: boolean;
   /** faixa que este deck já está carregando antes do primeiro toque (-1 = nenhuma) */
   primed: number;
+  /** ajuste de volume da faixa (igualar as faixas e casar a entrada com a saída da anterior) */
+  trim: GainNode;
 }
 
 class MenuMusic {
@@ -186,9 +196,10 @@ class MenuMusic {
       (el as HTMLAudioElement & { playsInline?: boolean }).playsInline = true;
       const gain = ctx.createGain();
       gain.gain.value = 0;
-      ctx.createMediaElementSource(el).connect(gain);
+      const trim = ctx.createGain();
+      ctx.createMediaElementSource(el).connect(trim).connect(gain);
       gain.connect(this.master);
-      const deck: Deck = { el, gain, track: -1, url: null, handedOff: false, unlocked: false, primed: -1 };
+      const deck: Deck = { el, gain, trim, track: -1, url: null, handedOff: false, unlocked: false, primed: -1 };
       el.addEventListener('timeupdate', () => this.onTime(deck));
       el.addEventListener('ended', () => {
         if (!deck.handedOff && this.decks[this.cur] === deck) this.next();
@@ -320,6 +331,28 @@ class MenuMusic {
       this.cur = this.decks.indexOf(deck);
       const now = ctx.currentTime;
       const dur = first ? INTRO : XFADE;
+      // Volume da faixa nova: igualado às outras; numa troca, começa no volume em que a anterior está
+      // saindo (ex.: anterior termina baixinha e a nova começa forte → a nova entra contida) e depois
+      // sobe devagar até o volume dela. Assim a entrada fica uniforme com a saída.
+      const g = normGain(t);
+      const tr = deck.trim.gain;
+      tr.cancelScheduledValues(now);
+      if (first || old.track < 0) tr.setValueAtTime(g, now);
+      else {
+        const outN = TRACKS[old.track].outDb + (TARGET_DB - TRACKS[old.track].lv);
+        const inN = TRACKS[t].inDb + (TARGET_DB - TRACKS[t].lv);
+        const m0 = Math.max(0.25, Math.min(1, Math.pow(10, (outN - inN + 1.5) / 20)));
+        const n = 48;
+        const c = new Float32Array(n);
+        // em dB, do casado até 0 dB: segura no começo e só sobe depois do meio da troca
+        for (let i = 0; i < n; i++) {
+          const x = i / (n - 1);
+          const k = x * x * (3 - 2 * x);
+          c[i] = g * Math.pow(m0, 1 - k);
+        }
+        tr.setValueAtTime(g * m0, now);
+        tr.setValueCurveAtTime(c, now, dur + SETTLE);
+      }
       fade(deck.gain.gain, now, dur, true, first);
       // a antiga sai junto; se já estava parada, fica muda de vez (senão voltaria tocando junto depois)
       if (old !== deck && old.track >= 0) {
@@ -428,7 +461,10 @@ function fade(p: AudioParam, at: number, dur: number, up: boolean, intro = false
   for (let i = 0; i < n; i++) {
     const x = i / (n - 1);
     // entrada do zero (abrindo o jogo): começa bem baixinho e acelera no fim (o ouvido sente subida uniforme)
-    curve[i] = intro ? x * x * (3 - 2 * x) * x : up ? Math.sin((x * Math.PI) / 2) : Math.cos((x * Math.PI) / 2);
+    // troca: potência igual sobre uma curva em S — a nova começa bem baixinho (sem susto), a antiga
+    // segura mais no começo, e a virada acontece no meio
+    const k = x * x * (3 - 2 * x);
+    curve[i] = intro ? k * x : up ? Math.sin((k * Math.PI) / 2) : Math.cos((k * Math.PI) / 2);
   }
   p.cancelScheduledValues(at);
   p.setValueAtTime(up ? 0 : p.value, at);

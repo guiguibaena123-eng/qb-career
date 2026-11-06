@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from '../systems/sfx';
 import { CombineBase } from '../combine/CombineBase';
 import { clamp } from '../combine/scoring';
 import { Actor, CombineStage, MID, playerLook } from '../combine/stage';
@@ -55,6 +56,7 @@ export class CombinePasse extends CombineBase {
     // Recebedor: uniforme alternativo (cores invertidas da faculdade)
     const l = playerLook();
     this.wr = this.stage.actor(MID, QB_Y + 14, { ...l, jersey: l.trim, helmet: l.trim, pants: l.trim, trim: l.jersey, num: l.jersey, digits: '88' });
+    this.wr.stepVol = 0.35; // longe: pisadas baixinhas
     this.stage.makeBall();
     this.info = pill(this, 116);
     bottomShade(this, 190);
@@ -136,6 +138,8 @@ export class CombinePasse extends CombineBase {
     const lead = ((t.tx - wr0.x) * this.vx + (t.ty - wr0.y) * this.vy) / sp;
     if (s >= 50 && lead > R * 0.5) s = Math.min(100, s + 10);
     this.scores.push(s);
+    // recebedor pega a bola, ou ela quica no gramado
+    sfx.play(s >= 50 ? 'catch' : 'bounce', { vol: s >= 50 ? 0.9 : 0.6, x: this.wr.x });
     if (s >= 50) {
       this.hits++;
       this.combo++;

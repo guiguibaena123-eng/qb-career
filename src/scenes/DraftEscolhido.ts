@@ -82,8 +82,8 @@ export class DraftEscolhido extends Phaser.Scene {
     tvText(this, GAME_W - 64, 708, String(d.pick), 26, C.ink, 800, 0).setOrigin(0.5);
 
     vibrate(VIBE.td);
-    sfx.cue('cheerBig', { vol: 0.6 });
-    sfx.cue('cheerSwell', { vol: 0.45, delay: 2.2 });
+    sfx.cue('ovation', { vol: 0.7 });
+    sfx.cue('applause', { vol: 0.5, delay: 9 });
     // Assinar: vai para o menu da carreira
     bigButton(this, 'ASSINAR CONTRATO', team.colors.primary, () => {
       vibrate(VIBE.tap);

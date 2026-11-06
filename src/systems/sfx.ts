@@ -30,6 +30,10 @@ const BANK = {
   boo: ['boo'],
   aww: ['aww'],
   ooh: ['ooh_1', 'ooh_2', 'ooh_3'],
+  // cerimônia do Draft (plateia de auditório) e Combine (passos na grama)
+  applause: ['applause_1', 'applause_2', 'applause_3', 'applause_4'],
+  ovation: ['ovation'],
+  step: ['step_1', 'step_2', 'step_3', 'step_4', 'step_5', 'step_6'],
 } as const;
 export type Sfx = keyof typeof BANK;
 
@@ -53,8 +57,17 @@ const MIX: Record<Sfx, { vol: number; pitch: number; crowd?: boolean }> = {
   boo: { vol: 0.55, pitch: 0.03, crowd: true },
   aww: { vol: 0.7, pitch: 0.03, crowd: true },
   ooh: { vol: 0.7, pitch: 0.03, crowd: true },
+  applause: { vol: 0.7, pitch: 0.03, crowd: true },
+  ovation: { vol: 0.85, pitch: 0.01, crowd: true },
+  step: { vol: 0.42, pitch: 0.09 },
 };
-const LOOPS = ['amb_base', 'amb_hype'] as const;
+const LOOPS = ['amb_base', 'amb_hype', 'hall_amb', 'sideline'] as const;
+/** Ambientes fora da partida: plateia do auditório (Draft) e conversa dos treinadores (Combine). */
+export type Bed = 'hall' | 'sideline' | null;
+const BEDS: Record<'hall' | 'sideline', { file: string; vol: number }> = {
+  hall: { file: 'hall_amb', vol: 0.55 },
+  sideline: { file: 'sideline', vol: 0.5 },
+};
 const PREF_KEY = 'qb-career-sfx';
 /** Sobreposição entre as voltas do ambiente (s). */
 const LOOP_XF = 1.5;
@@ -279,6 +292,28 @@ class MatchSfx {
     if (now - this.lastCrowd.at < 1.6 && rank <= this.lastCrowd.rank) return;
     this.lastCrowd = { at: now, rank };
     this.play(name, o);
+  }
+
+  private bed: Bed = null;
+  private bedLayer: LoopLayer | null = null;
+
+  /** Liga o ambiente da cena (ou nenhum): entra e sai devagar; chamar várias vezes não faz nada. */
+  setBed(b: Bed) {
+    if (b === this.bed && (this.bedLayer || !b)) return;
+    if (b !== this.bed) {
+      this.bedLayer?.stop();
+      this.bedLayer = null;
+      this.bed = b;
+    }
+    const ctx = this.ctx;
+    if (!b || !ctx) return;
+    void this.load();
+    const buf = this.bufs.get(BEDS[b].file);
+    if (!buf) return; // ainda baixando: tenta de novo no próximo quadro
+    this.bedLayer = new LoopLayer(ctx, buf, b === 'hall' ? this.crowdBus! : this.field!);
+    this.bedLayer.start();
+    this.bedLayer.level(BEDS[b].vol, 1.2);
+    if (import.meta.env.DEV) ((window as unknown as { __sfxLog?: string[] }).__sfxLog ??= []).push(`ambiente:${b}`);
   }
 
   /** Reação de plateia fora da partida (palco do Draft): toca mesmo sem o ambiente do estádio. */

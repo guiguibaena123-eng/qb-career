@@ -33,7 +33,17 @@ Os arquivos foram recortados, filtrados e tiveram o volume igualado para o jogo.
 | boo (camada principal) | To_Be_Booed2_ses1.wav | freesound | https://freesound.org/people/freesound/sounds/25270/ |
 | boo (camada) | crowd booing | HowardV | https://freesound.org/people/HowardV/sounds/264378/ |
 | boo (camada) | JM_AMB_INT_Crowd Sport 01 - Booing.wav | Julien_Matthey | https://freesound.org/people/Julien_Matthey/sounds/557189/ |
+| hall_amb | crowd int medium sophisticated french theater active audience settling down | kyles | https://freesound.org/people/kyles/sounds/452483/ |
+| applause_1 a applause_4 | Various Theatre Applause.wav | Smice_6 | https://freesound.org/people/Smice_6/sounds/609446/ |
+| ovation | ~100 People Crowd Applause | SykerOfficial | https://freesound.org/people/SykerOfficial/sounds/707871/ |
+| sideline (camada principal) | Small Group Conversation Ambience (48/24) | neilraouf | https://freesound.org/people/neilraouf/sounds/484510/ |
+| sideline (camada) | R05-33-Men Talking Outside.wav | craigsmith | https://freesound.org/people/craigsmith/sounds/480781/ |
+| step_1 a step_6 | Panicked Running Footsteps on Grass | sillygrizzlies | https://freesound.org/people/sillygrizzlies/sounds/635052/ |
 
 A torcida é de estádio grande: o som do Millerntor (Hamburgo, 29.546 torcedores) é a base; vaia e lamento
 foram montados empilhando várias gravações com pequenos atrasos e tons diferentes, como se faz em cinema
 para multiplicar uma multidão.
+
+Draft: plateia de auditório (murmúrio de teatro, aplausos educados e ovação), não torcida de estádio.
+Combine: sem torcida; só os passos do jogador (cada pisada recortada de uma corrida na grama) e a conversa
+dos treinadores na beira do campo (duas gravações misturadas e filtradas para soar distante).

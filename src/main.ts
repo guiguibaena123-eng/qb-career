@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from './systems/sfx';
 // Fontes embutidas no projeto (funcionam offline)
 import '@fontsource/press-start-2p';
 import '@fontsource/silkscreen';
@@ -61,6 +62,9 @@ async function boot() {
   game.events.on(Phaser.Core.Events.POST_STEP, () => {
     const inPlay = game.scene.getScenes(true).some((s) => s instanceof MatchScene || DRILLS.has(s.sys.settings.key));
     music.setWanted(!inPlay);
+    // Ambiente: plateia de auditório no Draft, conversa dos treinadores nos testes do Combine
+    const keys = game.scene.getScenes(true).map((s) => s.sys.settings.key);
+    sfx.setBed(keys.some((k) => k.startsWith('Draft')) ? 'hall' : keys.some((k) => DRILLS.has(k)) ? 'sideline' : null);
   });
   // Teste (só no desenvolvimento): acesso ao jogo pelo console
   if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game;

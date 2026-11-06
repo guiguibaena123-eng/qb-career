@@ -60,7 +60,7 @@ export class DraftAnuncio extends Phaser.Scene {
       this.time.delayedCall(900, () => {
         vibrate(VIBE.td);
         com.gesture(2600);
-        sfx.cue('cheerBig', { vol: 0.7 });
+        sfx.cue('ovation', { vol: 0.85 });
         // Clarão só no painel do anúncio (sem tremer a câmera, que deformava a área do púlpito)
         const flash = this.add.rectangle(16, 548, 358, 178, TV.yellow, 0.3).setOrigin(0);
         this.tweens.add({ targets: flash, alpha: 0, duration: 380, ease: 'Quad.Out', onComplete: () => flash.destroy() });

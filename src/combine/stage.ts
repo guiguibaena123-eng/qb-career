@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from '../systems/sfx';
 import { Ball } from '../entities/Ball';
 import { makeLookTexture, PLAYER_SCALE, type Pose } from '../entities/Player';
 import { COLLEGES } from '../data/colleges';
@@ -47,7 +48,10 @@ export class Actor {
   hop = 0;
   pose: Pose | null = null;
   speed = 0;
+  /** Volume das pisadas (0 = sem som). O seu jogador é 1; quem está longe, menos. */
+  stepVol = 1;
   private animT = 0;
+  private lastFrame = -1;
 
   constructor(readonly bb: Billboard, x: number, y: number) {
     this.x = x;
@@ -61,8 +65,12 @@ export class Actor {
     let frame: Pose = this.pose ?? 'idle';
     if (!this.pose && this.speed > 0.6) {
       this.animT += dt * (2 + this.speed * 0.9);
-      frame = (['run1', 'run3', 'run2', 'run4'] as const)[Math.floor(this.animT * 2) % 4];
-    }
+      const i = Math.floor(this.animT * 2) % 4;
+      frame = (['run1', 'run3', 'run2', 'run4'] as const)[i];
+      // pisada: o pé toca o chão nos quadros run1 e run2 (um passo a cada dois quadros)
+      if (i !== this.lastFrame && i % 2 === 0 && this.stepVol > 0) sfx.play('step', { vol: this.stepVol * Math.min(1, 0.55 + this.speed / 16), x: this.x });
+      this.lastFrame = i;
+    } else this.lastFrame = -1;
     if (this.bb.img.frame.name !== frame) this.bb.img.setFrame(frame);
   }
 }
@@ -168,6 +176,14 @@ export class CombineStage {
   makeBall() {
     this.ball = new Ball(this.scene, this.proj, this.ground, this.top);
     this.ball.lights = shadowLights(this.world.tod);
+    // som do lançamento: o braço (esforço) e a bola saindo da mão
+    const ball = this.ball;
+    const launch = ball.launch.bind(ball);
+    ball.launch = (t: Parameters<Ball['launch']>[0]) => {
+      sfx.play('effort', { vol: 0.55 });
+      sfx.play('throw', { vol: 1.1 });
+      return launch(t);
+    };
     return this.ball;
   }
 

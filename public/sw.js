@@ -1,11 +1,11 @@
 // Caminhos relativos: funciona tanto na raiz (npm run dev) quanto em /qb-career/ (GitHub Pages).
 // Modo offline: guarda cada arquivo do jogo na primeira abertura e serve do cache depois.
-const CACHE = 'qb-career-v43';
+const CACHE = 'qb-career-v44';
 // Trilha dos menus: cache próprio, que não é apagado a cada versão (são ~27 MB; baixa só uma vez).
 // Se as faixas mudarem, troque o nome (music-v2) para baixar de novo.
 const MUSIC = 'qb-career-music-v1';
 // Efeitos sonoros da partida (~1,5 MB): idem, cache próprio (troque para sfx-v2 se os sons mudarem).
-const SFX = 'qb-career-sfx-v3';
+const SFX = 'qb-career-sfx-v4';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', 'manifest.webmanifest', 'icons/icon-192.png'])).then(() => self.skipWaiting()));

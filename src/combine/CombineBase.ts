@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from '../systems/sfx';
 import { GAME_H, GAME_W } from '../config';
 import { CombineStage } from './stage';
 import { getSave, updateSave, type TestId } from '../player/PlayerSave';
@@ -137,6 +138,7 @@ export abstract class CombineBase extends Phaser.Scene {
     const tick = () => {
       if (n === 0) {
         t.destroy();
+        sfx.play('whistle', { vol: 0.75 }); // apito do treinador: valendo
         this.play(rng(`${getSave().name}-${this.testId}-${this.tries}`));
         return;
       }
