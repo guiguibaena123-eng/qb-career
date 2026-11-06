@@ -4,7 +4,7 @@ import type { CareerTeam } from '../data/TeamRepository';
 import { setupHiRes } from '../systems/hires';
 import { UI } from '../ui/widgets';
 import { C, inkOn, label, plate, plateShadow, scoreBug, title, TV, TvButton, tvText } from '../ui/tv';
-import { collarTexture, COMMISH, commissionerBody, FORE_LEN, FORE_PIVOT_Y, foreArmTexture, SHOULDER_L, STAGE_H, STAGE_W, stageTexture, UPPER_LEN, upperArmTexture } from './art';
+import { CLAP_FRAMES, CLAP_MEET, collarTexture, COMMISH, commissionerBody, STAGE_H, STAGE_W, stageTexture, type SuitPose } from './art';
 import { PlayerFace } from '../player/PlayerFace';
 
 /*
@@ -33,20 +33,21 @@ export function board(scene: Phaser.Scene, big: string, sub: string, size = 28) 
   const x = 14;
   const y = 84;
   const w = GAME_W - 28;
-  const h = 150;
+  const h = 132;
   plateShadow(g, x, y, w, h);
   plate(g, x, y, w, h, TV.ink, 0.96);
-  g.fillStyle(0xffffff, 0.035);
+  // grade de LED bem fraca
+  g.fillStyle(0xffffff, 0.03);
   for (let xx = x + 14; xx < x + w - 10; xx += 6) g.fillRect(xx, y + 4, 1, h - 8);
   for (let yy = y + 6; yy < y + h; yy += 6) g.fillRect(x + 12, yy, w - 24, 1);
   g.fillStyle(TV.yellow, 1);
   g.fillRect(x + 12, y, w - 12, 4);
-  const t = tvText(scene, GAME_W / 2, y + 62, big, Math.round(size * 2), C.white, 800, 1.5).setOrigin(0.5);
+  const t = tvText(scene, GAME_W / 2, y + 54, big, Math.round(size * 2), C.white, 800, 1.5).setOrigin(0.5);
   if (t.width > w - 40) t.setScale((w - 40) / t.width);
   const sl = scene.add.graphics();
   sl.fillStyle(TV.rule, 1);
-  sl.fillRect(GAME_W / 2 - 110, y + 100, 220, 1);
-  const st = tvText(scene, GAME_W / 2, y + 122, sub, 17, C.yellow, 800, 3).setOrigin(0.5);
+  sl.fillRect(GAME_W / 2 - 110, y + 88, 220, 1);
+  const st = tvText(scene, GAME_W / 2, y + 108, sub, 17, C.yellow, 800, 3).setOrigin(0.5);
   return { t, s: st };
 }
 
@@ -107,16 +108,20 @@ export function bigButton(scene: Phaser.Scene, text: string, color: number, onTa
 const COMMISH_FACE = { face: 16, skin: 1, hair: 8, hairColor: 5, beard: -1, hairTint: 0xc9ced6, skinTint: COMMISH.skin };
 
 /**
- * Comissário: figura de terno 200×400 (mesma base e proporção do jogador de terno) com o rosto da base
- * de rostos. (x, y) = canto de cima; `scale` 1 = 200×400. `clipBottom` = linha da tela abaixo da qual
- * não aparece (o púlpito cobre). `clap` = braços articulados batendo palmas (devolve o `onClap`).
+ * Comissário: figura de terno 200×400 (mesma base do jogador de terno) com o rosto da base de rostos.
+ * (x, y) = canto de cima; `scale` 1 = 200×400. `clipBottom` = linha da tela abaixo da qual não aparece
+ * (o púlpito cobre). `clap` = bate palmas sem parar (quadros desenhados); senão fica de braços caídos,
+ * respirando, e `gesture()` ergue a mão aberta por um instante (quando anuncia um pick).
  */
 export function commissioner(scene: Phaser.Scene, x: number, y: number, scale: number, clipBottom?: number, clap = false) {
   const c = scene.add.container(x, y).setScale(scale);
   const body = scene.add.container(0, 0);
-  body.add(scene.add.image(0, 0, commissionerBody(scene, clap)).setOrigin(0));
+  const img = scene.add.image(0, 0, commissionerBody(scene, clap ? 'clap0' : 'rest')).setOrigin(0);
+  body.add(img);
   // Rosto no mesmo lugar do jogador de terno: célula 192 a 0.5 com o canto em (52, 9)
-  body.add(new PlayerFace(scene, 52 + 48, 9 + 48, COMMISH_FACE, 0.5));
+  const head = scene.add.container(0, 0);
+  head.add(new PlayerFace(scene, 52 + 48, 9 + 48, COMMISH_FACE, 0.5));
+  body.add(head);
   // Gola da camisa e nó da gravata por cima do pescoço
   body.add(scene.add.image(0, 0, collarTexture(scene, COMMISH.tie, COMMISH.jacket, COMMISH_FACE.face)).setOrigin(0));
   c.add(body);
@@ -125,66 +130,45 @@ export function commissioner(scene: Phaser.Scene, x: number, y: number, scale: n
     m.fillRect(x - 10, y - 40, 200 * scale + 20, clipBottom - y + 40);
     c.setMask(m.createGeometryMask());
   }
+  const pose = (p: SuitPose) => img.setTexture(commissionerBody(scene, p));
+  let onClap: () => void = () => {};
   if (!clap) {
     // Respira e balança de leve enquanto fala no púlpito
     scene.tweens.add({ targets: body, y: -2, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-    return { c, body, onClap: (_f: () => void) => {} };
+    let gest: Phaser.Time.TimerEvent | undefined;
+    const gesture = (ms = 1500) => {
+      pose('gest');
+      scene.tweens.add({ targets: head, y: -2, duration: 140, yoyo: true, ease: 'Quad.Out' });
+      gest?.remove();
+      gest = scene.time.delayedCall(ms, () => pose('rest'));
+    };
+    return { c, body, meet: CLAP_MEET, gesture, onClap: (f: () => void) => (onClap = f) };
   }
-  return { c, body, ...clapArms(scene, body) };
-}
-
-/**
- * Braços das palmas, com cinemática de verdade: braço gira no ombro, antebraço no cotovelo, e a mão
- * vai do lado do peito até o centro. Fecha rápido (bate), abre mais devagar. O lado direito é o
- * esquerdo espelhado. A cada batida o corpo afunda um pouco e `onClap` é chamado (brilho, som...).
- */
-function clapArms(scene: Phaser.Scene, body: Phaser.GameObjects.Container) {
-  const deg = Math.PI / 180;
-  const sides = [false, true].map((mirror) => {
-    const holder = scene.add.container(mirror ? 200 : 0, 0).setScale(mirror ? -1 : 1, 1);
-    const upper = scene.add.image(SHOULDER_L.x, SHOULDER_L.y, upperArmTexture(scene)).setOrigin(0.5, 4 / (UPPER_LEN + 8));
-    const fore = scene.add.image(0, 0, foreArmTexture(scene)).setOrigin(2 / (FORE_LEN + 4), FORE_PIVOT_Y);
-    holder.add([upper, fore]);
-    body.add(holder);
-    return { upper, fore };
-  });
-  // t = 0 mãos abertas, 1 mãos juntas
-  const pose = { t: 0 };
-  const apply = () => {
-    const t = pose.t;
-    const up = (16 - 6 * t) * deg; // braço abre para fora e fecha um pouco
-    const fa = (-50 + 28 * t) * deg; // antebraço sobe e vem para o centro
-    for (const s of sides) {
-      s.upper.setRotation(up);
-      const ex = SHOULDER_L.x - Math.sin(up) * UPPER_LEN;
-      const ey = SHOULDER_L.y + Math.cos(up) * UPPER_LEN;
-      s.fore.setPosition(ex, ey).setRotation(fa);
-    }
+  // Palmas: fecha rápido (quadros 0→4), bate (corpo afunda, cabeça acena), abre mais devagar.
+  // De vez em quando uma série mais rápida, como quem se empolga.
+  const seq = (frames: number[], ms: number, done: () => void) => {
+    let i = 0;
+    const step = () => {
+      if (!img.active) return;
+      pose(CLAP_FRAMES[frames[i]]);
+      if (++i < frames.length) scene.time.delayedCall(ms, step);
+      else done();
+    };
+    step();
   };
-  apply();
-  let onClap: () => void = () => {};
+  let n = 0;
   const cycle = () => {
-    scene.tweens.add({
-      targets: pose,
-      t: 1,
-      duration: 150,
-      ease: 'Quad.In',
-      onUpdate: apply,
-      onComplete: () => {
-        onClap();
-        // Batida: corpo afunda e volta
-        scene.tweens.add({ targets: body, y: 3, duration: 70, yoyo: true, ease: 'Quad.Out' });
-        scene.tweens.add({ targets: pose, t: 0, duration: 260, delay: 40, ease: 'Sine.Out', onUpdate: apply, onComplete: () => scene.time.delayedCall(60, cycle) });
-      },
+    const fast = Math.floor(n / 4) % 3 === 2;
+    n++;
+    seq([1, 2, 3, 4], fast ? 26 : 34, () => {
+      onClap();
+      scene.tweens.add({ targets: body, y: 3, duration: 60, yoyo: true, ease: 'Quad.Out' });
+      scene.tweens.add({ targets: head, y: 2, duration: 70, yoyo: true, ease: 'Quad.Out' });
+      scene.time.delayedCall(fast ? 50 : 80, () => seq([3, 2, 1, 0], fast ? 34 : 52, () => scene.time.delayedCall(fast ? 40 : 110, cycle)));
     });
   };
   cycle();
-  /** Ponto (na figura) onde as mãos se encontram. */
-  const up = 10 * deg;
-  const fa = -22 * deg;
-  const hand = FORE_LEN - 4;
-  const meet = { x: 100, y: SHOULDER_L.y + Math.cos(up) * UPPER_LEN + Math.sin(fa) * hand };
-  return { meet, onClap: (f: () => void) => (onClap = f) };
+  return { c, body, meet: CLAP_MEET, gesture: (_ms?: number) => {}, onClap: (f: () => void) => (onClap = f) };
 }
 
 /** Logo do time (do registro), sempre pixelado. */

@@ -7,6 +7,7 @@ import { C, plate, plateShadow, TV, tvEnter, tvText, wipeTo } from '../ui/tv';
 import { GAME_W } from '../config';
 import { getSave } from '../player/PlayerSave';
 import { vibrate, VIBE } from '../systems/feedback';
+import { sfx } from '../systems/sfx';
 
 /*
  * DraftAnuncio — o comissário anuncia o pick no púlpito; no painel, "COM A Nª ESCOLHA DO DRAFT, OS
@@ -25,7 +26,7 @@ export class DraftAnuncio extends Phaser.Scene {
     spotlights(this);
     board(this, 'QFL DRAFT', `${ord(d.round)} RODADA · PICK ${d.pick}`);
     // Púlpito e comissário idênticos aos da sala de espera (mesma largura, tamanho e posição)
-    commissioner(this, 120, 268, 0.75, 489);
+    const com = commissioner(this, 120, 268, 0.75, 489);
     podium(this, 120, 373, 150);
     topBar(this, 'QFL DRAFT', `PICK ${d.pick}`, () => wipeTo(this, 'DraftTelefone'));
 
@@ -58,6 +59,8 @@ export class DraftAnuncio extends Phaser.Scene {
       // Pausa de suspense e o nome aparece
       this.time.delayedCall(900, () => {
         vibrate(VIBE.td);
+        com.gesture(2600);
+        sfx.cue('cheerBig', { vol: 0.7 });
         // Clarão só no painel do anúncio (sem tremer a câmera, que deformava a área do púlpito)
         const flash = this.add.rectangle(16, 548, 358, 178, TV.yellow, 0.3).setOrigin(0);
         this.tweens.add({ targets: flash, alpha: 0, duration: 380, ease: 'Quad.Out', onComplete: () => flash.destroy() });

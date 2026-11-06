@@ -7,6 +7,7 @@ import { bigButton, board, commissioner, draftScene, spotlights, teamLogo, topBa
 import { C, plate, plateShadow, TV, tvEnter, tvText, wipeTo } from '../ui/tv';
 import { getSave } from '../player/PlayerSave';
 import { vibrate, VIBE } from '../systems/feedback';
+import { sfx } from '../systems/sfx';
 
 /*
  * DraftEscolhido — festa no palco: o jogador de terno segura a jersey do time (número 12 e logo), com
@@ -52,7 +53,10 @@ export class DraftEscolhido extends Phaser.Scene {
 
     // Jogador de terno com a jersey do time (rosto do save)
     const fig = suitFigure(this, 95, 240, team);
-    this.tweens.add({ targets: fig, y: 237, duration: 280, yoyo: true, repeat: -1, ease: 'Sine.InOut', repeatDelay: 140 });
+    // Entra subindo a jersey e depois respira, orgulhoso (sem pular sem parar)
+    fig.y = 252;
+    this.tweens.add({ targets: fig, y: 240, duration: 420, ease: 'Back.Out' });
+    this.tweens.add({ targets: fig, y: 237, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.InOut', delay: 420 });
 
     // Confete caindo (cores do time e da festa)
     const cols = [team.colors.primary, 0xf4f1e8, 0xffd23f, 0x3fd0ff, 0xff6fb5];
@@ -78,6 +82,8 @@ export class DraftEscolhido extends Phaser.Scene {
     tvText(this, GAME_W - 64, 708, String(d.pick), 26, C.ink, 800, 0).setOrigin(0.5);
 
     vibrate(VIBE.td);
+    sfx.cue('cheerBig', { vol: 0.6 });
+    sfx.cue('cheerSwell', { vol: 0.45, delay: 2.2 });
     // Assinar: vai para o menu da carreira
     bigButton(this, 'ASSINAR CONTRATO', team.colors.primary, () => {
       vibrate(VIBE.tap);

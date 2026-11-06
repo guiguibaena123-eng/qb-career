@@ -8,8 +8,8 @@ import { SKINS } from '../player/PlayerFace';
 /*
  * Arte do Draft: o palco do QFL Draft é a imagem do design (public/assets/draft, carregada no Boot),
  * exibida ampliada e sem suavização. O comissário e o jogador de terno usam as camadas de
- * assets/draft_suit (a mesma proporção humana) e rostos da base de rostos; o comissário tem braços
- * articulados desenhados em código para as palmas.
+ * assets/draft_suit (geradas por tools/draft/suit.py) e rostos da base de rostos; as palmas do
+ * comissário são quadros desenhados (mãos abertas → batida), nítidos em pixel art.
  */
 
 const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
@@ -22,299 +22,104 @@ export function stageTexture(_scene: Phaser.Scene, _team: CareerTeam, party = fa
   return party ? 'draftimg_stage_party' : 'draftimg_stage';
 }
 
-// ------------------------------------------------------------ comissário
+// ------------------------------------------------------------ figuras de terno
 
 /** Cores do comissário: terno azul-marinho, calça mais escura, gravata da liga, pele clara. */
 export const COMMISH = {
   jacket: 0x34467e,
   trousers: 0x232c50,
-  shoes: 0x15151b,
+  shoes: 0x18181e,
   shirt: 0xf4f1e8,
   tie: 0xf26b1d,
   skin: 0xeac29b,
 };
 
-/** Ombros (px da figura 200×400) e comprimentos dos braços articulados das palmas. */
-export const SHOULDER_L = { x: 60, y: 98 };
-export const SHOULDER_R = { x: 139, y: 98 };
-export const UPPER_LEN = 50;
-export const FORE_LEN = 54;
-/** Linha do meio do antebraço dentro da textura (pivô do cotovelo), em fração da altura. */
-export const FORE_PIVOT_Y = 16 / 26;
+/** Poses dos braços (camadas s2_<pose>_* de tools/draft/suit.py). */
+export type SuitPose = 'rest' | 'gest' | 'hold' | 'clap0' | 'clap1' | 'clap2' | 'clap3' | 'clap4';
+export const CLAP_FRAMES: SuitPose[] = ['clap0', 'clap1', 'clap2', 'clap3', 'clap4'];
+/** Onde as mãos se encontram na batida (px da figura 200×400). */
+export const CLAP_MEET = { x: 100, y: 128 };
 
-/** Tons do paletó (sombra, base, luz, lapela) e contorno. */
-const SUIT = { out: '#0D0D12', dark: '#24315a', base: '#34467e', light: '#4a5f9e', lapel: '#1f2a50', lapelHi: '#5a70b0' };
+interface SuitColors {
+  jacket: number;
+  trousers: number;
+  shoes: number;
+  shirt: number;
+  tie: number;
+  skin: number;
+}
 
 /**
- * Corpo do comissário: calça, sapatos, pescoço, camisa e gravata das camadas do terno (a mesma base,
- * em proporção humana, do jogador de terno) e o paletó desenhado aqui, com todos os detalhes. `clap`:
- * sem braços (os braços articulados das palmas vêm por cima); senão, braços caídos de comprimento real
- * (as mãos na altura da coxa, escondidas atrás do púlpito).
+ * Figura de terno (200×400) numa pose: corpo (calça, sapatos, camisa, gravata, paletó, sombra no chão)
+ * e os braços da pose, tudo das camadas em cinza tingidas com as cores dadas. `jersey` (só na pose
+ * 'hold'): a jersey vai entre os braços e as mãos, com o número.
  */
-export function commissionerBody(scene: Phaser.Scene, clap: boolean) {
-  const key = `draft_commish5_${clap ? 'clap' : 'rest'}`;
+function suitTexture(scene: Phaser.Scene, key: string, c: SuitColors, pose: SuitPose, jersey?: { body: number; trim: number; number: number; digits: string }) {
   if (scene.textures.exists(key)) return key;
   const cv = document.createElement('canvas');
   cv.width = 200;
   cv.height = 400;
   const ctx = cv.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
-  const C = COMMISH;
   const L: [string, number][] = [
-    ['layer_shadow', 0xffffff],
-    ['drsuit_dr_trou', C.trousers],
-    ['drsuit_dr_shoes', C.shoes],
-    // Sem a camada de pescoço do terno: o rosto da base já traz o pescoço, e o contorno dela deixava
-    // duas linhas pretas dos lados do pescoço
-    ['drsuit_dr_shirt', C.shirt],
-    ['drsuit_dr_tie', C.tie],
+    ['drsuit_s2_det', 0xffffff],
+    ['drsuit_s2_trou', c.trousers],
+    ['drsuit_s2_shoes', c.shoes],
+    ['drsuit_s2_shirt', c.shirt],
+    ['drsuit_s2_tie', c.tie],
+    ['drsuit_s2_jacket', c.jacket],
+    [`drsuit_s2_${pose}_sleeve`, c.jacket],
+    [`drsuit_s2_${pose}_cuff`, c.shirt],
   ];
   for (const [k, t] of L) stamp(scene, ctx, k, t);
-  trouserDetails(ctx);
-  if (!clap) {
-    restArm(ctx, false);
-    restArm(ctx, true);
+  if (jersey) {
+    stamp(scene, ctx, 'drsuit_s2_jersey', jersey.body);
+    stamp(scene, ctx, 'drsuit_s2_jtrim', jersey.trim);
+    // Número no peito (sprites 28×40 com o dígito em x 4..28), centralizado
+    const ds = jersey.digits.split('');
+    const x0 = 100 - (ds.length * 24) / 2 - 4;
+    const out = shade(jersey.body, 0.45);
+    ds.forEach((n, i) => stamp(scene, ctx, `layer_no_${n}`, out, x0 + i * 24, 136));
+    ds.forEach((n, i) => stamp(scene, ctx, `layer_nf_${n}`, jersey.number, x0 + i * 24, 136));
   }
-  jacket(ctx);
+  stamp(scene, ctx, `drsuit_s2_${pose}_skin`, c.skin);
   addCanvasTex(scene, key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
   return key;
 }
 
-/** Vinco no meio de cada perna e brilho nos sapatos. */
-function trouserDetails(ctx: CanvasRenderingContext2D) {
-  ctx.fillStyle = 'rgba(255,255,255,0.10)';
-  ctx.fillRect(86, 232, 2, 130);
-  ctx.fillRect(112, 232, 2, 130);
-  ctx.fillStyle = 'rgba(0,0,0,0.22)';
-  ctx.fillRect(98, 232, 4, 132);
-  ctx.fillStyle = 'rgba(255,255,255,0.35)';
-  ctx.fillRect(80, 368, 6, 2);
-  ctx.fillRect(108, 368, 6, 2);
+/** Corpo do comissário numa pose (sem o rosto, que vai por cima). */
+export function commissionerBody(scene: Phaser.Scene, pose: SuitPose) {
+  return suitTexture(scene, `draft_commish6_${pose}`, COMMISH, pose);
 }
 
-/** Meia-largura da silhueta do paletó em cada linha (trapézio caindo do pescoço, ombro, cintura, barra). */
-function jacketHalf(y: number) {
-  if (y < 84) return 0;
-  if (y < 96) return 16 + Math.round(((y - 84) / 12) * 22); // caimento do pescoço até a ponta do ombro
-  if (y < 100) return 39;
-  if (y < 132) return 40;
-  if (y < 172) return 40 - Math.round(((y - 132) / 40) * 6);
-  return 34 + Math.round(((y - 172) / 60) * 2);
-}
-
-/** Meia-largura da abertura em V (camisa e gravata aparecem) em cada linha. */
-const vHalf = (y: number) => (y < 80 || y > 172 ? 0 : Math.max(0, Math.round(17 * (1 - (y - 80) / 92))));
-
-/** Paletó completo em pixel art (blocos de 2 px): silhueta, sombras, lapelas, bolsos, botões e lenço. */
-function jacket(ctx: CanvasRenderingContext2D) {
-  const px = (x: number, y: number, w: number, h: number, c: string) => {
-    ctx.fillStyle = c;
-    ctx.fillRect(x, y, w, h);
-  };
-  const CX = 100;
-  const TOP = 84;
-  const BOT = 232;
-  for (let y = TOP; y < BOT; y += 2) {
-    const h = jacketHalf(y);
-    const v = vHalf(y);
-    // Contorno, base e sombras laterais (luz vem da esquerda)
-    px(CX - h - 2, y, 2, 2, SUIT.out);
-    px(CX + h, y, 2, 2, SUIT.out);
-    for (const [a, b] of [[CX - h, CX - v], [CX + v, CX + h]] as [number, number][]) {
-      if (b <= a) continue;
-      px(a, y, b - a, 2, SUIT.base);
-    }
-    px(CX - h, y, 4, 2, SUIT.light);
-    px(CX + h - 8, y, 8, 2, SUIT.dark);
-    // Lapelas: faixa ao longo do V, até o recorte (notch) na altura do peito
-    if (y >= 88 && y < 150 && v > 0) {
-      const lw = y < 118 ? 10 : 10 - Math.round(((y - 118) / 32) * 8);
-      if (lw > 0) {
-        px(CX - v - lw, y, lw, 2, SUIT.lapel);
-        px(CX + v, y, lw, 2, SUIT.lapel);
-        px(CX - v - lw, y, 2, 2, SUIT.lapelHi);
-        px(CX + v + lw - 2, y, 2, 2, SUIT.out);
-      }
-    }
-    // Borda do V (contorno da camisa)
-    if (v > 0) {
-      px(CX - v - 2, y, 2, 2, SUIT.out);
-      px(CX + v, y, 2, 2, SUIT.out);
-    }
-  }
-  // Recorte das lapelas (notch)
-  px(CX - 27, 112, 6, 2, SUIT.out);
-  px(CX + 21, 112, 6, 2, SUIT.out);
-  // Contorno de cima dos ombros (acompanha o caimento) e costura do ombro
-  for (let y = 84; y < 100; y += 2) {
-    const h = jacketHalf(y);
-    const hp = jacketHalf(y - 2);
-    if (h > hp) {
-      px(CX - h - 2, y - 2, h - hp + 2, 2, SUIT.out);
-      px(CX + hp, y - 2, h - hp + 2, 2, SUIT.out);
-    }
-  }
-  px(CX - 18, 82, 36, 2, SUIT.out);
-  for (let i = 0; i < 16; i += 2) {
-    px(CX - 22 - i, 90 + Math.floor(i / 2), 2, 2, SUIT.dark);
-    px(CX + 20 + i, 90 + Math.floor(i / 2), 2, 2, SUIT.dark);
-  }
-  // Abertura da frente abaixo do V; na barra, as duas frentes se abrem em curva (a calça aparece)
-  for (let y = 172; y < BOT - 10; y += 2) px(CX - 1, y, 2, 2, SUIT.out);
-  for (let i = 1; i <= 5; i++) {
-    const y = BOT - 12 + i * 2;
-    const w = i * 2;
-    ctx.clearRect(CX - w, y, w * 2, 2);
-    px(CX - w - 2, y, 2, 2, SUIT.out);
-    px(CX + w, y, 2, 2, SUIT.out);
-  }
-  // Botões (dois, com brilho)
-  for (const y of [180, 198]) {
-    px(CX - 4, y, 6, 6, SUIT.out);
-    px(CX - 2, y + 2, 2, 2, '#4a4a58');
-    px(CX - 2, y + 2, 1, 1, '#9AA3C0');
-  }
-  // Bolsos com aba (quadris)
-  for (const x0 of [CX - 34, CX + 12]) {
-    px(x0, 204, 22, 2, SUIT.out);
-    px(x0, 206, 22, 4, SUIT.light);
-    px(x0, 210, 22, 2, SUIT.dark);
-  }
-  // Bolso do peito (lado esquerdo dele = direita da tela) com lenço branco e ponta laranja
-  px(CX + 14, 132, 16, 2, SUIT.out);
-  px(CX + 16, 126, 4, 6, '#F4F1E8');
-  px(CX + 20, 124, 4, 8, '#F4F1E8');
-  px(CX + 24, 128, 4, 4, '#F4F1E8');
-  px(CX + 20, 124, 2, 2, '#F26B1D');
-  px(CX + 16, 130, 12, 2, 'rgba(0,0,0,0.2)');
-  // Broche da liga na lapela (direita dele = esquerda da tela)
-  px(CX - 22, 104, 6, 6, SUIT.out);
-  px(CX - 20, 106, 2, 2, '#F26B1D');
-  px(CX - 18, 106, 2, 2, '#FFD23F');
-  // Pregas de tecido na cintura (lados) e linha da barra
-  px(CX - 30, 150, 2, 16, SUIT.dark);
-  px(CX + 28, 150, 2, 16, SUIT.dark);
-  // Linha da barra (só nas duas frentes, fora da abertura)
-  const hb = jacketHalf(BOT - 2);
-  px(CX - hb, BOT - 2, hb - 12, 2, SUIT.out);
-  px(CX + 12, BOT - 2, hb - 12, 2, SUIT.out);
+/** Luminância (0..1) de uma cor, para escolher o terno que contrasta com a jersey. */
+function lum(c: number) {
+  return (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255;
 }
 
 /**
- * Braço caído ao lado do corpo, com comprimento real: manga (com dobra no cotovelo e botões no punho),
- * punho da camisa e mão relaxada com os dedos levemente curvos, na altura da coxa.
+ * Jogador de terno segurando a jersey do time pelos ombros (número do save e logo), com o rosto do
+ * save (PlayerFace a 0.5) e a gola por cima. Jersey escura → terno cinza claro; clara → grafite.
+ * (x, y) = canto de cima.
  */
-function restArm(ctx: CanvasRenderingContext2D, right: boolean) {
-  // Desenha o braço esquerdo da tela e espelha para o direito
-  ctx.save();
-  if (right) {
-    ctx.translate(200, 0);
-    ctx.scale(-1, 1);
-  }
-  const px = (x: number, y: number, w: number, h: number, c: string) => {
-    ctx.fillStyle = c;
-    ctx.fillRect(x, y, w, h);
-  };
-  // Manga: um pouco afastada do tronco, levemente inclinada (cotovelo para fora)
-  for (let y = 98; y < 206; y += 2) {
-    const t = (y - 98) / 108;
-    const x = Math.round(52 - Math.sin(t * Math.PI) * 4) & ~1; // cotovelo um pouco para fora
-    const w = y < 104 ? 16 : 14;
-    px(x - 2, y, w + 4, 2, SUIT.out);
-    px(x, y, w, 2, SUIT.base);
-    px(x, y, 2, 2, SUIT.light);
-    px(x + w - 4, y, 4, 2, SUIT.dark);
-    if (y > 146 && y < 152) px(x + 2, y, w - 6, 2, SUIT.dark); // dobra do cotovelo
-  }
-  px(50, 96, 16, 2, SUIT.out); // topo arredondado do braço, logo abaixo da ponta do ombro
-  // Botões do punho
-  px(54, 198, 2, 2, '#4a4a58');
-  px(58, 198, 2, 2, '#4a4a58');
-  // Punho da camisa
-  px(50, 206, 14, 4, SUIT.out);
-  px(52, 206, 10, 2, '#F4F1E8');
-  // Mão relaxada: palma virada para a perna, dedos curvos, polegar para a frente
-  const skin = hex(COMMISH.skin);
-  px(50, 208, 14, 20, SUIT.out);
-  px(52, 208, 10, 16, skin);
-  px(54, 224, 6, 2, skin);
-  px(52, 210, 2, 12, '#c99c74');
-  for (const y of [214, 218]) px(56, y, 6, 1, 'rgba(0,0,0,0.25)');
-  px(62, 210, 4, 8, SUIT.out); // polegar
-  px(62, 212, 2, 4, skin);
-  ctx.restore();
-}
-
-/** Braço (manga do paletó) na vertical, apontando para baixo; pivô no ombro, no topo. */
-export function upperArmTexture(scene: Phaser.Scene) {
-  const key = 'draft_commish_upper';
-  if (scene.textures.exists(key)) return key;
-  const w = 18;
-  const h = UPPER_LEN + 8;
-  const cv = document.createElement('canvas');
-  cv.width = w;
-  cv.height = h;
-  const ctx = cv.getContext('2d')!;
-  ctx.fillStyle = '#0D0D12';
-  ctx.fillRect(2, 0, w - 4, h);
-  ctx.fillRect(0, 2, w, h - 4);
-  ctx.fillStyle = hex(COMMISH.jacket);
-  ctx.fillRect(2, 2, w - 4, h - 4);
-  ctx.fillStyle = 'rgba(255,255,255,0.18)';
-  ctx.fillRect(4, 4, 2, h - 10);
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.fillRect(w - 6, 4, 4, h - 8);
-  ctx.fillStyle = 'rgba(0,0,0,0.2)';
-  ctx.fillRect(2, h - 6, w - 4, 2); // dobra do cotovelo
-  addCanvasTex(scene, key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
-  return key;
-}
-
-/**
- * Antebraço + punho + mão, na horizontal apontando para a direita; pivô no cotovelo, à esquerda.
- * A mão fica em pé (dedos para cima), com a palma virada para o centro: é ela que bate.
- */
-export function foreArmTexture(scene: Phaser.Scene) {
-  const key = 'draft_commish_fore';
-  if (scene.textures.exists(key)) return key;
-  const sleeve = FORE_LEN - 14;
-  const w = FORE_LEN + 4;
-  const h = 26;
-  const cy = Math.round(FORE_PIVOT_Y * h);
-  const cv = document.createElement('canvas');
-  cv.width = w;
-  cv.height = h;
-  const ctx = cv.getContext('2d')!;
-  const O = '#0D0D12';
-  // Manga
-  ctx.fillStyle = O;
-  ctx.fillRect(0, cy - 8, sleeve + 2, 16);
-  ctx.fillStyle = hex(COMMISH.jacket);
-  ctx.fillRect(2, cy - 6, sleeve - 2, 12);
-  ctx.fillStyle = 'rgba(255,255,255,0.18)';
-  ctx.fillRect(2, cy - 6, sleeve - 2, 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.fillRect(2, cy + 2, sleeve - 2, 4);
-  // Punho branco
-  ctx.fillStyle = O;
-  ctx.fillRect(sleeve, cy - 7, 6, 14);
-  ctx.fillStyle = '#F4F1E8';
-  ctx.fillRect(sleeve, cy - 5, 4, 10);
-  // Mão em pé: palma, dedos para cima e polegar
-  const hx = sleeve + 4;
-  ctx.fillStyle = O;
-  ctx.fillRect(hx, cy - 16, 12, 24);
-  ctx.fillRect(hx - 2, cy - 4, 2, 8);
-  ctx.fillStyle = hex(COMMISH.skin);
-  ctx.fillRect(hx + 2, cy - 14, 8, 20);
-  ctx.fillStyle = '#c99c74';
-  ctx.fillRect(hx + 2, cy - 14, 2, 20);
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  for (const y of [cy - 10, cy - 6]) ctx.fillRect(hx + 4, y, 6, 1); // dobras dos dedos
-  ctx.fillStyle = hex(COMMISH.skin);
-  ctx.fillRect(hx - 2, cy - 2, 2, 4); // polegar
-  addCanvasTex(scene, key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
-  return key;
+export function suitFigure(scene: Phaser.Scene, x: number, y: number, team: CareerTeam) {
+  const s = getSave();
+  const kit = team.kits.home;
+  const light = lum(kit.jersey) < 0.42;
+  const suit = light ? { jacket: 0xaeb3bf, trousers: 0x8f95a3 } : { jacket: 0x3b3f4c, trousers: 0x2b2f3a };
+  const digits = String(Math.max(0, Math.min(99, s.number ?? 12)));
+  const key = `draft_suit6_${team.id}_${s.skin}_${digits}`;
+  const colors = { ...suit, shoes: 0x18181e, shirt: 0xf4f1e8, tie: team.colors.primary, skin: SKINS[s.skin % SKINS.length] };
+  suitTexture(scene, key, colors, 'hold', { body: kit.jersey, trim: kit.stripe, number: kit.number, digits });
+  const c = scene.add.container(x, y);
+  c.add(scene.add.image(0, 0, key).setOrigin(0));
+  // Rosto: célula de 192 a 0.5 com o canto em (52, 9) → centro em (100, 57)
+  c.add(new PlayerFace(scene, 52 + 48, 9 + 48, saveFace(), 0.5));
+  // Gola da camisa e nó da gravata por cima do pescoço (a cabeça "veste" o terno)
+  c.add(scene.add.image(0, 0, collarTexture(scene, team.colors.primary, suit.jacket, s.face)).setOrigin(0));
+  // Logo do time na barra da jersey
+  c.add(scene.add.image(100, 206, team.logo.small).setDisplaySize(22, 22));
+  return c;
 }
 
 /** Púlpito com o logo oficial da QFL na frente e o microfone, `w` px de largura (pixels de tela). */
@@ -404,89 +209,6 @@ function stamp(scene: Phaser.Scene, ctx: CanvasRenderingContext2D, key: string, 
     t.drawImage(img, 0, 0);
   }
   ctx.drawImage(tmp, dx, dy);
-}
-
-/**
- * Figura de terno do Draft (camadas 200×400 de assets/draft_suit) segurando a jersey do time com o
- * número 12, e por cima o rosto do save (PlayerFace a 0.5, como no design). (x, y) = canto de cima.
- */
-export function suitFigure(scene: Phaser.Scene, x: number, y: number, team: CareerTeam) {
-  const s = getSave();
-  const kit = team.kits.home;
-  const key = `draft_suit2_${team.id}_${s.skin}`;
-  if (!scene.textures.exists(key)) {
-    const cv = document.createElement('canvas');
-    cv.width = 200;
-    cv.height = 400;
-    const ctx = cv.getContext('2d')!;
-    ctx.imageSmoothingEnabled = false;
-    const skin = SKINS[s.skin % SKINS.length];
-    const L: [string, number][] = [
-      ['layer_shadow', 0xffffff],
-      ['drsuit_dr_trou', 0x2b3560],
-      ['drsuit_dr_shoes', 0x15151b],
-      // (sem a camada de pescoço: o rosto da base já traz o pescoço, e o contorno dela sobrava)
-      ['drsuit_dr_shirt', 0xf4f1e8],
-      ['drsuit_dr_tie', team.colors.primary],
-      ['drsuit_dr_jacket', 0x3a4e8a],
-      ['drsuit_dr_jersey', kit.jersey],
-      ['drsuit_dr_jcollar', kit.stripe],
-      ['drsuit_dr_jsleeve', kit.stripe],
-      ['drsuit_dr_det', 0xffffff],
-    ];
-    for (const [k, t] of L) stamp(scene, ctx, k, t);
-    // Número 12 na jersey: contorno e preenchimento (sprites 14×20 a 2×)
-    const out = shade(kit.jersey, 0.45);
-    stamp(scene, ctx, 'layer_no_1', out, 74, 140);
-    stamp(scene, ctx, 'layer_no_2', out, 98, 140);
-    stamp(scene, ctx, 'layer_nf_1', kit.number, 74, 140);
-    stamp(scene, ctx, 'layer_nf_2', kit.number, 98, 140);
-    stamp(scene, ctx, 'drsuit_dr_hands', skin);
-    slopeShoulders(ctx, 0x3a4e8a);
-    addCanvasTex(scene, key, cv)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
-  }
-  const c = scene.add.container(x, y);
-  c.add(scene.add.image(0, 0, key).setOrigin(0));
-  // Rosto: célula de 192 a 0.5 com o canto em (52, 9) → centro em (100, 57)
-  c.add(new PlayerFace(scene, 52 + 48, 9 + 48, saveFace(), 0.5));
-  // Gola da camisa e nó da gravata por cima do pescoço (a cabeça "veste" o terno)
-  c.add(scene.add.image(0, 0, collarTexture(scene, team.colors.primary, 0x3a4e8a, getSave().face)).setOrigin(0));
-  // Logo do time na jersey (ao lado do número)
-  c.add(scene.add.image(100, 205, team.logo.small).setDisplaySize(26, 26));
-  return c;
-}
-
-/**
- * Caimento dos ombros (trapézio): o paletó desce do pescoço até a ponta do ombro em vez de ter o topo
- * reto (com calombos). Apaga o que fica acima da linha, contorna a linha e preenche falhas embaixo dela.
- */
-function slopeShoulders(ctx: CanvasRenderingContext2D, jacket: number) {
-  const img = ctx.getImageData(0, 0, 200, 110);
-  const d = img.data;
-  const fill = [(jacket >> 16) & 255, (jacket >> 8) & 255, jacket & 255];
-  const at = (x: number, y: number) => (y * 200 + x) * 4;
-  // Topo do paletó em cada coluna: perto do pescoço em y 84, na ponta do ombro (|dx| 46) em y 96
-  const top = (x: number) => 84 + Math.round(Math.min(1, Math.max(0, (Math.abs(x - 99.5) - 16) / 30)) * 12) & ~1;
-  for (let x = 0; x < 200; x++) {
-    if (Math.abs(x - 99.5) < 16) continue; // pescoço e gola: não mexe
-    const t = top(x);
-    // Só mexe nas colunas que têm paletó logo abaixo da linha
-    let has = false;
-    for (let y = t; y < 106; y++) if (d[at(x, y) + 3] > 0) has = true;
-    if (!has) continue;
-    for (let y = 60; y < t; y++) d[at(x, y) + 3] = 0;
-    for (let y = t; y < t + 10; y++) {
-      const i = at(x, y);
-      if (d[i + 3] === 0) {
-        [d[i], d[i + 1], d[i + 2], d[i + 3]] = [...fill, 255];
-      }
-    }
-    for (let y = t; y < t + 2; y++) {
-      const i = at(x, y);
-      [d[i], d[i + 1], d[i + 2], d[i + 3]] = [13, 13, 18, 255];
-    }
-  }
-  ctx.putImageData(img, 0, 0);
 }
 
 /**

@@ -281,6 +281,15 @@ class MatchSfx {
     this.play(name, o);
   }
 
+  /** Reação de plateia fora da partida (palco do Draft): toca mesmo sem o ambiente do estádio. */
+  cue(name: Sfx, o: { vol?: number; delay?: number } = {}) {
+    void this.load();
+    const was = this.crowdOn;
+    this.crowdOn = true;
+    this.play(name, o);
+    this.crowdOn = was;
+  }
+
   /** Início da partida: ambiente da torcida entra (sem torcida no treino livre). */
   startMatch(crowd: boolean) {
     this.inMatch = true;

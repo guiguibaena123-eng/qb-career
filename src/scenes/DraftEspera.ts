@@ -7,6 +7,7 @@ import { bigButton, board, commissioner, draftScene, ORANGE, spotlights, teamLog
 import { C, inkOn, plate, plateLine, plateShadow, TV, tvEnter, tvText, wipeTo } from '../ui/tv';
 import { vibrate, VIBE } from '../systems/feedback';
 import { getSave } from '../player/PlayerSave';
+import { sfx } from '../systems/sfx';
 
 /*
  * DraftEspera — "green room": o comissário anuncia os picks antes do seu, um por vez, com o ticker
@@ -28,7 +29,7 @@ export class DraftEspera extends Phaser.Scene {
     spotlights(this);
     const B = board(this, 'QFL DRAFT', `${ord(d.round)} RODADA · PICK ${before[0]?.pick ?? d.pick}`);
     // Borda do púlpito um pouco acima da linha da barriga do comissário (figura ~165 → tela ~392)
-    commissioner(this, 120, 268, 0.75, 489);
+    const com = commissioner(this, 120, 268, 0.75, 489);
     podium(this, 120, 373, 150);
 
     // Balão de fala do comissário
@@ -103,6 +104,7 @@ export class DraftEspera extends Phaser.Scene {
       const fl = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xffffff, 0.22).setOrigin(0).setDepth(68);
       this.tweens.add({ targets: fl, alpha: 0, duration: 220, ease: 'Quad.Out', onComplete: () => fl.destroy() });
       vibrate(VIBE.td);
+      sfx.cue('cheerMed', { vol: 0.45 });
       // Depois vai para a linha do ticker
       this.time.delayedCall(1250, () => {
         this.tweens.add({
@@ -130,6 +132,7 @@ export class DraftEspera extends Phaser.Scene {
       this.time.delayedCall(t, () => {
         B.s.setText(`${ord(d.round)} RODADA · PICK ${p.pick}`);
         say.setText(`COM A ${ord(p.pick)} ESCOLHA, OS ${p.team.name} SELECIONAM...`);
+        com.gesture(1700);
         this.tweens.add({ targets: rows[i], alpha: 1, duration: 250 });
       });
       this.time.delayedCall(t + 1000, () => showCard(p, i));
@@ -137,11 +140,18 @@ export class DraftEspera extends Phaser.Scene {
     });
     this.time.delayedCall(t, () => {
       B.s.setText(`${ord(d.round)} RODADA · PICK ${d.pick}`);
+      com.gesture(2200);
       say.setText(d.pick === 1 ? `OS ${team.name} ESTÃO NO RELÓGIO COM A 1ª ESCOLHA...` : `OS ${team.name} ESTÃO NO RELÓGIO...`);
       this.tweens.add({ targets: rows[rows.length - 1], alpha: 1, duration: 250 });
       this.tweens.add({ targets: btn, alpha: 1, duration: 250 });
       btn.setEnabled(true);
       vibrate(VIBE.tap);
+      sfx.cue('cheerSwell', { vol: 0.4 });
+      // Relógio do pick no telão (como na TV): 10:00 descendo
+      let left = 600;
+      const clock = () => B.s.setText(`NO RELÓGIO · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`);
+      clock();
+      this.time.addEvent({ delay: 1000, loop: true, callback: () => ((left = Math.max(0, left - 1)), clock()) });
     });
     tvEnter(this);
   }

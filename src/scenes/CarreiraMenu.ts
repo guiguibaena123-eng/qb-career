@@ -1290,6 +1290,8 @@ export class CarreiraMenu extends Phaser.Scene {
       this.T(x + bw / 2, y + 128 - bh, yd === undefined ? '–' : String(yd), 8, '#C9CEE0').setOrigin(0.5);
       this.T(x + bw / 2, y + 152, `S${wk.week}`, 8, '#6E7593').setOrigin(0.5);
     });
+    // Sem nenhum jogo ainda: um aviso no meio em vez de uma caixa vazia só com traços
+    if (!weeks.some((wk) => wk.stats?.yards !== undefined)) this.T(16 + W / 2, y + 82, 'SUAS JARDAS APARECEM AQUI A CADA JOGO', 9, '#6E7593').setOrigin(0.5);
     y += 182;
     // Líderes da liga em passe (e você, novato)
     const leaders = passLeaders();
