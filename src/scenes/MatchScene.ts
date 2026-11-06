@@ -1,3 +1,4 @@
+import { sfx } from '../systems/sfx';
 import Phaser from 'phaser';
 import { CAMERA, CLOCK_RATE, FIELD, FONT_TITLE, GAME_H, GAME_W, MATCH_SEED, QUARTER_SECONDS, TEAMS, broadcast, finalGame, logoKey, matchConfig, playoffLogo, venue } from '../config';
 import {
@@ -289,6 +290,9 @@ export class MatchScene extends Phaser.Scene {
     this.defenseScreen = new DefenseScreen(this);
     this.menu = new Menu(this);
     this.intro = new Intro(this, this.rng);
+    // Som da partida: torcida (fora do treino livre), jogadores, bola e juiz
+    sfx.startMatch(!this.practice);
+    this.events.once('shutdown', () => sfx.endMatch());
     if (this.career) this.careerIntro();
     else if (finalGame.on) Object.assign(this.intro.info, { mode: 'PARTIDA RÁPIDA · A GRANDE FINAL', arena: 'QFL BOWL · CAMPO NEUTRO', homeHosts: true });
     else Object.assign(this.intro.info, { arena: TeamRepository.get(venue.id ?? TEAMS.home.id).stadium.name, homeHosts: venue.id !== TEAMS.away.id });
@@ -506,6 +510,7 @@ export class MatchScene extends Phaser.Scene {
   private setPaused(on: boolean) {
     if (this.paused === on) return;
     this.paused = on;
+    sfx.setPaused(on);
     this.pauseUi.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(on));
     if (on) {
       const s = this.state;
@@ -724,10 +729,15 @@ export class MatchScene extends Phaser.Scene {
     if (this.phase !== 'pre') return;
     this.setTactical(false);
     this.startLive();
+    // "HUT!" e o choque da linha logo depois
+    sfx.play('hut', { x: this.qb.x });
+    sfx.play('pads', { vol: 0.5, delay: 0.17 });
+    if (Math.random() < 0.65) sfx.play('effort', { delay: 0.2 });
   }
 
   /** Atraso de jogo: play clock zerou. */
   private delayOfGame() {
+    sfx.play('whistle');
     navigator.vibrate?.([40, 60, 40]);
     this.toast('ATRASO! −5 JDS', '#FF5A5F', 18);
     this.state.los = Math.max(1, this.state.los - 5);
@@ -775,6 +785,7 @@ export class MatchScene extends Phaser.Scene {
     // Pause: o botão fica visível só quando faz sentido
     this.pauseBtn.setVisible(!this.paused && (this.phase === 'kickoff' || this.phase === 'pre' || this.phase === 'live' || this.phase === 'post' || this.phase === 'kick'));
     if (this.paused) return;
+    sfx.setExcite(this.world.stand.excite, this.phase === 'live');
     const real = Math.min(dtMs, 50) / 1000;
     const dt = this.feedback.tick(real);
     this.elapsed += dt;
@@ -1135,6 +1146,7 @@ export class MatchScene extends Phaser.Scene {
 
   private release(t: Throw, read: Read | null, away = false) {
     this.ball.launch(t);
+    sfx.play('throw', { x: this.qb.x, vol: away ? 0.7 : 1 });
     this.live!.throwTo(t.tx, t.ty, read?.receiver ?? null);
     this.qb.pose = 'throw';
     this.time.delayedCall(220, () => (this.qb.pose = null));
@@ -1274,6 +1286,9 @@ export class MatchScene extends Phaser.Scene {
     this.ui.caption(`${r.key} #${r.slot.num} SEGUROU ${how}`, 240);
     vibrate(VIBE.catch);
     this.world.stand.cheer(long ? 1 : 0.5);
+    sfx.play('catch', { x: r.x });
+    if (long) sfx.crowd('cheerSwell', 2, { delay: 0.08 });
+    else sfx.crowd('cheerMed', 1, { vol: 0.6, delay: 0.1 });
     r.pose = 'catch';
     if (long) {
       r.angle = r.x < MID ? -35 : 35; // estica o corpo para pegar
@@ -1302,6 +1317,9 @@ export class MatchScene extends Phaser.Scene {
     this.ui.edgeFlash(0xe5484d, 0.8);
     this.ui.pop('INTERCEPTADO!', '#E5484D', 22, 190, 1100);
     vibrate(VIBE.turnover);
+    sfx.play('catch', { x: d.x, vol: 0.8 });
+    sfx.crowd('aww', 3, { delay: 0.1 });
+    sfx.play('boo', { vol: 0.7, delay: 1.1 });
     this.feedback.shake(0.01, 240);
     d.pose = 'catch';
     d.hop = 0.6;
@@ -1320,6 +1338,12 @@ export class MatchScene extends Phaser.Scene {
     this.ui.pop(big, '#FFFFFF', 20, 200, 700);
     this.ui.caption(small, 244, 900);
     this.ball.state = 'loose';
+    // bola no chão; a torcida lamenta (quase: "ohh"; longe: "aww" baixo; jogou fora: nada)
+    sfx.play('bounce', { x: this.ball.x, delay: 0.05 });
+    if (!this.ballAway) {
+      if (big === 'ESCAPOU!' || big === 'DESVIADO!') sfx.crowd('ooh', 2, { delay: 0.05 });
+      else sfx.crowd('aww', 1, { vol: 0.55, delay: 0.15 });
+    }
     this.endPlay('inc');
   }
 
@@ -1333,6 +1357,10 @@ export class MatchScene extends Phaser.Scene {
     const qb = this.qb;
     this.ui.pop('SACK!', '#E5484D', 30, 200, 900);
     vibrate(VIBE.sack);
+    sfx.play('pads', { x: qb.x });
+    sfx.play('fall', { x: qb.x, delay: 0.12 });
+    sfx.play('oof', { delay: 0.06 });
+    sfx.crowd('crowdOof', 2, { delay: 0.1 });
     this.feedback.shake(0.014, 260);
     this.feedback.slowmo(0.25, 0.3);
     qb.angle = qb.x < d.x ? -80 : 80;
@@ -1349,6 +1377,10 @@ export class MatchScene extends Phaser.Scene {
     this.puff(c.x, c.y);
     this.feedback.shake(big ? 0.013 : 0.006, big ? 220 : 130);
     vibrate(VIBE.tackle);
+    sfx.play('pads', { x: c.x, vol: big ? 1 : 0.7 });
+    sfx.play('fall', { x: c.x, vol: big ? 0.9 : 0.6, delay: 0.1 });
+    if (Math.random() < (big ? 0.85 : 0.35)) sfx.play('oof', { delay: 0.07 });
+    if (big) sfx.crowd('crowdOof', 2, { delay: 0.08 });
     if (big) this.ui.pop('PANCADA!', '#FFFFFF', 16, 200, 500);
     this.endPlay('tackle');
   }
@@ -1357,6 +1389,11 @@ export class MatchScene extends Phaser.Scene {
     this.ui.pop(how === 'juke' ? 'JUKE!' : how === 'spin' ? 'SPIN!' : 'ESCAPOU!', UI.yellow, 16, 230, 420);
     vibrate(VIBE.block);
     this.world.stand.cheer(0.4);
+    const bc = this.live?.carrier;
+    if (how === 'stiff') sfx.play('pads', { x: bc?.x, vol: 0.55 });
+    else sfx.play('throw', { x: bc?.x, vol: 0.8 });
+    if (Math.random() < 0.6) sfx.play('effort', { vol: 0.8 });
+    sfx.crowd('cheerMed', 1, { vol: 0.45 });
     this.gainXp(how === 'stiff' ? 3 : 8, this.live?.carrier ?? undefined);
   }
 
@@ -1499,6 +1536,9 @@ export class MatchScene extends Phaser.Scene {
   /** Fim do lance: atualiza descida/distância, placar e estatísticas; mostra o resultado. */
   private endPlay(kind: 'td' | 'out' | 'dive' | 'tackle' | 'sack' | 'inc' | 'int', by?: Player) {
     if (this.phase !== 'live') return;
+    // apito do juiz encerrando o lance
+    sfx.play('whistle', { delay: kind === 'inc' ? 0.35 : 0.45 });
+    if (kind === 'dive') sfx.play('fall', { x: this.live?.carrier?.x, vol: 0.6 });
     const s = this.state;
     const live = this.live!;
     // Quem está com a bola na end zone (ou cruzou a linha de gol) fez touchdown, qualquer que seja o jeito de o lance acabar
@@ -1541,12 +1581,14 @@ export class MatchScene extends Phaser.Scene {
         s.score.home += 2;
         if (c) this.startTdRun(c, 1, ranIn);
         this.ui.pop('CONVERTEU! +2', UI.yellow, 20, 200, 1300);
+        sfx.crowd('cheerBig', 4);
         this.ui.burst(50);
         vibrate(VIBE.td);
         this.world.stand.cheer(0.8);
         this.gainXp(30);
       } else {
         this.ui.pop('NÃO CONVERTEU', '#FFFFFF', 16, 200, 1100);
+        sfx.crowd('aww', 3);
       }
       this.hud.setResult('CONVERSÃO DE 2', good ? '+2' : 'X', good ? 0x3ccb5a : 0xe5484d, ['2 PTS', 0xffd23f, '#0D0D12']);
       this.hud.setBar('result');
@@ -1563,6 +1605,7 @@ export class MatchScene extends Phaser.Scene {
       this.ui.pop('TOUCHDOWN!', UI.yellow, 26, 200, 1300);
       this.ui.burst(80);
       this.world.stand.erupt(TEAMS.home.color);
+      sfx.crowd('cheerBig', 4);
       this.feedback.shake(0.012, 400);
       vibrate(VIBE.td);
       this.world.stand.cheer(1);
@@ -1596,6 +1639,7 @@ export class MatchScene extends Phaser.Scene {
         // Derrubado na própria end zone: safety (+2 para eles) e eles recebem a bola
         s.score.away += 2;
         this.ui.pop('SAFETY!', '#E5484D', 24, 200, 1200);
+        sfx.crowd('boo', 3, { delay: 0.3 });
         vibrate(VIBE.turnover);
         text = `SAFETY · +2 ${TEAMS.away.name}`;
         yardsText = '';
@@ -1620,12 +1664,14 @@ export class MatchScene extends Phaser.Scene {
       s.down = 1;
       s.distance = Math.min(10, 100 - s.los);
       this.time.delayedCall(350, () => this.ui.pop('1ª DESCIDA!', '#3CCB5A', 16, 300, 600));
+      sfx.crowd('cheerMed', 1, { vol: 0.55, delay: 0.3 });
     } else {
       s.distance -= gained;
       s.down++;
       if (s.down > 4) {
         // 4ª descida falhou: a bola vira para eles ali mesmo
         this.time.delayedCall(350, () => this.ui.caption('PERDEU NAS DESCIDAS', 300, 1200, '#FFFFFF', 0x5a1418));
+        sfx.crowd('aww', 3, { delay: 0.35 });
         this.postTimer = 2;
         const at = s.los;
         this.afterPost = () => this.opponentDrive(at, false);
@@ -1643,9 +1689,11 @@ export class MatchScene extends Phaser.Scene {
       s.quarter++;
       s.clock = QUARTER_SECONDS;
       this.time.delayedCall(900, () => this.ui.caption(q === 2 ? 'INTERVALO · FIM DO 2º QUARTO' : `FIM DO ${q}º QUARTO`, 330, 1300, '#0D0D12', 0xffd23f));
+      sfx.play('whistleLong', { delay: 0.9 });
     } else {
       s.clock = 0;
       this.gameOver = true;
+      sfx.play('whistleLong', { delay: 0.9 });
     }
   }
 
@@ -1952,6 +2000,7 @@ export class MatchScene extends Phaser.Scene {
         kk.stage = 'flight';
         kk.t = 0;
         k.pose = 'throw';
+        sfx.play('kick', { x: this.ball.x });
         // o segurador continua abaixado um instante e depois levanta
         if (kk.kind === 'punt') this.qb.pose = null;
         else this.time.delayedCall(550, () => this.qb.pose === 'hold' && (this.qb.pose = null));
@@ -2012,6 +2061,8 @@ export class MatchScene extends Phaser.Scene {
     this.phase = 'post';
     this.postTimer = 2.2;
     this.ui.pop('BLOQUEADO!', '#E5484D', 26, 200, 1300);
+    sfx.play('pads');
+    sfx.crowd('crowdOof', 3);
     this.ui.edgeFlash(0xe5484d, 0.7);
     this.feedback.shake(0.012, 300);
     vibrate(VIBE.turnover);
@@ -2039,6 +2090,7 @@ export class MatchScene extends Phaser.Scene {
       const land = kk.land;
       const dist = Math.round(land - s.los);
       let start: number;
+      sfx.play('bounce', { x: this.ball.x });
       if (land >= 100) {
         start = 80;
         this.ui.pop('TOUCHBACK', '#FFFFFF', 18, 200, 1000);
@@ -2058,6 +2110,7 @@ export class MatchScene extends Phaser.Scene {
       const pts = kk.kind === 'pat' ? 1 : 3;
       s.score.home += pts;
       this.ui.pop('É BOA!', '#3CCB5A', 28, 200, 1100);
+      sfx.crowd(kk.kind === 'fg' ? 'cheerBig' : 'cheerMed', 3);
       this.ui.edgeFlash(0x3ccb5a, 0.5);
       this.world.stand.cheer(kk.kind === 'fg' ? 1 : 0.6);
       vibrate(VIBE.td);
@@ -2066,6 +2119,7 @@ export class MatchScene extends Phaser.Scene {
       this.afterPost = () => this.opponentDrive(25, true);
     } else {
       this.ui.pop(kk.short ? 'CURTO!' : kk.post ? 'NA TRAVE!' : 'PRA FORA!', '#E5484D', 24, 200, 1100);
+      sfx.crowd(kk.post ? 'ooh' : 'aww', 3);
       vibrate(VIBE.turnover);
       this.hud.setResult(kk.kind === 'pat' ? 'PONTO EXTRA PERDIDO' : 'FIELD GOAL ERRADO', 'X', 0xe5484d, kk.kind === 'pat' ? ['PONTO EXTRA', 0xffd23f, '#0D0D12'] : ['FG', 0xffd23f, '#0D0D12']);
       const at = Math.max(20, s.los - 7);
@@ -2165,6 +2219,9 @@ export class MatchScene extends Phaser.Scene {
       onFinish: () => {
         s.score.away += drive.points;
         if (drive.points) this.world.stand.cheer(0.3);
+        // eles pontuaram: vaia; a defesa segurou: aplauso
+        if (drive.points) sfx.crowd('boo', 3, { vol: drive.points >= 6 ? 1 : 0.7 });
+        else sfx.crowd('cheerMed', 2, { vol: 0.8 });
         this.tickClock(drive.seconds);
         if (this.ot) {
           this.ot.poss++;
@@ -2361,6 +2418,7 @@ export class MatchScene extends Phaser.Scene {
           ko.stage = 'fly';
           ko.t = 0;
           kicker.pose = 'throw';
+          sfx.play('kick', { x: MID });
           this.time.delayedCall(320, () => (kicker.pose = null));
           this.feedback.shake(0.004, 100);
           vibrate(VIBE.tap);
@@ -2382,6 +2440,7 @@ export class MatchScene extends Phaser.Scene {
           ko.stage = 'catch';
           ko.t = 0;
           this.ball.give(returner);
+          sfx.play('catch', { x: returner.x, vol: 0.8 });
           returner.pose = 'catch';
           vibrate(VIBE.tap);
         }
@@ -2440,6 +2499,9 @@ export class MatchScene extends Phaser.Scene {
               ko.stage = 'end';
               ko.t = 0;
               ko.tackler = k;
+              sfx.play('pads', { x: returner.x });
+              sfx.play('fall', { x: returner.x, delay: 0.1 });
+              sfx.play('whistle', { delay: 0.5 });
               break;
             }
             k.wait = 0.5;
@@ -2468,6 +2530,8 @@ export class MatchScene extends Phaser.Scene {
           vibrate(VIBE.td);
           if (ko.receive) this.world.stand.erupt(TEAMS.home.color);
           else this.world.stand.cheer(0.4);
+          if (ko.receive) sfx.crowd('cheerBig', 4);
+          else sfx.crowd('boo', 3);
         } else if (ko.stage === 'end') {
           returner.vx = returner.vy = 0;
           this.feedback.shake(0.01, 200);
@@ -2599,6 +2663,7 @@ export class MatchScene extends Phaser.Scene {
     holder.pose = 'catch';
     this.world.targetY = Phaser.Math.Clamp(cy + 14, CAMERA.minY, CAMERA.maxY); // grupo grande, perto do centro da tela
     this.world.stand.cheer(1);
+    sfx.crowd('cheerBig', 5);
     this.ui.burst(120);
     this.hud.refresh();
     this.trophyG = this.add.graphics().setDepth(58);
@@ -2766,6 +2831,7 @@ export class MatchScene extends Phaser.Scene {
     if (win) {
       this.ui.burst(90);
       this.world.stand.cheer(1);
+      sfx.crowd('cheerBig', 5);
     }
     this.playXp = 0;
     this.gainXp(win ? 150 : 50);

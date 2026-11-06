@@ -1,9 +1,11 @@
 // Caminhos relativos: funciona tanto na raiz (npm run dev) quanto em /qb-career/ (GitHub Pages).
 // Modo offline: guarda cada arquivo do jogo na primeira abertura e serve do cache depois.
-const CACHE = 'qb-career-v32';
+const CACHE = 'qb-career-v33';
 // Trilha dos menus: cache próprio, que não é apagado a cada versão (são ~27 MB; baixa só uma vez).
 // Se as faixas mudarem, troque o nome (music-v2) para baixar de novo.
 const MUSIC = 'qb-career-music-v1';
+// Efeitos sonoros da partida (~1,5 MB): idem, cache próprio (troque para sfx-v2 se os sons mudarem).
+const SFX = 'qb-career-sfx-v1';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', 'manifest.webmanifest', 'icons/icon-192.png'])).then(() => self.skipWaiting()));
@@ -13,7 +15,7 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== MUSIC).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== MUSIC && k !== SFX).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -34,9 +36,10 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
-  if (new URL(req.url).pathname.includes('/music/')) {
+  const path = new URL(req.url).pathname;
+  if (path.includes('/music/') || path.includes('/sfx/')) {
     e.respondWith(
-      caches.open(MUSIC).then((c) =>
+      caches.open(path.includes('/sfx/') ? SFX : MUSIC).then((c) =>
         c.match(req).then(
           (hit) =>
             hit ||

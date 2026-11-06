@@ -14,6 +14,7 @@ import { setupHiRes } from '../systems/hires';
 import { arrowAfter, C, feed, FONT_TV, inkOn, onInk, underline, plate, plateShadow, scoreBug, sectionHead, slideIn, ticker, TV, tvEnter, TvButton, tvText, wipe, wipeTo } from '../ui/tv';
 import { fontWarmJobs } from '../systems/perf';
 import { music } from '../systems/music';
+import { sfx } from '../systems/sfx';
 import { MatchScene } from './MatchScene';
 
 /*
@@ -205,7 +206,7 @@ export class MainMenu extends Phaser.Scene {
     const cfg = this.tarja(16 + bw / 2, 736, bw, 60, {
       color: 0x93a0b6,
       title: 'CONFIGURAÇÕES',
-      sub: `MÚSICA ${music.on ? 'LIGADA' : 'DESLIGADA'} · ${LEVELS[this.level].label}`,
+      sub: `MÚSICA ${music.on ? 'ON' : 'OFF'} · EFEITOS ${sfx.on ? 'ON' : 'OFF'} · ${LEVELS[this.level].label}`,
       icon: 'gear',
     });
     cfg.onTap = () => this.go('settings');
@@ -256,10 +257,11 @@ export class MainMenu extends Phaser.Scene {
     let y = 104;
     v.add(sectionHead(this, 16, y, 'SOM'));
     v.add(this.segments(y + 46, 'MÚSICA', ['LIGADA', 'DESLIGADA'], music.on ? 0 : 1, (i) => music.setEnabled(i === 0)));
-    v.add(tvText(this, 18, y + 86, 'A TRILHA TOCA NOS MENUS E PARA DURANTE A PARTIDA', 13, C.muted, 600, 0.8).setOrigin(0, 0.5));
+    v.add(this.segments(y + 100, 'EFEITOS', ['LIGADOS', 'DESLIGADOS'], sfx.on ? 0 : 1, (i) => sfx.setEnabled(i === 0)));
+    v.add(tvText(this, 18, y + 140, 'EFEITOS: TORCIDA, JOGADORES, BOLA E APITO DURANTE A PARTIDA', 13, C.muted, 600, 0.8).setOrigin(0, 0.5));
 
     // ---- jogo
-    y = 236;
+    y = 290;
     v.add(sectionHead(this, 16, y, 'JOGO', 'PARTIDA RÁPIDA E CARREIRA'));
     const ORDER: Level[] = ['easy', 'normal', 'hard'];
     const DESC: Record<Level, string> = {
@@ -278,12 +280,13 @@ export class MainMenu extends Phaser.Scene {
     v.add(desc);
 
     // ---- sobre
-    y = 380;
+    y = 434;
     v.add(sectionHead(this, 16, y, 'SOBRE'));
     const facts: [string, string][] = [
       ['SAVES', 'ATÉ 3 CARREIRAS, GUARDADAS NESTE APARELHO'],
       ['OFFLINE', 'DEPOIS DA PRIMEIRA ABERTURA, JOGA SEM INTERNET'],
       ['TRILHA', '11 FAIXAS EMBARALHADAS COM TRANSIÇÃO SUAVE'],
+      ['SONS', 'GRAVAÇÕES REAIS DE FUTEBOL AMERICANO · CC0'],
     ];
     const g = this.add.graphics();
     facts.forEach(([k, t], i) => {
