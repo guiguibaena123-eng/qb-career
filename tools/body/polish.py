@@ -11,6 +11,10 @@ aplicado igualzinho em todas, então tudo continua encaixando:
   5. panturrilhas (antes eram canos retos)
   6. volume: luz da esquerda (borda clara) e sombra da direita em faixas — estilo pixel art,
      sem degradê — em cada parte do corpo (braço, ombreira, tronco, coxa, perna)
+  7. sombra de contato onde uma peça entra embaixo de outra (calça sob a camisa, meião sob a
+     calça, pescoço sob o capacete); brilho só nas bordas de cima expostas
+  0. capacete: abertura do rosto 2 px mais larga de cada lado (casco, máscara, jugular e viseira
+     acompanham; o rosto em sprite fica no mesmo lugar e aparece mais)
 
 Uso: python tools/body/polish.py
 """
@@ -118,6 +122,32 @@ def narrow(idx, a, b):
     return new
 
 
+# 0. abertura do rosto: nas linhas do rosto, tudo da metade esquerda vai 2 px para a esquerda e da
+# direita 2 px para a direita, dentro das paredes do capacete (a casca externa não engorda: as 2 colunas
+# de parede junto da abertura somem). Onde a peça atravessa o meio (barras da máscara, viseira), o meio
+# é esticado em vez de abrir buraco.
+HEAD = ('helmet_', 'hstripe_', 'decal_', 'hdet', 'hgloss', 'visor', 'mask_', 'chin_')
+FK, FL, FR = 2, 37, 62  # quanto abre, parede esquerda e direita (colunas da arte)
+for n, a in layers.items():
+    if not n.startswith(HEAD):
+        continue
+    for y in range(17, 36):
+        row = a[y].copy()
+        mid = row[48:52, 3].any() or n == 'visor'
+        idx = np.arange(W)
+        for x in range(FL - FK, 50 - FK):
+            idx[x] = x + FK
+        for x in range(50 - FK, 50):
+            idx[x] = 49 if mid else -1
+        for x in range(FR + FK, 49 + FK, -1):
+            idx[x] = x - FK
+        for x in range(50, 50 + FK):
+            idx[x] = 50 if mid else -1
+        out = np.zeros_like(row)
+        ok = idx >= 0
+        out[ok] = row[idx[ok]]
+        a[y] = out
+
 # 1. cintura (tronco central fica 1 px mais estreito de cada lado na cintura e no quadril)
 u = union()
 for y in range(74, 89):
@@ -215,15 +245,27 @@ def band_map(fill):
                     f[y, x] = 0.68  # sombra própria
                 elif t > 0.6:
                     f[y, x] = 0.84  # meia-sombra
-    # brilho no alto de cada parte: 1ª e 2ª linha abaixo do contorno de cima (ombreiras, coxas, joelho)
+    # borda de cima de cada parte: se há outra peça logo acima (depois do contorno), ela fica na sombra
+    # de contato (2 linhas); se está exposta (ombreira, alto da coxa), recebe brilho
     for x in range(W):
         col = fill[:, x]
-        for y in range(43, H):
+        for y in range(36, H):
             if col[y] and not col[y - 1]:
-                f[y, x] = max(f[y, x], 1.13) if f[y, x] >= 1 else f[y, x] * 1.12
+                if anyfill[max(0, y - 3):y - 1, x].any():
+                    f[y, x] *= 0.74
+                    if y + 1 < H and col[y + 1]:
+                        f[y + 1, x] *= 0.88
+                elif y >= 43:
+                    f[y, x] = max(f[y, x], 1.13) if f[y, x] >= 1 else f[y, x] * 1.12
     return f
 
 
+# qualquer peça (pele, roupa, capacete) em cada pixel, para a sombra de contato
+anyfill = np.zeros((H, W), bool)
+for n, a in layers.items():
+    if n in ('shadow', 'face') or n.startswith(('hair_', 'beard_', 'eyeblack_', 'mouth_')):
+        continue
+    anyfill |= (a[..., 3] > 0) & (a[..., 0] >= OUTLINE)
 ref_bands = band_map(top == 1)
 for n, a in layers.items():
     if n.startswith(NO_SHADE):
