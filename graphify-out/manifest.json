@@ -900,9 +900,9 @@
     "semantic_hash": "885ca46daa416ffc5b24efc5c9089076"
   },
   "public/sw.js": {
-    "mtime": 1793932386.8502178,
-    "seen": 1793934392.0946603,
-    "ast_hash": "f916f7601fdb3eacac7985209e315246",
+    "mtime": 1793938114.7270422,
+    "seen": 1793938434.0969157,
+    "ast_hash": "ea100b87cdc3897be1594e93c919dfa0",
     "semantic_hash": ""
   },
   "public/icons/icon-180.png": {
@@ -1104,795 +1104,795 @@
     "semantic_hash": ""
   },
   "public/assets/layers/asl_fB.png": {
-    "mtime": 1793931597.2827501,
-    "seen": 1793934392.0949807,
-    "ast_hash": "fec03cb5e7ba8393427777ef5f092561",
+    "mtime": 1793938028.7517354,
+    "seen": 1793938434.0972173,
+    "ast_hash": "5e4c268c0848da4bd8709c2446a48857",
     "semantic_hash": ""
   },
   "public/assets/layers/asl_fL.png": {
-    "mtime": 1793931597.2874846,
-    "seen": 1793934392.0949821,
-    "ast_hash": "8b045133529788d717f0ef220f6e55ad",
+    "mtime": 1793938028.7614286,
+    "seen": 1793938434.0972188,
+    "ast_hash": "ae3552050a0bffaa2e479e41aa1b3341",
     "semantic_hash": ""
   },
   "public/assets/layers/asl_fR.png": {
-    "mtime": 1793931597.298987,
-    "seen": 1793934392.0949833,
-    "ast_hash": "8a753977073c89a10001987dc41ba34b",
+    "mtime": 1793938028.7694817,
+    "seen": 1793938434.0972207,
+    "ast_hash": "8b71d6601f193efd71aa7f2852436114",
     "semantic_hash": ""
   },
   "public/assets/layers/asl_lB.png": {
-    "mtime": 1793931597.3085785,
-    "seen": 1793934392.0949848,
-    "ast_hash": "c3c96766e678d9f22e3efaac1a381b49",
+    "mtime": 1793938028.7719562,
+    "seen": 1793938434.0972219,
+    "ast_hash": "7a96ad87d47a395bd83cf5c713dd0edb",
     "semantic_hash": ""
   },
   "public/assets/layers/asl_lL.png": {
-    "mtime": 1793931597.3147864,
-    "seen": 1793934392.094986,
+    "mtime": 1793938028.7719562,
+    "seen": 1793938434.0972235,
     "ast_hash": "ed92c79061b740201e80742e5b6fa212",
     "semantic_hash": ""
   },
   "public/assets/layers/asl_lR.png": {
-    "mtime": 1793931597.3220756,
-    "seen": 1793934392.0949879,
-    "ast_hash": "2118f36f5721eccc20e23692d7847600",
+    "mtime": 1793938028.7884426,
+    "seen": 1793938434.097225,
+    "ast_hash": "d7085868d1412270f83e19d153c0cfee",
     "semantic_hash": ""
   },
   "public/assets/layers/beard_chinstrap.png": {
-    "mtime": 1793931597.3271894,
-    "seen": 1793934392.0949893,
+    "mtime": 1793938028.7884426,
+    "seen": 1793938434.0972261,
     "ast_hash": "cdb2e361cd3202ba4136a9dd84927254",
     "semantic_hash": ""
   },
   "public/assets/layers/beard_full.png": {
-    "mtime": 1793931597.3359032,
-    "seen": 1793934392.0949905,
+    "mtime": 1793938028.7884426,
+    "seen": 1793938434.0972278,
     "ast_hash": "edd507aaa8b48625320b011dc7b8958b",
     "semantic_hash": ""
   },
   "public/assets/layers/beard_goatee.png": {
-    "mtime": 1793931597.3412182,
-    "seen": 1793934392.094992,
+    "mtime": 1793938028.8051882,
+    "seen": 1793938434.0972292,
     "ast_hash": "015c0b1bf5204627cc780d7551b33d5e",
     "semantic_hash": ""
   },
   "public/assets/layers/beard_mustache.png": {
-    "mtime": 1793931597.3479896,
-    "seen": 1793934392.0949934,
+    "mtime": 1793938028.8051882,
+    "seen": 1793938434.0972307,
     "ast_hash": "a2c0792cd4fc30f7639514414be0245e",
     "semantic_hash": ""
   },
   "public/assets/layers/beard_stubble.png": {
-    "mtime": 1793931597.352988,
-    "seen": 1793934392.094995,
+    "mtime": 1793938028.8207633,
+    "seen": 1793938434.0972319,
     "ast_hash": "bdd35ca1a5bc4a1286cc885820711d00",
     "semantic_hash": ""
   },
   "public/assets/layers/cacc_stripes_high.png": {
-    "mtime": 1793931597.359556,
-    "seen": 1793934392.0949965,
+    "mtime": 1793938028.82189,
+    "seen": 1793938434.0972333,
     "ast_hash": "896978f6636fc7a698008346a5fd7bea",
     "semantic_hash": ""
   },
   "public/assets/layers/cacc_stripes_low.png": {
-    "mtime": 1793931597.366074,
-    "seen": 1793934392.0949981,
+    "mtime": 1793938028.82189,
+    "seen": 1793938434.0972347,
     "ast_hash": "896978f6636fc7a698008346a5fd7bea",
     "semantic_hash": ""
   },
   "public/assets/layers/cacc_stripes_mid.png": {
-    "mtime": 1793931597.3755805,
-    "seen": 1793934392.0949993,
+    "mtime": 1793938028.8384576,
+    "seen": 1793938434.0972362,
     "ast_hash": "896978f6636fc7a698008346a5fd7bea",
     "semantic_hash": ""
   },
   "public/assets/layers/cacc_swoosh_high.png": {
-    "mtime": 1793931597.380602,
-    "seen": 1793934392.0950005,
+    "mtime": 1793938028.8384576,
+    "seen": 1793938434.0972376,
     "ast_hash": "b6c01f3a336455c1bc0afb8830f27e0b",
     "semantic_hash": ""
   },
   "public/assets/layers/cacc_swoosh_low.png": {
-    "mtime": 1793931597.3863993,
-    "seen": 1793934392.095002,
+    "mtime": 1793938028.8384576,
+    "seen": 1793938434.0972388,
     "ast_hash": "b6c01f3a336455c1bc0afb8830f27e0b",
     "semantic_hash": ""
   },
   "public/assets/layers/cacc_swoosh_mid.png": {
-    "mtime": 1793931597.3915806,
-    "seen": 1793934392.0950034,
+    "mtime": 1793938028.855215,
+    "seen": 1793938434.0972402,
     "ast_hash": "b6c01f3a336455c1bc0afb8830f27e0b",
     "semantic_hash": ""
   },
   "public/assets/layers/cacc_toe_high.png": {
-    "mtime": 1793931597.4022682,
-    "seen": 1793934392.0950046,
+    "mtime": 1793938028.855215,
+    "seen": 1793938434.0972416,
     "ast_hash": "68d614da8e38995463512d83d83a6dd7",
     "semantic_hash": ""
   },
   "public/assets/layers/cacc_toe_low.png": {
-    "mtime": 1793931597.4108458,
-    "seen": 1793934392.0950062,
+    "mtime": 1793938028.855215,
+    "seen": 1793938434.0972428,
     "ast_hash": "68d614da8e38995463512d83d83a6dd7",
     "semantic_hash": ""
   },
   "public/assets/layers/cacc_toe_mid.png": {
-    "mtime": 1793931597.4203844,
-    "seen": 1793934392.0950077,
+    "mtime": 1793938028.8739214,
+    "seen": 1793938434.0972447,
     "ast_hash": "68d614da8e38995463512d83d83a6dd7",
     "semantic_hash": ""
   },
   "public/assets/layers/chin_four.png": {
-    "mtime": 1793931597.42793,
-    "seen": 1793934392.0950093,
-    "ast_hash": "01b102269989087508f7879292d17dc4",
+    "mtime": 1793938028.8739214,
+    "seen": 1793938434.0972552,
+    "ast_hash": "72da631fcdb415f2aeed56e5b3c93177",
     "semantic_hash": ""
   },
   "public/assets/layers/chin_two.png": {
-    "mtime": 1793931597.436485,
-    "seen": 1793934392.0950108,
-    "ast_hash": "6c5ed41cd45a71ef91d8d89088d42fb8",
+    "mtime": 1793938028.8916192,
+    "seen": 1793938434.0972571,
+    "ast_hash": "ca1e834cda0d02b7eec35618fe88649e",
     "semantic_hash": ""
   },
   "public/assets/layers/cleat_high.png": {
-    "mtime": 1793931597.4460187,
-    "seen": 1793934392.0950122,
-    "ast_hash": "b1152609dad9697f65a7191cc4022a3f",
+    "mtime": 1793938028.901681,
+    "seen": 1793938434.0972586,
+    "ast_hash": "01ef82c06b69f274cb582d1dff23fd11",
     "semantic_hash": ""
   },
   "public/assets/layers/cleat_low.png": {
-    "mtime": 1793931597.454028,
-    "seen": 1793934392.095014,
-    "ast_hash": "341697b6c67757ccecd4bd4c9645913e",
+    "mtime": 1793938028.9066236,
+    "seen": 1793938434.0972598,
+    "ast_hash": "0d21d4c60a559735d19a469a7e8c7e70",
     "semantic_hash": ""
   },
   "public/assets/layers/cleat_mid.png": {
-    "mtime": 1793931597.4625797,
-    "seen": 1793934392.0950162,
-    "ast_hash": "66396c2ed6a6c5e4338bb426c92fd6e1",
+    "mtime": 1793938028.9066236,
+    "seen": 1793938434.0972614,
+    "ast_hash": "44775e6726bcfea4dd255d625f1d2a79",
     "semantic_hash": ""
   },
   "public/assets/layers/collar_v.png": {
-    "mtime": 1793931597.4711964,
-    "seen": 1793934392.0950174,
-    "ast_hash": "c4c35f07629f7b9a1eb46ae727279575",
+    "mtime": 1793938028.9263842,
+    "seen": 1793938434.0972626,
+    "ast_hash": "3341535506b3d7df46bbc668c6bbbd34",
     "semantic_hash": ""
   },
   "public/assets/layers/decal_bolt.png": {
-    "mtime": 1793931597.4777937,
-    "seen": 1793934392.095019,
-    "ast_hash": "4513b26ad6c67b759bc8504301b1cf0a",
+    "mtime": 1793938028.9283078,
+    "seen": 1793938434.0972638,
+    "ast_hash": "267e13aad1e3b61611472b5147c37234",
     "semantic_hash": ""
   },
   "public/assets/layers/decal_bumper.png": {
-    "mtime": 1793931597.4827924,
-    "seen": 1793934392.0950203,
+    "mtime": 1793938028.939609,
+    "seen": 1793938434.0972655,
     "ast_hash": "55daf113cd10f54cf689e19b3ade656a",
     "semantic_hash": ""
   },
   "public/assets/layers/decal_ring.png": {
-    "mtime": 1793931597.487144,
-    "seen": 1793934392.0950217,
+    "mtime": 1793938028.939609,
+    "seen": 1793938434.0972667,
     "ast_hash": "3387558affd2530af411fcea0dd41cea",
     "semantic_hash": ""
   },
   "public/assets/layers/decal_shield.png": {
-    "mtime": 1793931597.4931786,
-    "seen": 1793934392.0950232,
-    "ast_hash": "4040dfab3ed528f56399ed9ce8fb1d85",
+    "mtime": 1793938028.939609,
+    "seen": 1793938434.0972679,
+    "ast_hash": "0ba94e05d191960d79973870d8461f4a",
     "semantic_hash": ""
   },
   "public/assets/layers/decal_star.png": {
-    "mtime": 1793931597.4997382,
-    "seen": 1793934392.0950246,
-    "ast_hash": "baf714fcca0006f4212eea01fb72f6e6",
+    "mtime": 1793938028.955227,
+    "seen": 1793938434.097269,
+    "ast_hash": "ebe1323ea584bbe72d381c84ecb398b6",
     "semantic_hash": ""
   },
   "public/assets/layers/decal_wing.png": {
-    "mtime": 1793931597.5073621,
-    "seen": 1793934392.095026,
-    "ast_hash": "2a517ca6477317b7c9fa54bab404f177",
+    "mtime": 1793938028.955227,
+    "seen": 1793938434.0972703,
+    "ast_hash": "9029a1326a5781882c10b676b2464fdf",
     "semantic_hash": ""
   },
   "public/assets/layers/eyeblack_double.png": {
-    "mtime": 1793931597.5126033,
-    "seen": 1793934392.0950274,
+    "mtime": 1793938028.955227,
+    "seen": 1793938434.097272,
     "ast_hash": "dc1bfb243950678936cfd9efa6c406f9",
     "semantic_hash": ""
   },
   "public/assets/layers/eyeblack_solid.png": {
-    "mtime": 1793931597.518145,
-    "seen": 1793934392.0950286,
+    "mtime": 1793938028.9718783,
+    "seen": 1793938434.097273,
     "ast_hash": "a63e928b5b43cd19e75e51e674e835f8",
     "semantic_hash": ""
   },
   "public/assets/layers/eyeblack_stripe.png": {
-    "mtime": 1793931597.5231452,
-    "seen": 1793934392.0950303,
+    "mtime": 1793938028.9718783,
+    "seen": 1793938434.0972748,
     "ast_hash": "01971f17508dcf1c0a5fff4cdeff9880",
     "semantic_hash": ""
   },
   "public/assets/layers/face.png": {
-    "mtime": 1793931597.5281422,
-    "seen": 1793934392.0950317,
+    "mtime": 1793938028.9718783,
+    "seen": 1793938434.0972764,
     "ast_hash": "97cf617a465c00c7a6f4448aef34d546",
     "semantic_hash": ""
   },
   "public/assets/layers/glove_full.png": {
-    "mtime": 1793931597.5399072,
-    "seen": 1793934392.0950336,
-    "ast_hash": "3cd9c31536b3fc02f66b7dc27fe325ba",
+    "mtime": 1793938028.9893794,
+    "seen": 1793938434.0972776,
+    "ast_hash": "a7a33bfe05adfc8169ecee2452bb6188",
     "semantic_hash": ""
   },
   "public/assets/layers/glove_lineman.png": {
-    "mtime": 1793931597.5533113,
-    "seen": 1793934392.0950348,
-    "ast_hash": "41beea5d14496e0b146180ee136f1a0d",
+    "mtime": 1793938029.0072072,
+    "seen": 1793938434.097279,
+    "ast_hash": "b4aa6715e3f6ab40d06651c65f7a509e",
     "semantic_hash": ""
   },
   "public/assets/layers/glove_short.png": {
-    "mtime": 1793931597.5641212,
-    "seen": 1793934392.0950365,
-    "ast_hash": "032b3b71e727537ab55c470f3dea52de",
+    "mtime": 1793938029.0152552,
+    "seen": 1793938434.0972803,
+    "ast_hash": "323a23f11c442f23cfd25fc55a220621",
     "semantic_hash": ""
   },
   "public/assets/layers/hair_curls.png": {
-    "mtime": 1793931597.5736766,
-    "seen": 1793934392.0950377,
+    "mtime": 1793938029.021856,
+    "seen": 1793938434.0972817,
     "ast_hash": "cb61734979e8ee76ade75f22d2f71a6f",
     "semantic_hash": ""
   },
   "public/assets/layers/hair_dreads.png": {
-    "mtime": 1793931597.5832083,
-    "seen": 1793934392.095039,
+    "mtime": 1793938029.021856,
+    "seen": 1793938434.0972831,
     "ast_hash": "82889f86fdc21a27727f2c5742dd3d5d",
     "semantic_hash": ""
   },
   "public/assets/layers/hair_short.png": {
-    "mtime": 1793931597.587487,
-    "seen": 1793934392.0950406,
+    "mtime": 1793938029.0379913,
+    "seen": 1793938434.0972848,
     "ast_hash": "284000f8aa991a82c0a2e088967228aa",
     "semantic_hash": ""
   },
   "public/assets/layers/hdet.png": {
-    "mtime": 1793931597.5948682,
-    "seen": 1793934392.0950418,
-    "ast_hash": "ec02cb0c22bb9969b622f61ea70404cc",
+    "mtime": 1793938029.0450082,
+    "seen": 1793938434.0972862,
+    "ast_hash": "5b4c7f937b90275688648b00d2c1063b",
     "semantic_hash": ""
   },
   "public/assets/layers/helmet_classic.png": {
-    "mtime": 1793931597.6070333,
-    "seen": 1793934392.0950434,
-    "ast_hash": "da12e0da2d4de7243b921ec90d1a7542",
+    "mtime": 1793938029.0553093,
+    "seen": 1793938434.0972874,
+    "ast_hash": "534d8ec28b10f539d955013c0c759370",
     "semantic_hash": ""
   },
   "public/assets/layers/helmet_compact.png": {
-    "mtime": 1793931597.615891,
-    "seen": 1793934392.0950449,
-    "ast_hash": "c8605feb116c0419eb019f4a490507ca",
+    "mtime": 1793938029.0553093,
+    "seen": 1793938434.0972888,
+    "ast_hash": "72d301a47833d407e0d7328d21b5f7d4",
     "semantic_hash": ""
   },
   "public/assets/layers/helmet_speed.png": {
-    "mtime": 1793931597.6239007,
-    "seen": 1793934392.0950458,
-    "ast_hash": "8938a62525b5c608fc11c9be19441dac",
+    "mtime": 1793938029.0738385,
+    "seen": 1793938434.0972903,
+    "ast_hash": "5555b46666ba75de23e5a7a27d819198",
     "semantic_hash": ""
   },
   "public/assets/layers/hgloss.png": {
-    "mtime": 1793931597.6304398,
-    "seen": 1793934392.0950475,
+    "mtime": 1793938029.0798774,
+    "seen": 1793938434.0972917,
     "ast_hash": "e9e5d2127b1db15d6376335ac6726518",
     "semantic_hash": ""
   },
   "public/assets/layers/hstripe_center.png": {
-    "mtime": 1793931597.641363,
-    "seen": 1793934392.0950487,
+    "mtime": 1793938029.0859122,
+    "seen": 1793938434.0972934,
     "ast_hash": "5763ec7550babcc6605d9e47d66b8bfd",
     "semantic_hash": ""
   },
   "public/assets/layers/hstripe_double.png": {
-    "mtime": 1793931597.6485093,
-    "seen": 1793934392.0950503,
+    "mtime": 1793938029.0885885,
+    "seen": 1793938434.0972946,
     "ast_hash": "2bb36ba3098ce4483ac2c62496af8b87",
     "semantic_hash": ""
   },
   "public/assets/layers/hstripe_tri.png": {
-    "mtime": 1793931597.653565,
-    "seen": 1793934392.0950515,
+    "mtime": 1793938029.0885885,
+    "seen": 1793938434.0972958,
     "ast_hash": "e32ac69ff2b2ae2a24dce83de384a273",
     "semantic_hash": ""
   },
   "public/assets/layers/hstripe_wide.png": {
-    "mtime": 1793931597.6610942,
-    "seen": 1793934392.0950527,
+    "mtime": 1793938029.1053188,
+    "seen": 1793938434.0972974,
     "ast_hash": "69c8ff5391b867e816906066fe87ab7a",
     "semantic_hash": ""
   },
   "public/assets/layers/jersey_mid.png": {
-    "mtime": 1793931597.6762178,
-    "seen": 1793934392.0950546,
-    "ast_hash": "38d0c49f4107087f44638e74dbd92049",
+    "mtime": 1793938029.1053188,
+    "seen": 1793938434.0972986,
+    "ast_hash": "3bab164760621c55e84ce8d1c6d0acfc",
     "semantic_hash": ""
   },
   "public/assets/layers/jersey_short.png": {
-    "mtime": 1793931597.6881704,
-    "seen": 1793934392.0950558,
-    "ast_hash": "eb9010c4680efdffed2a592fd3ba1e66",
+    "mtime": 1793938029.1218617,
+    "seen": 1793938434.0973,
+    "ast_hash": "05c2133507f39c5ea5fa0ddb493bd30f",
     "semantic_hash": ""
   },
   "public/assets/layers/knee_long.png": {
-    "mtime": 1793931597.69887,
-    "seen": 1793934392.0950572,
-    "ast_hash": "d948c9bdb3279070c6cac8523b28b24d",
+    "mtime": 1793938029.138534,
+    "seen": 1793938434.0973012,
+    "ast_hash": "1133c9c22187d04e22ab7257967b1e70",
     "semantic_hash": ""
   },
   "public/assets/layers/knee_reg.png": {
-    "mtime": 1793931597.7140017,
-    "seen": 1793934392.0950584,
-    "ast_hash": "1d5f0fffa1d38790405247fe139ceedb",
+    "mtime": 1793938029.138534,
+    "seen": 1793938434.0973024,
+    "ast_hash": "b778a42aa65881cbf95d387285c09939",
     "semantic_hash": ""
   },
   "public/assets/layers/knee_short.png": {
-    "mtime": 1793931597.7225575,
-    "seen": 1793934392.0950596,
-    "ast_hash": "21b84c6f22276d9dc259c7ca216faf42",
+    "mtime": 1793938029.1567366,
+    "seen": 1793938434.0973039,
+    "ast_hash": "5693aa3c0f9f9689f307b063d5aae458",
     "semantic_hash": ""
   },
   "public/assets/layers/mask_ol.png": {
-    "mtime": 1793931597.729644,
-    "seen": 1793934392.095061,
-    "ast_hash": "d1d8f883949e6791fc4670ed13835c6d",
+    "mtime": 1793938029.1615174,
+    "seen": 1793938434.0973053,
+    "ast_hash": "fd3a5f0274f296e1302513ccdfd42666",
     "semantic_hash": ""
   },
   "public/assets/layers/mask_qb.png": {
-    "mtime": 1793931597.7401068,
-    "seen": 1793934392.0950625,
-    "ast_hash": "dcbe7f52ee50726f5eb2161ab62eb3db",
+    "mtime": 1793938029.1738987,
+    "seen": 1793938434.097307,
+    "ast_hash": "65c97a3c0f1006349077e02223d93d94",
     "semantic_hash": ""
   },
   "public/assets/layers/mask_rb.png": {
-    "mtime": 1793931597.7497458,
-    "seen": 1793934392.095064,
-    "ast_hash": "56d9483f04da95e76e2d7c9f299d26df",
+    "mtime": 1793938029.1819541,
+    "seen": 1793938434.0973084,
+    "ast_hash": "6531858f2645392205ba150161360cb2",
     "semantic_hash": ""
   },
   "public/assets/layers/mask_wr.png": {
-    "mtime": 1793931597.7563565,
-    "seen": 1793934392.0950654,
-    "ast_hash": "f75887de7c6dafd989ad2da30fdc61c6",
+    "mtime": 1793938029.1900911,
+    "seen": 1793938434.0973096,
+    "ast_hash": "9f96be7a9a1d12cbae84336ff2d103af",
     "semantic_hash": ""
   },
   "public/assets/layers/mouth_bite.png": {
-    "mtime": 1793931597.7613626,
-    "seen": 1793934392.0950665,
+    "mtime": 1793938029.1900911,
+    "seen": 1793938434.097311,
     "ast_hash": "3043bda0f7d9c87ac76d22897f0d3ea9",
     "semantic_hash": ""
   },
   "public/assets/layers/mouth_hang.png": {
-    "mtime": 1793931597.769938,
-    "seen": 1793934392.0950682,
+    "mtime": 1793938029.198969,
+    "seen": 1793938434.0973125,
     "ast_hash": "ca758b750f975041ff364d187e7059b6",
     "semantic_hash": ""
   },
   "public/assets/layers/nf_0.png": {
-    "mtime": 1793931598.2353077,
-    "seen": 1793934392.0950696,
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.097314,
     "ast_hash": "d42994ef5ffa1c057debb998c5914e56",
     "semantic_hash": ""
   },
   "public/assets/layers/nf_1.png": {
-    "mtime": 1793931598.2374704,
-    "seen": 1793934392.095071,
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.0973153,
     "ast_hash": "6d3db8a45810e645e5c28888340e5e61",
     "semantic_hash": ""
   },
   "public/assets/layers/nf_2.png": {
-    "mtime": 1793931598.2386107,
-    "seen": 1793934392.0950725,
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.0973165,
     "ast_hash": "95df4ad8d2621fb55fbd1e23d96b1cab",
     "semantic_hash": ""
   },
   "public/assets/layers/nf_3.png": {
-    "mtime": 1793931598.2406013,
-    "seen": 1793934392.0950737,
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.097318,
     "ast_hash": "c950716b8390770cb14c62f588d77b2a",
     "semantic_hash": ""
   },
   "public/assets/layers/nf_4.png": {
-    "mtime": 1793931598.2436063,
-    "seen": 1793934392.0950754,
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.0973191,
     "ast_hash": "20d78112f7c5777ff2ed3ed0979cc65d",
     "semantic_hash": ""
   },
   "public/assets/layers/nf_5.png": {
-    "mtime": 1793931598.245126,
-    "seen": 1793934392.0950766,
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.0973206,
     "ast_hash": "7055db91942fbd62fb2e303cbde8c040",
     "semantic_hash": ""
   },
   "public/assets/layers/nf_6.png": {
-    "mtime": 1793931598.248168,
-    "seen": 1793934392.095078,
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.0973217,
     "ast_hash": "2c0b1ddadf82199e47c8e2fd44a662a6",
     "semantic_hash": ""
   },
   "public/assets/layers/nf_7.png": {
-    "mtime": 1793931598.2542212,
-    "seen": 1793934392.0950794,
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.0973232,
     "ast_hash": "d6bccf250fd690a0dafcf1b37ad38786",
     "semantic_hash": ""
   },
   "public/assets/layers/nf_8.png": {
-    "mtime": 1793931598.2557037,
-    "seen": 1793934392.0950804,
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.0973244,
     "ast_hash": "ef8410898729406f21c197df5dda20c5",
     "semantic_hash": ""
   },
   "public/assets/layers/nf_9.png": {
-    "mtime": 1793931598.2577121,
-    "seen": 1793934392.0950818,
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.0973258,
     "ast_hash": "8cb3415dee94ad31f548835a2bf1f1c5",
     "semantic_hash": ""
   },
   "public/assets/layers/no_0.png": {
-    "mtime": 1793931598.258716,
-    "seen": 1793934392.0950835,
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.097327,
     "ast_hash": "05e5017a8c80631f1996d2e08386c7c4",
     "semantic_hash": ""
   },
   "public/assets/layers/no_1.png": {
-    "mtime": 1793931598.260985,
-    "seen": 1793934392.095085,
+    "mtime": 1793938029.487015,
+    "seen": 1793938434.0973287,
     "ast_hash": "afc6e124d4c6ec28398912d215ce685c",
     "semantic_hash": ""
   },
   "public/assets/layers/no_2.png": {
-    "mtime": 1793931598.2619882,
-    "seen": 1793934392.0950863,
+    "mtime": 1793938029.4879072,
+    "seen": 1793938434.0973299,
     "ast_hash": "d7f42fa044236ba849b56516a71efc18",
     "semantic_hash": ""
   },
   "public/assets/layers/no_3.png": {
-    "mtime": 1793931598.2631607,
-    "seen": 1793934392.0950875,
+    "mtime": 1793938029.4879072,
+    "seen": 1793938434.0973313,
     "ast_hash": "410153d7b0ad4de33206ba23eff828fe",
     "semantic_hash": ""
   },
   "public/assets/layers/no_4.png": {
-    "mtime": 1793931598.265679,
-    "seen": 1793934392.0950892,
+    "mtime": 1793938029.4879072,
+    "seen": 1793938434.0973325,
     "ast_hash": "0ec17612ad20015781c52e09498849bb",
     "semantic_hash": ""
   },
   "public/assets/layers/no_5.png": {
-    "mtime": 1793931598.2677107,
-    "seen": 1793934392.0950906,
+    "mtime": 1793938029.4879072,
+    "seen": 1793938434.0973337,
     "ast_hash": "4214c0cd2337c6df9581f44465f7cdd9",
     "semantic_hash": ""
   },
   "public/assets/layers/no_6.png": {
-    "mtime": 1793931598.2687023,
-    "seen": 1793934392.095092,
+    "mtime": 1793938029.4879072,
+    "seen": 1793938434.0973349,
     "ast_hash": "dee41c4463c1383729d79ddf4ecef535",
     "semantic_hash": ""
   },
   "public/assets/layers/no_7.png": {
-    "mtime": 1793931598.2706952,
-    "seen": 1793934392.0950935,
+    "mtime": 1793938029.4879072,
+    "seen": 1793938434.0973363,
     "ast_hash": "a1796b6f02e5f930d4ddaeae0fd10c06",
     "semantic_hash": ""
   },
   "public/assets/layers/no_8.png": {
-    "mtime": 1793931598.2717004,
-    "seen": 1793934392.0950952,
+    "mtime": 1793938029.4879072,
+    "seen": 1793938434.0973382,
     "ast_hash": "6ac279ff32b917d50dc0212a71df8c44",
     "semantic_hash": ""
   },
   "public/assets/layers/no_9.png": {
-    "mtime": 1793931598.2737114,
-    "seen": 1793934392.0950963,
+    "mtime": 1793938029.4879072,
+    "seen": 1793938434.0973394,
     "ast_hash": "5052a6464c054022c1ba8296364378ab",
     "semantic_hash": ""
   },
   "public/assets/layers/nroll_horse.png": {
-    "mtime": 1793931597.7764244,
-    "seen": 1793934392.0950975,
+    "mtime": 1793938029.2051795,
+    "seen": 1793938434.0973406,
     "ast_hash": "7982f6c2c78cc78ff1b31993dc41abaa",
     "semantic_hash": ""
   },
   "public/assets/layers/nroll_roll.png": {
-    "mtime": 1793931597.7824306,
-    "seen": 1793934392.0950992,
+    "mtime": 1793938029.2051795,
+    "seen": 1793938434.097342,
     "ast_hash": "95094cfed10156a4574d55f653394cfb",
     "semantic_hash": ""
   },
   "public/assets/layers/pads.png": {
-    "mtime": 1793931597.787204,
-    "seen": 1793934392.0951004,
-    "ast_hash": "73fbab53a0b3c227c2140aa05914c161",
+    "mtime": 1793938029.2051795,
+    "seen": 1793938434.0973432,
+    "ast_hash": "2f2d8b019682509c0875575400eaac2d",
     "semantic_hash": ""
   },
   "public/assets/layers/pants_long.png": {
-    "mtime": 1793931597.8013597,
-    "seen": 1793934392.0951018,
-    "ast_hash": "2c5076e576d2c8f5675ecdf536900eb2",
+    "mtime": 1793938029.2332673,
+    "seen": 1793938434.097346,
+    "ast_hash": "df49b29d94681197e8f3204fb09caf63",
     "semantic_hash": ""
   },
   "public/assets/layers/pants_reg.png": {
-    "mtime": 1793931597.8134747,
-    "seen": 1793934392.0951035,
-    "ast_hash": "598c28a785fd7598bca8edacbfb14f16",
+    "mtime": 1793938029.2384732,
+    "seen": 1793938434.0973477,
+    "ast_hash": "70183e200199566bcf28d5facabf6de7",
     "semantic_hash": ""
   },
   "public/assets/layers/pants_short.png": {
-    "mtime": 1793931597.8230848,
-    "seen": 1793934392.0951047,
-    "ast_hash": "6fdfe81288948c30eb7389fe2bd77ed1",
+    "mtime": 1793938029.258554,
+    "seen": 1793938434.0973492,
+    "ast_hash": "13b876845dcf94513b0a6154b6b99590",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_belt_long.png": {
-    "mtime": 1793931597.8285766,
-    "seen": 1793934392.0951061,
+    "mtime": 1793938029.2645915,
+    "seen": 1793938434.0973506,
     "ast_hash": "4e9d2a4802f69c3746eaa39cac969b6f",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_belt_reg.png": {
-    "mtime": 1793931597.8362782,
-    "seen": 1793934392.0951073,
+    "mtime": 1793938029.2686188,
+    "seen": 1793938434.0973523,
     "ast_hash": "4e9d2a4802f69c3746eaa39cac969b6f",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_belt_short.png": {
-    "mtime": 1793931597.8433166,
-    "seen": 1793934392.0951087,
+    "mtime": 1793938029.273242,
+    "seen": 1793938434.0973537,
     "ast_hash": "4e9d2a4802f69c3746eaa39cac969b6f",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_panel_long.png": {
-    "mtime": 1793931597.8542123,
-    "seen": 1793934392.0951114,
-    "ast_hash": "dc0462cda819531991fbd0d0753cd24b",
+    "mtime": 1793938029.277163,
+    "seen": 1793938434.097355,
+    "ast_hash": "3294a94e279416293cf5aeef32158647",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_panel_reg.png": {
-    "mtime": 1793931597.863561,
-    "seen": 1793934392.0951135,
-    "ast_hash": "47b341da468f1318d9f97d2daba6f4ba",
+    "mtime": 1793938029.277163,
+    "seen": 1793938434.0973568,
+    "ast_hash": "6743a9f3caaf19c6cc32e723a7dea914",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_panel_short.png": {
-    "mtime": 1793931597.876748,
-    "seen": 1793934392.095115,
-    "ast_hash": "b9bde76c2538c39e772473c2e1765929",
+    "mtime": 1793938029.2915876,
+    "seen": 1793938434.097358,
+    "ast_hash": "cc26a0384ef95809b483fe98fd200799",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_side1_long.png": {
-    "mtime": 1793931597.88655,
-    "seen": 1793934392.0951164,
-    "ast_hash": "c31b7ff7570c778ab5fb2032127524a6",
+    "mtime": 1793938029.297624,
+    "seen": 1793938434.0973597,
+    "ast_hash": "b91774a61d1389b1eb2211a17e2fed58",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_side1_reg.png": {
-    "mtime": 1793931597.8965733,
-    "seen": 1793934392.0951178,
-    "ast_hash": "24cb6e108423ddb873930b9a4df2cede",
+    "mtime": 1793938029.3016472,
+    "seen": 1793938434.097361,
+    "ast_hash": "ec590dd51b69fe6eb2017bbb3cc44645",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_side1_short.png": {
-    "mtime": 1793931597.909192,
-    "seen": 1793934392.0951195,
-    "ast_hash": "e6a2e3248021dc1a717cc19a94f217da",
+    "mtime": 1793938029.3046048,
+    "seen": 1793938434.0973628,
+    "ast_hash": "106ae908675de7362469dc482ae93bb0",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_side2_long.png": {
-    "mtime": 1793931597.9202967,
-    "seen": 1793934392.095121,
-    "ast_hash": "70e6d40b457e5445d9ce47f3d9c542ff",
+    "mtime": 1793938029.3046048,
+    "seen": 1793938434.097364,
+    "ast_hash": "38fc6b701cfc0af96f0afbf1ae4f66cf",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_side2_reg.png": {
-    "mtime": 1793931597.9298828,
-    "seen": 1793934392.0951223,
-    "ast_hash": "88fe2d8e8de9090b26d05fdf756a3f0f",
+    "mtime": 1793938029.3216753,
+    "seen": 1793938434.0973651,
+    "ast_hash": "039933a4ed14ecceff00c3eca3163c1f",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_side2_short.png": {
-    "mtime": 1793931597.941205,
-    "seen": 1793934392.0951238,
-    "ast_hash": "42377e5fe7bc14004140838d2a0261ba",
+    "mtime": 1793938029.3216753,
+    "seen": 1793938434.0973666,
+    "ast_hash": "11be29165070326127fdfc7a5d31d300",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_side3_long.png": {
-    "mtime": 1793931597.9514308,
-    "seen": 1793934392.0951252,
-    "ast_hash": "c22f23f2b34ebfa5ca71e11c53ddf36f",
+    "mtime": 1793938029.3216753,
+    "seen": 1793938434.097368,
+    "ast_hash": "3765baf3658c2517d6753b9c7fbe5202",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_side3_reg.png": {
-    "mtime": 1793931597.961964,
-    "seen": 1793934392.0951269,
-    "ast_hash": "c7e005db1b88d52201effaa281d73e17",
+    "mtime": 1793938029.3382351,
+    "seen": 1793938434.0973697,
+    "ast_hash": "4875eba874adf6da2e47afd1a476f8eb",
     "semantic_hash": ""
   },
   "public/assets/layers/pstripe_side3_short.png": {
-    "mtime": 1793931597.973567,
-    "seen": 1793934392.095128,
-    "ast_hash": "6440c642c04e7e212b43c2f681893337",
+    "mtime": 1793938029.3382351,
+    "seen": 1793938434.0973709,
+    "ast_hash": "cec7c925f9d45de84b8c0fc8912c8905",
     "semantic_hash": ""
   },
   "public/assets/layers/shadow.png": {
-    "mtime": 1793931597.9797328,
-    "seen": 1793934392.0951293,
-    "ast_hash": "ac8a5e16f1b8c18c991b293a52fe5da4",
+    "mtime": 1793938029.3382351,
+    "seen": 1793938434.0973725,
+    "ast_hash": "ccb3d75c1b6fde8db30988641c763da2",
     "semantic_hash": ""
   },
   "public/assets/layers/skin.png": {
-    "mtime": 1793931598.0032964,
-    "seen": 1793934392.0951307,
-    "ast_hash": "2db31df991717290c62a19f794b6ffb5",
+    "mtime": 1793938029.3659737,
+    "seen": 1793938434.0973737,
+    "ast_hash": "7e7d4e56f56a92155109f5843901d51a",
     "semantic_hash": ""
   },
   "public/assets/layers/sleeve_2.png": {
-    "mtime": 1793931598.0096292,
-    "seen": 1793934392.0951319,
+    "mtime": 1793938029.370244,
+    "seen": 1793938434.097375,
     "ast_hash": "2a48c65322d69b324485d3d4a75242f2",
     "semantic_hash": ""
   },
   "public/assets/layers/sleeve_3.png": {
-    "mtime": 1793931598.0161512,
-    "seen": 1793934392.0951335,
+    "mtime": 1793938029.375975,
+    "seen": 1793938434.0973766,
     "ast_hash": "5eb92fe0bc09b5d85995cecc61acf074",
     "semantic_hash": ""
   },
   "public/assets/layers/sleeve_cuff.png": {
-    "mtime": 1793931598.0211577,
-    "seen": 1793934392.0951352,
+    "mtime": 1793938029.375975,
+    "seen": 1793938434.0973783,
     "ast_hash": "a86fd545bebbdf965ddf0eeee090e1cc",
     "semantic_hash": ""
   },
   "public/assets/layers/sock_high.png": {
-    "mtime": 1793931598.0327797,
-    "seen": 1793934392.095137,
-    "ast_hash": "a325eea5423c41633cab94ea20a1607b",
+    "mtime": 1793938029.375975,
+    "seen": 1793938434.0973797,
+    "ast_hash": "384a0448f98b640bcdab268a29ca6a0b",
     "semantic_hash": ""
   },
   "public/assets/layers/sock_low.png": {
-    "mtime": 1793931598.0413792,
-    "seen": 1793934392.095138,
-    "ast_hash": "6ebf56e3ccabeb2397a577d00666a020",
+    "mtime": 1793938029.3889022,
+    "seen": 1793938434.097381,
+    "ast_hash": "149a94d3d9f6399d34dc916bac72580d",
     "semantic_hash": ""
   },
   "public/assets/layers/sock_mid.png": {
-    "mtime": 1793931598.0489147,
-    "seen": 1793934392.0951393,
-    "ast_hash": "d0f0c84a5befc69440e00802060d01f2",
+    "mtime": 1793938029.3949032,
+    "seen": 1793938434.0973823,
+    "ast_hash": "9618ba5f86e617e365c8f1e566703b57",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_band_high.png": {
-    "mtime": 1793931598.0565622,
-    "seen": 1793934392.095141,
-    "ast_hash": "8f9270e4fc2a0fe488287bc709240e4f",
+    "mtime": 1793938029.3949032,
+    "seen": 1793938434.0973837,
+    "ast_hash": "2cadbbd312cbf04ba9e1a6c87506da15",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_band_low.png": {
-    "mtime": 1793931598.0635202,
-    "seen": 1793934392.0951421,
-    "ast_hash": "b9516e617be31a0922632f84a92de40c",
+    "mtime": 1793938029.3949032,
+    "seen": 1793938434.0973852,
+    "ast_hash": "7b557417b842440c1404a47d7829db3e",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_band_mid.png": {
-    "mtime": 1793931598.0731173,
-    "seen": 1793934392.0951438,
+    "mtime": 1793938029.4051523,
+    "seen": 1793938434.0973868,
     "ast_hash": "f1acaee9bdeeecad619f2385a02ee29a",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_hoops_high.png": {
-    "mtime": 1793931598.078724,
-    "seen": 1793934392.095146,
-    "ast_hash": "e816bc164bce3756d37a20409588936f",
+    "mtime": 1793938029.4051523,
+    "seen": 1793938434.0973883,
+    "ast_hash": "a71840dad535ad46262289b90e737269",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_hoops_low.png": {
-    "mtime": 1793931598.0853171,
-    "seen": 1793934392.0951476,
+    "mtime": 1793938029.413294,
+    "seen": 1793938434.09739,
     "ast_hash": "afd547e684a8f8047dfe58335a5e6466",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_hoops_mid.png": {
-    "mtime": 1793931598.0910969,
-    "seen": 1793934392.0951488,
+    "mtime": 1793938029.4204805,
+    "seen": 1793938434.0973911,
     "ast_hash": "13cc56607fec3c8627f65b86ab7f7b16",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_wide_high.png": {
-    "mtime": 1793931598.0994215,
-    "seen": 1793934392.0951507,
-    "ast_hash": "37175ecc2836f700a182dec58ec3b507",
+    "mtime": 1793938029.4216597,
+    "seen": 1793938434.0973926,
+    "ast_hash": "6df53df7ee50426e8c93b47a55399da7",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_wide_low.png": {
-    "mtime": 1793931598.1069489,
-    "seen": 1793934392.095152,
-    "ast_hash": "ef5fa32aca6f158863fef0b68ef938e4",
+    "mtime": 1793938029.4216597,
+    "seen": 1793938434.0973942,
+    "ast_hash": "864f18d67a46cdd453de85733399bed3",
     "semantic_hash": ""
   },
   "public/assets/layers/sstripe_wide_mid.png": {
-    "mtime": 1793931598.1131902,
-    "seen": 1793934392.0951533,
+    "mtime": 1793938029.4216597,
+    "seen": 1793938434.0973957,
     "ast_hash": "a05c328cf310e636019ad36aa04558fa",
     "semantic_hash": ""
   },
   "public/assets/layers/towel_F.png": {
-    "mtime": 1793931598.1210122,
-    "seen": 1793934392.0951552,
-    "ast_hash": "75fd1abc39da30a29b6f92a836ec0e3b",
+    "mtime": 1793938029.4216597,
+    "seen": 1793938434.097397,
+    "ast_hash": "46c09dbea252cdaf2a9e86f0bdb7dce4",
     "semantic_hash": ""
   },
   "public/assets/layers/towel_L.png": {
-    "mtime": 1793931598.128279,
-    "seen": 1793934392.0951567,
-    "ast_hash": "e8e2bd602a2664254700cede1ef9da76",
+    "mtime": 1793938029.4382906,
+    "seen": 1793938434.0973983,
+    "ast_hash": "735448c633586a7e1392a3cc30ca90cd",
     "semantic_hash": ""
   },
   "public/assets/layers/towel_R.png": {
-    "mtime": 1793931598.1413348,
-    "seen": 1793934392.095158,
-    "ast_hash": "caee31bc52f9e7968d1759d1cb2b9777",
+    "mtime": 1793938029.4382906,
+    "seen": 1793938434.0973997,
+    "ast_hash": "e430187682976c049aa25a655216b351",
     "semantic_hash": ""
   },
   "public/assets/layers/under_long.png": {
-    "mtime": 1793931598.1573224,
-    "seen": 1793934392.0951593,
-    "ast_hash": "d0df07f4f53b2d328800ff6cebe38976",
+    "mtime": 1793938029.4382906,
+    "seen": 1793938434.0974011,
+    "ast_hash": "fe050ed431c4977c872ffebb9855a645",
     "semantic_hash": ""
   },
   "public/assets/layers/under_short.png": {
-    "mtime": 1793931598.167111,
-    "seen": 1793934392.0951605,
-    "ast_hash": "6ab9a24551ec3432a9d43f00a697fb15",
+    "mtime": 1793938029.4545293,
+    "seen": 1793938434.0974023,
+    "ast_hash": "bd56b3af2449f8217b7ef410fb6a56bb",
     "semantic_hash": ""
   },
   "public/assets/layers/visor.png": {
-    "mtime": 1793931598.1805115,
-    "seen": 1793934392.0951624,
-    "ast_hash": "151b1703de39403fee1d6632430edff1",
+    "mtime": 1793938029.4545293,
+    "seen": 1793938434.0974038,
+    "ast_hash": "85a6b504d3a61a05cbbc7c64664b0dc5",
     "semantic_hash": ""
   },
   "public/assets/layers/wrist_B.png": {
-    "mtime": 1793931598.1912568,
-    "seen": 1793934392.095164,
-    "ast_hash": "c0a6942c19753dc808c6486254d25b3e",
+    "mtime": 1793938029.4613588,
+    "seen": 1793938434.097405,
+    "ast_hash": "f7ff635260f30b6b3cbf70dc78f7cd36",
     "semantic_hash": ""
   },
   "public/assets/layers/wrist_L.png": {
-    "mtime": 1793931598.1998115,
-    "seen": 1793934392.0951657,
-    "ast_hash": "e207bcdb3ff61447468bc0f30cd2d8f7",
+    "mtime": 1793938029.4613588,
+    "seen": 1793938434.0974061,
+    "ast_hash": "5c203bb79148b8245785b2f26b4e725c",
     "semantic_hash": ""
   },
   "public/assets/layers/wrist_P.png": {
-    "mtime": 1793931598.2087264,
-    "seen": 1793934392.0951674,
-    "ast_hash": "23acd2fe52798839a9034273a73daedd",
+    "mtime": 1793938029.4613588,
+    "seen": 1793938434.0974076,
+    "ast_hash": "2b6c5bec312d904bc4280fc811ebef26",
     "semantic_hash": ""
   },
   "public/assets/layers/wrist_Pcard.png": {
-    "mtime": 1793931598.2194123,
-    "seen": 1793934392.095169,
+    "mtime": 1793938029.470319,
+    "seen": 1793938434.0974088,
     "ast_hash": "83afd20af155d1cdeda038f6d9e4f093",
     "semantic_hash": ""
   },
   "public/assets/layers/wrist_R.png": {
-    "mtime": 1793931598.2250087,
-    "seen": 1793934392.0951705,
-    "ast_hash": "c200b362dcea007400de9e444e809978",
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.0974102,
+    "ast_hash": "1b5d5b0a61c1cfe8c4959c0679b67aa2",
     "semantic_hash": ""
   },
   "public/assets/layers/yoke.png": {
-    "mtime": 1793931598.2337866,
-    "seen": 1793934392.0951724,
-    "ast_hash": "6b56d8dd238adcb74b1cc9f8200ffdb1",
+    "mtime": 1793938029.4716032,
+    "seen": 1793938434.0974116,
+    "ast_hash": "0f055e4dcdba06d6c2726b095e4d385d",
     "semantic_hash": ""
   },
   "public/assets/stadiums/atlanta.png": {
@@ -2070,8 +2070,8 @@
     "semantic_hash": ""
   },
   "src/player/PlayerBody.ts": {
-    "mtime": 1793932004.2654133,
-    "seen": 1793934392.0947337,
+    "mtime": 1793937497.6507158,
+    "seen": 1793938434.0969808,
     "ast_hash": "b12b8141d68b1f470f8e40c167205161",
     "semantic_hash": ""
   },
@@ -2250,9 +2250,9 @@
     "semantic_hash": ""
   },
   "src/scenes/CarreiraMenu.ts": {
-    "mtime": 1793931818.7088802,
-    "seen": 1793934392.0947483,
-    "ast_hash": "aeb6cdebaa9f28b909b617ea07400caa",
+    "mtime": 1793937521.7233324,
+    "seen": 1793938434.096996,
+    "ast_hash": "8cfb0b3cc1de321f96acce8b4de3074d",
     "semantic_hash": ""
   },
   "src/career/kits.ts": {
@@ -2304,8 +2304,8 @@
     "semantic_hash": ""
   },
   "src/ui/jerseyArt.ts": {
-    "mtime": 1793918060.7995975,
-    "seen": 1793934392.09486,
+    "mtime": 1793937497.7907395,
+    "seen": 1793938434.0970988,
     "ast_hash": "e42f6b3f8efcdef9c182ca831370c666",
     "semantic_hash": ""
   },
@@ -2634,9 +2634,9 @@
     "semantic_hash": ""
   },
   "tools/body/polish.py": {
-    "mtime": 1793931595.8366776,
-    "seen": 1793934392.0948715,
-    "ast_hash": "ad8af96737d56a92ef708e22a41ce764",
+    "mtime": 1793938027.304885,
+    "seen": 1793938434.0971105,
+    "ast_hash": "6ebb266f2040c4b18fb20de36108b208",
     "semantic_hash": ""
   },
   "public/sfx/CREDITOS.md": {
