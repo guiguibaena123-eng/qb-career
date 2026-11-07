@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { RES, VIEW } from '../config';
+import { GAME_H, GAME_W, RES, VIEW } from '../config';
 
 /*
  * Alta resolução: o canvas tem RES× o tamanho lógico (390×844) e cada câmera dá zoom RES,
@@ -66,4 +66,28 @@ export function setupHiRes(scene: Phaser.Scene) {
   const cam = scene.cameras.main;
   cam.setZoom(RES);
   cam.centerOn(VIEW.x + VIEW.w / 2, VIEW.y + VIEW.h / 2);
+}
+
+/**
+ * Telas de lista (menu da carreira): o palco ocupa a LARGURA da tela (letras e cartões maiores) em vez
+ * de encolher para caber a altura inteira; a altura útil passa a ser a que sobra na área segura.
+ * Devolve a altura útil (`h`, em unidades do palco, no lugar de GAME_H) e o retângulo visível (`view`,
+ * no lugar de VIEW). Sem ganho (computador, tela já cheia) fica igual a setupHiRes.
+ */
+export function setupFitWidth(scene: Phaser.Scene) {
+  const cam = scene.cameras.main;
+  const { w: Ws, h: Hs } = VIEW.screen;
+  const { t, r, b, l } = VIEW.inset;
+  const s = Math.max(Ws / VIEW.w, Hs / VIEW.h); // pt da tela por unidade, no modo normal
+  const S2 = (Ws - l - r) / GAME_W; // pt por unidade com o palco na largura toda
+  const k = S2 / s;
+  const envelop = Math.abs(Ws / Hs - VIEW.w / VIEW.h) < 0.03;
+  if (!envelop || k < 1.02) {
+    setupHiRes(scene);
+    return { h: GAME_H, view: VIEW };
+  }
+  cam.setZoom(RES * k);
+  cam.centerOn((Ws / 2 - l) / S2, (Hs / 2 - t) / S2);
+  const view = { ...VIEW, x: -l / S2 - 2, y: -t / S2 - 2, w: Ws / S2 + 4, h: Hs / S2 + 4 };
+  return { h: (Hs - t - b) / S2, view };
 }

@@ -6,6 +6,10 @@ import { devSimWeeks } from '../integration/MatchBridge';
 import { awardsReady, finalMvp, seasonAwards, type AwardWinner } from '../career/awards';
 import { teamTitles, trophyCase } from '../career/trophies';
 import { GAME_H, GAME_W, VIEW } from '../config';
+
+/** Altura útil e área visível desta tela (palco na largura toda do iPhone: ver setupFitWidth). */
+let MH = GAME_H;
+let MV = VIEW;
 import { TeamRepository, type CareerTeam } from '../data/TeamRepository';
 import { fgOn } from '../data/teams';
 import { KIT_IDS, kitAccents, kitInfo } from '../career/kits';
@@ -15,7 +19,7 @@ import { conferenceSeeds, CONFS, divisionOf, divisionTable, DIVS, league, pct, P
 import { teamById } from '../data/teams';
 import { bracket, ROUND_INFO, ROUNDS, type PGame } from '../career/playoffs';
 import { DEFAULT_LOOK, getSave, recordText, updateSave, type LookOptions } from '../player/PlayerSave';
-import { setupHiRes } from '../systems/hires';
+import { setupFitWidth } from '../systems/hires';
 import { portrait as drawPortrait } from '../ui/portrait';
 import { weatherIcon } from '../ui/weatherIcon';
 import { arrowAfter, C, fillPlate, inkOn, label, lum, mix, plate, plateLine, platePts, plateShadow, sectionHead, star, strokePlate, trophy, title, TV, tvCard as gradCard, tvEnter, TvButton as GlassButton, tvText, wipeTo } from '../ui/tv';
@@ -224,7 +228,7 @@ export class CarreiraMenu extends Phaser.Scene {
   }
 
   create() {
-    setupHiRes(this);
+    ({ h: MH, view: MV } = setupFitWidth(this));
     ensureSeason();
     // Teste (só no desenvolvimento): ?simsemanas=N joga N semanas automaticamente
     const sim = import.meta.env.DEV ? Number(new URLSearchParams(location.search).get('simsemanas') ?? 0) : 0;
@@ -249,8 +253,8 @@ export class CarreiraMenu extends Phaser.Scene {
     this.drawNextGames();
     this.tabsPane = new Pane(this, 0, 208, GAME_W, 44, 'x', 11);
     this.subBar = this.add.container(0, 0).setDepth(11);
-    this.body = new Pane(this, 0, 258, GAME_W, GAME_H - 76 - 258, 'y', 5);
-    this.persPane = new Pane(this, 16, PANE_Y, GAME_W - 32, GAME_H - 76 - PANE_Y, 'y', 5);
+    this.body = new Pane(this, 0, 258, GAME_W, MH - 76 - 258, 'y', 5);
+    this.persPane = new Pane(this, 16, PANE_Y, GAME_W - 32, MH - 76 - PANE_Y, 'y', 5);
     this.buildPersFixed();
     this.drawCta();
     this.show(this.tab);
@@ -272,8 +276,8 @@ export class CarreiraMenu extends Phaser.Scene {
     g.lineTo(-w / 2 + 19, 5);
     g.lineTo(-w / 2 + 28, -5);
     g.strokePath();
-    const c = this.add.container(GAME_W / 2, GAME_H - 86, [g, t]).setDepth(50).setAlpha(0);
-    this.tweens.add({ targets: c, alpha: 1, y: GAME_H - 96, duration: 260, delay: 260, ease: 'Expo.Out' });
+    const c = this.add.container(GAME_W / 2, MH - 86, [g, t]).setDepth(50).setAlpha(0);
+    this.tweens.add({ targets: c, alpha: 1, y: MH - 96, duration: 260, delay: 260, ease: 'Expo.Out' });
     this.tweens.add({ targets: c, alpha: 0, duration: 400, delay: 1900, onComplete: () => c.destroy() });
   }
 
@@ -283,17 +287,17 @@ export class CarreiraMenu extends Phaser.Scene {
     // Fundo na cor do seu time (escurecida só quando é clara demais para o texto branco),
     // com o escudo grande em marca-d'água e a base mais escura onde ficam os botões
     const W = GAME_W;
-    const H = GAME_H;
+    const H = MH;
     const pc = this.team.colors.primary;
     const l = lum(pc);
     const base = l > 150 ? mix(pc, TV.ink, 0.5) : l > 100 ? mix(pc, TV.ink, 0.3) : pc;
     const g = this.add.graphics().setDepth(-12);
     g.fillStyle(base, 1);
-    g.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
+    g.fillRect(MV.x, MV.y, MV.w, MV.h);
     // faixas diagonais na cor secundária (textura de transmissão, bem discretas)
     g.fillStyle(this.team.colors.secondary, 0.07);
-    const y0 = VIEW.y;
-    const y1 = VIEW.y + VIEW.h;
+    const y0 = MV.y;
+    const y1 = MV.y + MV.h;
     const sl = (y1 - y0) * 0.25;
     for (let i = -3; i < 9; i++) {
       const x0 = i * 90;
@@ -303,10 +307,10 @@ export class CarreiraMenu extends Phaser.Scene {
     for (let i = 0; i < steps; i++) {
       const t = i / steps;
       g.fillStyle(TV.ink, 0.1 + t * t * 0.55);
-      g.fillRect(VIEW.x, H * 0.3 + t * H * 0.7, VIEW.w, (H * 0.7) / steps + 1);
+      g.fillRect(MV.x, H * 0.3 + t * H * 0.7, MV.w, (H * 0.7) / steps + 1);
     }
     g.fillStyle(TV.ink, 0.65);
-    g.fillRect(VIEW.x, H, VIEW.w, VIEW.y + VIEW.h - H + 1);
+    g.fillRect(MV.x, H, MV.w, MV.y + MV.h - H + 1);
     if (this.textures.exists(this.team.logo.large)) {
       const img = this.add.image(W - 40, H * 0.6, this.team.logo.large).setDepth(-11).setAlpha(0.08);
       img.setScale(300 / Math.max(img.width, img.height));
@@ -490,10 +494,10 @@ export class CarreiraMenu extends Phaser.Scene {
     const g = this.add.graphics().setDepth(30);
     for (let i = 0; i < 30; i++) {
       g.fillStyle(TV.ink, Math.min(1, (i / 30) * 1.5));
-      g.fillRect(VIEW.x, GAME_H - 104 + i * 2, VIEW.w, 2);
+      g.fillRect(MV.x, MH - 104 + i * 2, MV.w, 2);
     }
     g.fillStyle(TV.ink, 1);
-    g.fillRect(VIEW.x, GAME_H - 44, VIEW.w, VIEW.y + VIEW.h - GAME_H + 44 + 1);
+    g.fillRect(MV.x, MH - 44, MV.w, MV.y + MV.h - MH + 44 + 1);
     const n = nextGame();
     const over = !n && seasonOver();
     const done = !!getSave().career.seasonDone;
@@ -515,7 +519,7 @@ export class CarreiraMenu extends Phaser.Scene {
     const hc = this.team.colors.primary;
     const fg = inkOn(hc);
     const bw = GAME_W - 32;
-    const b = new GlassButton(this, GAME_W / 2, GAME_H - 46, { w: bw, h: 62, fill: hc, fillAlpha: 1, primary: true }).setDepth(31);
+    const b = new GlassButton(this, GAME_W / 2, MH - 46, { w: bw, h: 62, fill: hc, fillAlpha: 1, primary: true }).setDepth(31);
     const t = tvText(this, -bw / 2 + 64, 0, text, 25, fg, 800, 1.2).setOrigin(0, 0.5);
     if (t.width > bw - 110) t.setScale((bw - 110) / t.width, 1);
     const a = this.add.graphics();
@@ -553,9 +557,9 @@ export class CarreiraMenu extends Phaser.Scene {
   }
 
   private toast(text: string) {
-    const t = tvText(this, GAME_W / 2, GAME_H - 132, text, 15, C.ink, 800, 1).setOrigin(0.5).setDepth(41);
+    const t = tvText(this, GAME_W / 2, MH - 132, text, 15, C.ink, 800, 1).setOrigin(0.5).setDepth(41);
     const g = this.add.graphics().setDepth(40);
-    plate(g, GAME_W / 2 - t.width / 2 - 16, GAME_H - 147, t.width + 32, 30, YE);
+    plate(g, GAME_W / 2 - t.width / 2 - 16, MH - 147, t.width + 32, 30, YE);
     this.tweens.add({ targets: [t, g], alpha: 0, delay: 1800, duration: 300, onComplete: () => (t.destroy(), g.destroy()) });
   }
 
@@ -575,7 +579,7 @@ export class CarreiraMenu extends Phaser.Scene {
     const subs = grp.tabs.length > 1;
     const by = games ? 258 : subs ? 164 : 124;
     this.tabsPane.moveTo(games ? 208 : 74);
-    this.body.moveTo(by, GAME_H - 76 - by);
+    this.body.moveTo(by, MH - 76 - by);
     this.drawTabs();
     this.drawSubs(grp, tab);
     this.body.setVisible(!pers);
@@ -1106,8 +1110,8 @@ export class CarreiraMenu extends Phaser.Scene {
         y += Math.ceil(pal.length / per) * (SZ + GP) - GP;
       } else if (r.button) {
         const g = add(this.add.graphics());
-        plate(g, VIEW.x, y, VIEW.w, 40, TV.ink3, 1);
-        plateLine(g, VIEW.x, y, VIEW.w, 40, TV.rule, 1, 1);
+        plate(g, MV.x, y, MV.w, 40, TV.ink3, 1);
+        plateLine(g, MV.x, y, MV.w, 40, TV.rule, 1, 1);
         add(tvText(this, W / 2, y + 20, r.button.text, 15, C.white, 800, 1.2).setOrigin(0.5));
         p.hit(0, y, W, 40, r.button.fn);
         this.persPaint.push(() => {});

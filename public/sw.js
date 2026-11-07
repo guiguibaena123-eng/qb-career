@@ -1,6 +1,6 @@
 ﻿// Caminhos relativos: funciona tanto na raiz (npm run dev) quanto em /qb-career/ (GitHub Pages).
 // Modo offline: guarda cada arquivo do jogo na primeira abertura e serve do cache depois.
-const CACHE = 'qb-career-v54';
+const CACHE = 'qb-career-v55';
 // Trilha dos menus: cache prÃ³prio, que nÃ£o Ã© apagado a cada versÃ£o (sÃ£o ~27 MB; baixa sÃ³ uma vez).
 // Se as faixas mudarem, troque o nome (music-v2) para baixar de novo.
 const MUSIC = 'qb-career-music-v1';
