@@ -24,19 +24,22 @@ export class World {
   /** Para onde a câmera vai (jarda no foco); ela chega lá suavemente (lerp). */
   targetY: number;
 
+  readonly weather: SkyWeather;
+
   constructor(scene: Phaser.Scene, camY: number, weather: SkyWeather = 'clear') {
+    this.weather = weather;
     this.proj.camY = this.targetY = camY;
     this.stadium = new StadiumShader(scene, this.proj, this.tod, weather);
     this.stand = new Grandstand(scene, this.proj, this.tod, weather);
     this.field = new FieldRenderer(scene, this.proj);
     this.sideline = new Sideline(scene, this.proj);
-    this.field.lights = shadowLights(this.tod);
+    this.field.lights = shadowLights(this.tod, weather);
     // Gramado mais vivo à noite (refletores), mais quente na tarde
     if (this.tod === 'night') this.field.grass = [0x52b848, 0x5fc653];
     else if (this.tod === 'dusk') this.field.grass = [0x4a9a3d, 0x54a844];
     this.players = new BillboardLayer(scene, 0.7);
-    this.players.setLights(shadowLights(this.tod));
-    this.sideline.people.setLights(shadowLights(this.tod)); // reservas, técnicos, fotógrafos e câmeras também projetam sombras
+    this.players.setLights(shadowLights(this.tod, weather));
+    this.sideline.people.setLights(shadowLights(this.tod, weather)); // reservas, técnicos, fotógrafos e câmeras também projetam sombras
   }
 
   update(dt: number) {

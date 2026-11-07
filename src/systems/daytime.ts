@@ -64,8 +64,10 @@ const CORNERS: [number, number][] = [
 ];
 
 /** Sombras: de dia uma oval sob o jogador; à noite uma sombra para cada torre de luz dos 4 cantos; na tarde, o sol baixo faz uma sombra comprida. */
-export function shadowLights(tod: TimeOfDay): ShadowLight[] | null {
+export function shadowLights(tod: TimeOfDay, weather: SkyWeather = 'clear'): ShadowLight[] | null {
   if (tod === 'day') return null;
+  // tarde nublada (chuva/neve): sem sol baixo, só as torres de luz fracas
+  if (tod === 'dusk' && weather !== 'clear') return CORNERS.map(([x, y]) => ({ x, y, len: 3.1, a: 0.08 }));
   const corners = (a: number): ShadowLight[] => CORNERS.map(([x, y]) => ({ x, y, len: 3.1, a }));
   if (tod === 'night') return corners(0.22);
   return [{ x: -75, y: -55, len: 5.5, a: 0.3 }, ...corners(0.06)];
@@ -89,8 +91,13 @@ export class Daylight {
   private rect: Phaser.GameObjects.Rectangle | null = null;
   private pools: { img: Phaser.GameObjects.Image; x: number; y: number }[] = [];
 
-  constructor(scene: Phaser.Scene, readonly tod: TimeOfDay, w: number, h: number) {
-    const c = TOD[tod].light;
+  constructor(scene: Phaser.Scene, readonly tod: TimeOfDay, w: number, h: number, weather: SkyWeather = 'clear') {
+    // Dia e tarde com chuva/neve: céu nublado, luz cinza e difusa (a noite fica como no tempo limpo)
+    const overcast: Record<'day' | 'dusk', Record<'rain' | 'snow', number>> = {
+      day: { rain: 0xa3abb8, snow: 0xc9ced8 },
+      dusk: { rain: 0x9c95a0, snow: 0xbdb3b8 },
+    };
+    const c = tod !== 'night' && weather !== 'clear' ? overcast[tod][weather] : TOD[tod].light;
     if (c === null) return;
     if (tod === 'night') {
       this.night(scene, w, h);

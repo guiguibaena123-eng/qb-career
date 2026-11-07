@@ -54,7 +54,8 @@ export class Weather {
     this.kind = kind;
     const W = GAME_W;
     const H = GAME_H;
-    const haze = kind === 'rain' ? (night ? 0.1 : 0.4) : kind === 'snow' ? (night ? 0.08 : 0.48) : 0;
+    // de dia o nublado vem da luz cinza (Daylight); aqui só um véu leve de chuva/neve
+    const haze = kind === 'rain' ? (night ? 0.1 : 0.14) : kind === 'snow' ? (night ? 0.08 : 0.16) : 0;
     this.tint = scene.add
       .rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, kind === 'rain' ? 0x0a1426 : 0xf2f6ff, haze)
       .setOrigin(0)

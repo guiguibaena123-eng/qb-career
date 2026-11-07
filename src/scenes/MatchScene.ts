@@ -282,7 +282,7 @@ export class MatchScene extends Phaser.Scene {
     }
 
     // Clima e vento da partida
-    this.daylight = new Daylight(this, this.world.tod, GAME_W, GAME_H);
+    this.daylight = new Daylight(this, this.world.tod, GAME_W, GAME_H, weatherKind);
     this.weather = new Weather(this, weatherKind, this.rng, this.world.tod === 'night');
     this.world.sideline.snow = this.weather.kind === 'snow';
     this.state.wind = { dir: this.rng.chance(0.5) ? -1 : 1, mph: this.rng.int(0, 18) };
@@ -1001,7 +1001,7 @@ export class MatchScene extends Phaser.Scene {
     this.ui = new Fx(this);
     this.feedback = new Feedback(this);
     this.ball = new Ball(this, this.world.proj, this.fx, this.fxTop);
-    this.ball.lights = shadowLights(this.world.tod);
+    this.ball.lights = shadowLights(this.world.tod, this.world.weather);
     this.liveUi = new LiveUi(this, {
       onRun: () => this.scramble(),
       onThrowAway: () => this.throwAway(),
