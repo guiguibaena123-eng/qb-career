@@ -23,6 +23,7 @@ import { setupFitWidth } from '../systems/hires';
 import { portrait as drawPortrait } from '../ui/portrait';
 import { weatherIcon } from '../ui/weatherIcon';
 import { arrowAfter, C, fillPlate, inkOn, label, lum, mix, plate, plateLine, platePts, plateShadow, sectionHead, star, strokePlate, trophy, title, TV, tvCard as gradCard, tvEnter, TvButton as GlassButton, tvText, wipeTo } from '../ui/tv';
+import { vGradient } from '../ui/widgets';
 
 /*
  * CarreiraMenu — hub da carreira (como no design): cabeçalho com o jogador, time, OVR e retrospecto;
@@ -303,12 +304,7 @@ export class CarreiraMenu extends Phaser.Scene {
       const x0 = i * 90;
       g.fillPoints([new Phaser.Math.Vector2(x0, y0), new Phaser.Math.Vector2(x0 + 34, y0), new Phaser.Math.Vector2(x0 + 34 - sl, y1), new Phaser.Math.Vector2(x0 - sl, y1)], true);
     }
-    const steps = 30;
-    for (let i = 0; i < steps; i++) {
-      const t = i / steps;
-      g.fillStyle(TV.ink, 0.1 + t * t * 0.55);
-      g.fillRect(MV.x, H * 0.3 + t * H * 0.7, MV.w, (H * 0.7) / steps + 1);
-    }
+    vGradient(g, MV.x, H * 0.3, MV.w, H * 0.7, TV.ink, (t) => 0.1 + t * t * 0.55, 16);
     g.fillStyle(TV.ink, 0.65);
     g.fillRect(MV.x, H, MV.w, MV.y + MV.h - H + 1);
     if (this.textures.exists(this.team.logo.large)) {
@@ -492,12 +488,9 @@ export class CarreiraMenu extends Phaser.Scene {
 
   private drawCta() {
     const g = this.add.graphics().setDepth(30);
-    for (let i = 0; i < 30; i++) {
-      g.fillStyle(TV.ink, Math.min(1, (i / 30) * 1.5));
-      g.fillRect(MV.x, MH - 104 + i * 2, MV.w, 2);
-    }
+    vGradient(g, MV.x, MH - 104, MV.w, 60, TV.ink, (t) => t * 1.5, 12);
     g.fillStyle(TV.ink, 1);
-    g.fillRect(MV.x, MH - 44, MV.w, MV.y + MV.h - MH + 44 + 1);
+    g.fillRect(MV.x, MH - 44, MV.w, MV.y + MV.h - MH + 44);
     const n = nextGame();
     const over = !n && seasonOver();
     const done = !!getSave().career.seasonDone;

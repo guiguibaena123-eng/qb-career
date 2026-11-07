@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { stadiumSlot } from './stadiumPhoto';
 import { GAME_H, GAME_W, LAYOUT } from '../config';
+import { vGradient } from './widgets';
 import { TeamRepository } from '../data/TeamRepository';
 
 /*
@@ -400,12 +401,7 @@ export function feed(scene: Phaser.Scene, teamId: string | null, dim = 0.7) {
   veil.fillStyle(TV.ink, dim);
   veil.fillRect(V.x, V.y, V.w, H * 0.18 - V.y);
   // funde na tinta antes de a foto acabar (sem emenda)
-  const steps = 28;
-  for (let i = 0; i < steps; i++) {
-    const t = i / steps;
-    veil.fillStyle(TV.ink, Math.min(1, dim + (1 - dim) * Math.min(1, t * t * 1.2)));
-    veil.fillRect(V.x, H * 0.18 + t * H * 0.34, V.w, (H * 0.34) / steps + 1);
-  }
+  vGradient(veil, V.x, H * 0.18, V.w, H * 0.34, TV.ink, (t) => dim + (1 - dim) * Math.min(1, t * t * 1.2), 14);
   veil.fillStyle(TV.ink, 1);
   veil.fillRect(V.x, H * 0.52, V.w, V.y + V.h - H * 0.52 + 2);
   c.add(veil);

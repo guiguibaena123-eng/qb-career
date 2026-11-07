@@ -91,8 +91,8 @@ export class Daylight {
   private rect: Phaser.GameObjects.Rectangle | null = null;
   private lightG: Phaser.GameObjects.Graphics | null = null;
   private lastKey = '';
-  /** Força de cada camada do degradê de luz no campo (noite 0,03; tarde mais fraca). */
-  private lightA = 0.03;
+  /** Cor de cada camada de escuro em volta do campo (multiplica; noite mais forte, tarde mais fraca). */
+  private layerCol = 0xd9dcef;
 
   constructor(scene: Phaser.Scene, readonly tod: TimeOfDay, w: number, h: number, weather: SkyWeather = 'clear') {
     // Dia e tarde com chuva/neve: céu nublado, luz cinza e difusa (a noite fica como no tempo limpo)
@@ -109,8 +109,8 @@ export class Daylight {
     this.rect = scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, c, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
     // Tarde: os refletores já acesos dão um toque da luz da noite no gramado (mais fraco)
     if (tod === 'dusk') {
-      this.lightA = weather === 'clear' ? 0.017 : 0.012;
-      this.lightG = scene.add.graphics().setDepth(59.6).setBlendMode(Phaser.BlendModes.ADD);
+      this.layerCol = weather === 'clear' ? 0xeceef6 : 0xf1f2f7;
+      this.lightG = scene.add.graphics().setDepth(59.6).setBlendMode(Phaser.BlendModes.MULTIPLY);
     }
   }
 
@@ -120,16 +120,18 @@ export class Daylight {
    * campo (camada aditiva). Tudo em textura de canvas na resolução da tela.
    */
   private night(scene: Phaser.Scene, _w: number, _h: number) {
-    // Noite: tudo escurece por igual (arquibancada, laterais, fora do campo)...
-    scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0x767eb4, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
-    // ...e os refletores iluminam o GRAMADO: degradê preso ao campo (redesenhado conforme a câmera)
-    this.lightG = scene.add.graphics().setDepth(59.6).setBlendMode(Phaser.BlendModes.ADD);
+    // Noite: um tom azulado leve em tudo (o gramado mantém as cores vivas)...
+    scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0xdde2f8, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    // ...e o ESCURO fica fora da luz dos refletores: camadas que escurecem tudo em volta do campo
+    this.lightG = scene.add.graphics().setDepth(59.6).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    this.layerCol = 0xd9dcef;
   }
 
   /**
-   * Luz dos refletores no campo: camadas de retângulos no chão (projetados), da maior (passa um pouco
-   * das linhas laterais e do fundo das end zones) à menor (85% do campo). Somadas, viram um degradê:
-   * forte no miolo, caindo nas extremidades e fora das linhas. Cor creme quente, sem "estourar" em branco.
+   * Luz dos refletores presa ao campo. Em vez de clarear (que deixa tudo esbranquiçado), escurece o que
+   * está FORA da área iluminada: N camadas, cada uma cobre tudo fora de um retângulo do chão (projetado),
+   * do maior (7 jd além das linhas) ao menor (85% do campo). Somadas, viram um degradê: o miolo do campo
+   * com as cores originais e vivas, caindo para o escuro nas laterais, nas end zones e na arquibancada.
    */
   update(proj: Projection) {
     const g = this.lightG;
@@ -140,21 +142,33 @@ export class Daylight {
     g.clear();
     const FW = FIELD.width;
     const near = Math.max(-16, proj.nearY);
-    const N = 9;
+    const L = VIEW.x - 4;
+    const R = VIEW.x + VIEW.w + 4;
+    const T = VIEW.y - 4;
+    const B = VIEW.y + VIEW.h + 4;
+    const N = 8;
+    g.fillStyle(this.layerCol, 1);
     for (let i = 0; i < N; i++) {
       const t = i / (N - 1); // 0 = camada de fora, 1 = miolo
-      const mx = -7 + t * (7 + FW * 0.075); // margem lateral: 7 jd fora da linha → 7,5% para dentro
+      const mx = -7 + t * (7 + FW * 0.075);
       const y0 = Math.max(near, -15 + t * 13);
       const y1 = 115 - t * 13;
-      if (y1 <= y0) continue;
       const a = proj.project(mx, y0);
       const b = proj.project(FW - mx, y0);
       const c = proj.project(FW - mx, y1);
       const d = proj.project(mx, y1);
-      g.fillStyle(0xd6dc8a, this.lightA);
-      g.fillPoints([a, b, c, d] as Phaser.Types.Math.Vector2Like[], true);
+      const top = Math.max(T, Math.min(c.y, d.y));
+      const bot = Math.min(B, Math.max(a.y, b.y));
+      // acima (fundo do campo, arquibancada, céu)
+      g.fillRect(L, T, R - L, top - T);
+      // abaixo (atrás da câmera)
+      if (bot < B) g.fillRect(L, bot, R - L, B - bot);
+      // laterais (trapézios entre a linha do chão e a borda da tela)
+      g.fillPoints([{ x: L, y: top }, { x: d.x, y: top }, { x: a.x, y: bot }, { x: L, y: bot }] as Phaser.Types.Math.Vector2Like[], true);
+      g.fillPoints([{ x: c.x, y: top }, { x: R, y: top }, { x: R, y: bot }, { x: b.x, y: bot }] as Phaser.Types.Math.Vector2Like[], true);
     }
   }
+
 
 
 }

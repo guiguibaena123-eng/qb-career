@@ -162,6 +162,22 @@ export class Tag extends Phaser.GameObjects.Container {
   }
 }
 
+/**
+ * Degradê vertical contínuo (sem faixas): segmentos com fillGradientStyle que se encostam exatamente,
+ * sem sobrepor — sobrepor faixas semitransparentes cria linhas escuras na emenda.
+ * `a(t)`: opacidade em t (0 = topo, 1 = base).
+ */
+export function vGradient(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, color: number, a: (t: number) => number, n = 12) {
+  for (let i = 0; i < n; i++) {
+    const t0 = i / n;
+    const t1 = (i + 1) / n;
+    const a0 = Math.max(0, Math.min(1, a(t0)));
+    const a1 = Math.max(0, Math.min(1, a(t1)));
+    g.fillGradientStyle(color, color, color, color, a0, a0, a1, a1);
+    g.fillRect(x, y + h * t0, w, h * (t1 - t0));
+  }
+}
+
 /** Degradê de baixo (transparente em cima → #0A0C1A embaixo), atrás dos botões. */
 export function bottomGradient(scene: Phaser.Scene, height: number, depth: number) {
   const g = scene.add.graphics().setDepth(depth);
@@ -176,15 +192,19 @@ export function bottomGradient(scene: Phaser.Scene, height: number, depth: numbe
     [0.75, 0.92],
     [1, 1],
   ];
-  for (let i = 0; i < stops.length - 1; i++) {
-    const [t0, a0] = stops[i];
-    const [t1, a1] = stops[i + 1];
-    g.fillGradientStyle(c, c, c, c, a0, a0, a1, a1);
-    g.fillRect(VIEW.x, top + t0 * height, VIEW.w, (t1 - t0) * height + 1);
-  }
+  // interpolação suave entre as paradas, num degradê contínuo
+  const at = (t: number) => {
+    for (let i = 0; i < stops.length - 1; i++) {
+      const [t0, a0] = stops[i];
+      const [t1, a1] = stops[i + 1];
+      if (t <= t1) return a0 + ((t - t0) / (t1 - t0)) * (a1 - a0);
+    }
+    return 1;
+  };
+  vGradient(g, VIEW.x, top, VIEW.w, height, c, at, 16);
   // de ponta a ponta e até a borda de baixo da tela (barra de início do iPhone)
   g.fillStyle(c, 1);
-  g.fillRect(VIEW.x, H, VIEW.w, VIEW.y + VIEW.h - H + 1);
+  g.fillRect(VIEW.x, H, VIEW.w, VIEW.y + VIEW.h - H);
   void W;
   return g;
 }

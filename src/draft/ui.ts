@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { FONT_TITLE, GAME_H, GAME_W, VIEW } from '../config';
 import type { CareerTeam } from '../data/TeamRepository';
 import { setupHiRes } from '../systems/hires';
-import { UI } from '../ui/widgets';
+import { UI, vGradient } from '../ui/widgets';
 import { C, inkOn, label, plate, plateShadow, scoreBug, title, TV, TvButton, tvText } from '../ui/tv';
 import { CLAP_FRAMES, CLAP_MEET, collarTexture, COMMISH, commissionerBody, STAGE_H, STAGE_W, stageTexture, type SuitPose } from './art';
 import { PlayerFace } from '../player/PlayerFace';
@@ -33,10 +33,7 @@ export function draftScene(scene: Phaser.Scene, team: CareerTeam, party = false)
     g.fillStyle(0x0a0c1a, 0.95);
     g.fillRect(VIEW.x, VIEW.y, VIEW.w, -VIEW.y);
   }
-  for (let i = 0; i < 26; i++) {
-    g.fillStyle(0x0a0c1a, 0.95 * (1 - i / 26));
-    g.fillRect(VIEW.x, i * 3, VIEW.w, 3);
-  }
+  vGradient(g, VIEW.x, 0, VIEW.w, 78, 0x0a0c1a, (t) => 0.95 * (1 - t), 12);
 }
 
 /** Telão do palco: placa de tinta com grade de LED bem fraca, faixa amarela no topo e o texto grande. */
@@ -94,10 +91,7 @@ const btnColor = (c: number) => (c === ORANGE ? TV.yellow : c === 0x3ccb5a ? TV.
 /** Degradê escuro embaixo e o botão largo (cor dada) com seta desenhada. */
 export function bigButton(scene: Phaser.Scene, text: string, color: number, onTap: () => void) {
   const g = scene.add.graphics().setDepth(84);
-  for (let i = 0; i < 60; i++) {
-    g.fillStyle(TV.ink, Math.min(1, (i / 60) * 1.6));
-    g.fillRect(VIEW.x, GAME_H - 180 + i * 3, VIEW.w, 3);
-  }
+  vGradient(g, VIEW.x, GAME_H - 180, VIEW.w, 180, TV.ink, (t) => t * 1.6, 14);
   // até a borda de baixo da tela (barra de início do iPhone)
   g.fillStyle(TV.ink, 1);
   g.fillRect(VIEW.x, GAME_H, VIEW.w, VIEW.y + VIEW.h - GAME_H + 1);
