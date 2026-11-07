@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { SPRITE_SCALE } from '../config';
+import { SPRITE_SCALE, VIEW } from '../config';
 import type { ShadowLight } from './daytime';
 import type { Projection } from './projection';
 
@@ -54,7 +54,7 @@ export class BillboardLayer {
         continue;
       }
       proj.project(b.x, b.y, b.h, p);
-      if (p.x < -60 || p.x > proj.w + 60 || p.y < -20) {
+      if (p.x < VIEW.x - 60 || p.x > VIEW.x + VIEW.w + 60 || p.y < VIEW.y - 20) {
         b.img.setVisible(false);
         continue;
       }

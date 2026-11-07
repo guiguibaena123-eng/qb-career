@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_TITLE, MATCH_SEED, TEAMS, finalGame, guestTeam, hostTeam, matchConfig, venue } from '../config';
+import { FONT_TITLE, MATCH_SEED, TEAMS, VIEW, finalGame, guestTeam, hostTeam, matchConfig, venue } from '../config';
 import { isDome, stadiumOf, type StandModelId } from '../data/stadiums';
 import { wallQuad } from './ground';
 import { hex, shade, shadeNum } from './pixelart';
@@ -573,7 +573,7 @@ export class Grandstand {
     const wpx = Math.abs(pa.x - pb.x) * 2;
     const hpx = Math.abs(proj.project((x0 + x1) / 2, y, h1, pb).y - proj.project((x0 + x1) / 2, y, h0, pb).y);
     const sc = Math.min((wpx * 0.8) / Math.max(1, t.width), (hpx * 0.42) / 32);
-    t.setPosition(pa.x, pa.y).setScale(sc).setVisible(pa.y > -60 && pa.y < proj.h + 60);
+    t.setPosition(pa.x, pa.y).setScale(sc).setVisible(pa.y > VIEW.y - 60 && pa.y < proj.h + 60);
   }
 
   /** Explosão do touchdown desenhada por cima da arquibancada: labaredas no muro, fogos subindo e estourando, confete caindo. */
@@ -656,7 +656,7 @@ export class Grandstand {
       if (h < 0) continue;
       const sway = Math.sin(this.time * 3 + c.ph) * 0.5;
       proj.project(c.x + sway, c.y, h, pa);
-      if (pa.y < -10 || pa.x < -10 || pa.x > proj.w + 10) continue;
+      if (pa.y < VIEW.y - 10 || pa.x < VIEW.x - 10 || pa.x > VIEW.x + VIEW.w + 10) continue;
       const u = pa.s * 10;
       const flip = Math.abs(Math.sin(this.time * 9 + c.ph));
       cg.fillStyle(c.col, Math.min(1, (5.5 - b.t) / 1));
@@ -696,7 +696,7 @@ export class Grandstand {
       const pw = Math.abs(pb.x - pa.x);
       const ph = Math.abs(proj.project(x, y, ht - 0.3, pb).y - proj.project(x, y, ht + 3.8, pa).y);
       proj.project(x, y, ht + 1.75, pa);
-      panel.setTexture(lit ? 'flood_on' : 'flood_off').setVisible(pa.y > -80).setPosition(pa.x, pa.y).setDisplaySize(pw, ph);
+      panel.setTexture(lit ? 'flood_on' : 'flood_off').setVisible(pa.y > VIEW.y - 80).setPosition(pa.x, pa.y).setDisplaySize(pw, ph);
       // Brilho: mais fraco que antes (a luz do campo já vem da camada da noite)
       // Sem brilho em volta dos refletores (a luz fica só no campo)
       img.setVisible(false);
@@ -758,7 +758,7 @@ export class Grandstand {
       const sx = Math.max(0.0001, (pb.x - pa.x) / w);
       // Mais perto da câmera (y menor) na frente; fileira de fora atrás
       const ymid = (y0 + y1) / 2;
-      const vis = pa.y > -40 && pa.x < proj.w + 20 && pb.x > -20;
+      const vis = pa.y > VIEW.y - 40 && pa.x < VIEW.x + VIEW.w + 20 && pb.x > VIEW.x - 20;
       const depth = 3 + (300 - ymid) * 0.001 - p.k * 0.00001;
       const by = Math.max(pa.y, pb.y);
       p.img.setVisible(vis).setPosition(pa.x, by).setScale(sx, sy).setDepth(depth);
@@ -827,7 +827,7 @@ export class Grandstand {
       const [x, y] = pointAt(this.specs[f.k].r, f.u);
       if (y < near) continue;
       proj.project(x, y, this.rowH(f.k) + 1, pa);
-      if (pa.x < 0 || pa.x > proj.w || pa.y < 0) continue;
+      if (pa.x < VIEW.x || pa.x > VIEW.x + VIEW.w || pa.y < VIEW.y) continue;
       const k = f.life / 0.14;
       const fu = pa.s * 10;
       fg.fillStyle(0xffffff, 0.35 * k);

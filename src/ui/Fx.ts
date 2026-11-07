@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_LABEL, FONT_TITLE, GAME_H, GAME_W } from '../config';
+import { FONT_LABEL, FONT_TITLE, GAME_H, GAME_W, VIEW } from '../config';
 import { UI } from './widgets';
 
 /*
@@ -112,12 +112,15 @@ export class Fx {
     if (this.edgeLife > 0) {
       this.edgeLife -= dt;
       const k = Math.max(0, this.edgeLife / this.edgeMax);
-      const W = GAME_W;
-      const H = GAME_H;
+      // nas bordas da TELA (não do palco): VIEW tem 2 unidades de sobra para fora da tela
+      const X = VIEW.x + 2;
+      const Y = VIEW.y + 2;
+      const W = VIEW.w - 4;
+      const H = VIEW.h - 4;
       for (let i = 0; i < 6; i++) {
         const w = 4 + i * 6;
         g.lineStyle(w, this.edgeColor, 0.16 * k * (1 - i / 6));
-        g.strokeRect(w / 2, w / 2, W - w, H - w);
+        g.strokeRect(X + w / 2, Y + w / 2, W - w, H - w);
       }
     }
     for (const c of this.confetti) {
