@@ -51,7 +51,7 @@ async function boot() {
     width: Math.round(VIEW.w * RES),
     height: Math.round(VIEW.h * RES),
     backgroundColor: '#0B0E14',
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scale: { mode: Math.abs(VIEW.screen.w / VIEW.screen.h - VIEW.w / VIEW.h) < 0.03 ? Phaser.Scale.ENVELOP : Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, powerPreference: 'high-performance' },
     fps: { target: 60 },
     // Vários dedos ao mesmo tempo: segurar o joystick e apertar SPRINT/JUKE/SPIN/MERGULHO

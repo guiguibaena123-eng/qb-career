@@ -46,6 +46,10 @@ export const VIEW = (() => {
     vh = GAME_H + 2 * MAX_Y;
     vy = -MAX_Y;
   }
+  // sobra de 2 unidades em volta: o canvas cobre a tela com folga (ENVELOP corta a sobra), sem fresta
+  // de 1 px nas bordas por arredondamento
+  const P = 2;
+  vx -= P; vy -= P; vw += 2 * P; vh += 2 * P;
   return { x: vx, y: vy, w: vw, h: vh, top: -vy, bottom: vy + vh - GAME_H, inset: { t, r, b, l }, screen: { w: W, h: H } };
 })();
 
