@@ -91,6 +91,8 @@ export class Daylight {
   private rect: Phaser.GameObjects.Rectangle | null = null;
   private lightG: Phaser.GameObjects.Graphics | null = null;
   private lastKey = '';
+  /** Força de cada camada do degradê de luz no campo (noite 0,03; tarde mais fraca). */
+  private lightA = 0.03;
 
   constructor(scene: Phaser.Scene, readonly tod: TimeOfDay, w: number, h: number, weather: SkyWeather = 'clear') {
     // Dia e tarde com chuva/neve: céu nublado, luz cinza e difusa (a noite fica como no tempo limpo)
@@ -105,6 +107,11 @@ export class Daylight {
       return;
     }
     this.rect = scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, c, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    // Tarde: os refletores já acesos dão um toque da luz da noite no gramado (mais fraco)
+    if (tod === 'dusk') {
+      this.lightA = weather === 'clear' ? 0.017 : 0.012;
+      this.lightG = scene.add.graphics().setDepth(59.6).setBlendMode(Phaser.BlendModes.ADD);
+    }
   }
 
   /**
@@ -144,7 +151,7 @@ export class Daylight {
       const b = proj.project(FW - mx, y0);
       const c = proj.project(FW - mx, y1);
       const d = proj.project(mx, y1);
-      g.fillStyle(0xd6dc8a, 0.03);
+      g.fillStyle(0xd6dc8a, this.lightA);
       g.fillPoints([a, b, c, d] as Phaser.Types.Math.Vector2Like[], true);
     }
   }

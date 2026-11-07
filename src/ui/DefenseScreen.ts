@@ -13,6 +13,8 @@ import { C, inkOn, plate, plateLine, plateShadow, TV, TvButton, tvText } from '.
 const ROW_H = 46;
 const ROW_GAP = 6;
 const MAX_ROWS = 6;
+/** Ampliação do conteúdo (a tela tem sobra nas laterais e no meio): até 10%, sem passar da largura da tela. */
+const K = () => Math.min(1.1, (VIEW.w - 12) / GAME_W);
 
 export interface DefenseOpts {
   drive: DriveResult;
@@ -103,6 +105,10 @@ export class DefenseScreen {
     const bg = sc.add.image(VIEW.x, VIEW.y, this.bgKey).setOrigin(0).setDisplaySize(VIEW.w, VIEW.h);
     const dim = sc.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, TV.ink, 0.58).setOrigin(0);
     root.add([bg, dim]);
+    // conteúdo ampliado, preso ao topo (y = 82) e centrado na largura
+    const k = K();
+    const fg = sc.add.container((GAME_W / 2) * (1 - k), 82 * (1 - k)).setScale(k);
+    root.add(fg);
 
     const L = 16;
     const R = W - 16;
@@ -113,17 +119,17 @@ export class DefenseScreen {
     plate(hg, L, y, R - L, 54, TV.ink, 0.96);
     plate(hg, L, y, 58, 54, o.oppColor, 1, true, true);
     football(hg, L + 30, y + 27, 1.1);
-    root.add(hg);
+    fg.add(hg);
     const ht = tvText(sc, L + 72, y + 18, `${o.awayName} COM A BOLA`, 18, C.white, 800, 0.6).setOrigin(0, 0.5);
     if (ht.width > R - L - 72 - 80) ht.setScale((R - L - 72 - 80) / ht.width, 1);
     this.status = tvText(sc, L + 72, y + 38, 'CAMPANHA DO ADVERSÁRIO · SIMULANDO', 12, C.muted, 700, 1.2).setOrigin(0, 0.5);
-    root.add([ht, this.status]);
+    fg.add([ht, this.status]);
     this.dots = [0, 1, 2].map((i) => {
       const d = sc.add.rectangle(L + 72 + this.status.width + 8 + i * 7, y + 36, 4, 4, TV.yellow).setOrigin(0);
       sc.tweens.add({ targets: d, alpha: 0.2, yoyo: true, repeat: -1, duration: 500, delay: i * 200 });
       return d;
     });
-    root.add(this.dots);
+    fg.add(this.dots);
     // velocidade da simulação (vale para as próximas também)
     const sb = (this.speedBtn = new TvButton(sc, R - 36, y + 27, { w: 56, h: 38, fill: DefenseScreen.fast ? TV.yellow : TV.ink3, fillAlpha: 1 }));
     const sbt = tvText(sc, 0, 0, DefenseScreen.fast ? '2X' : '1X', 18, DefenseScreen.fast ? C.ink : C.white, 800, 1).setOrigin(0.5);
@@ -133,7 +139,7 @@ export class DefenseScreen {
       sb.setFill(DefenseScreen.fast ? TV.yellow : TV.ink3, 1);
       sbt.setText(DefenseScreen.fast ? '2X' : '1X').setColor(DefenseScreen.fast ? C.ink : C.white);
     };
-    root.add(sb);
+    fg.add(sb);
 
     // ---- CAMPANHA: campo em miniatura
     y += 64;
@@ -142,9 +148,9 @@ export class DefenseScreen {
     const cg = sc.add.graphics();
     plate(cg, L, y, R - L, 64, TV.ink2, 0.96);
     plateLine(cg, L, y, R - L, 64, TV.rule, 1, 1);
-    root.add(cg);
-    root.add(tvText(sc, L + 16, y + 15, 'CAMPANHA', 13, C.white, 800, 1.6).setOrigin(0, 0.5));
-    root.add(tvText(sc, R - 16, y + 15, `${plays} JOGADAS · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`, 13, C.muted, 700, 1).setOrigin(1, 0.5));
+    fg.add(cg);
+    fg.add(tvText(sc, L + 16, y + 15, 'CAMPANHA', 13, C.white, 800, 1.6).setOrigin(0, 0.5));
+    fg.add(tvText(sc, R - 16, y + 15, `${plays} JOGADAS · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`, 13, C.muted, 700, 1).setOrigin(1, 0.5));
     const sx = L + 16;
     const sw = R - L - 32;
     const sy = y + 30;
@@ -162,7 +168,7 @@ export class DefenseScreen {
     strip.fillRect(sx + sw - ez, sy, ez, 22);
     strip.fillStyle(0xffffff, 0.4);
     for (let k = 1; k < 10; k++) strip.fillRect(sx + ez + ((sw - 2 * ez) * k) / 10, sy, 1, 22);
-    root.add([
+    fg.add([
       strip,
       tvText(sc, sx + ez / 2, sy + 11, o.homeAbbr, 11, inkOn(o.teamColor), 800, 0.6).setOrigin(0.5),
       tvText(sc, sx + sw - ez / 2, sy + 11, o.awayAbbr, 11, inkOn(o.oppColor), 800, 0.6).setOrigin(0.5),
@@ -173,11 +179,11 @@ export class DefenseScreen {
     this.trail = sc.add.graphics();
     this.ball = sc.add.ellipse(this.yToX(o.drive.start), sy + 11, 12, 8, 0x8a4b1f).setStrokeStyle(1.5, TV.ink);
     sc.tweens.add({ targets: this.ball, scale: 1.25, yoyo: true, repeat: -1, duration: 500 });
-    root.add([this.trail, this.ball]);
+    fg.add([this.trail, this.ball]);
 
     y += 76;
     this.rowsC = sc.add.container(0, y);
-    root.add(this.rowsC);
+    fg.add(this.rowsC);
   }
 
   /** Toque na tela (a cena repassa): pula a espera da próxima jogada. */
@@ -271,7 +277,11 @@ export class DefenseScreen {
       cb?.();
     };
     c.add([g, chip, ct, s, go]);
-    this.root!.add(c);
+    // cartão de baixo ampliado, preso pela base (y = H - 20) e centrado
+    const k = K();
+    const holder = sc.add.container((W / 2) * (1 - k), (H - 20) * (1 - k)).setScale(k);
+    holder.add(c);
+    this.root!.add(holder);
     sc.tweens.add({ targets: c, alpha: 1, y: { from: 18, to: 0 }, duration: 420, ease: 'Expo.Out' });
   }
 
