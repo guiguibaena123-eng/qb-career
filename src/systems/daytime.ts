@@ -89,7 +89,8 @@ export function pickTimeOfDay(): TimeOfDay {
 /** Camada de luz: multiplica as cores do jogo pela cor do horário (tarde quente, noite azulada). */
 export class Daylight {
   private rect: Phaser.GameObjects.Rectangle | null = null;
-  private pools: { img: Phaser.GameObjects.Image; x: number; y: number }[] = [];
+  private lightG: Phaser.GameObjects.Graphics | null = null;
+  private lastKey = '';
 
   constructor(scene: Phaser.Scene, readonly tod: TimeOfDay, w: number, h: number, weather: SkyWeather = 'clear') {
     // Dia e tarde com chuva/neve: céu nublado, luz cinza e difusa (a noite fica como no tempo limpo)
@@ -112,40 +113,41 @@ export class Daylight {
    * campo (camada aditiva). Tudo em textura de canvas na resolução da tela.
    */
   private night(scene: Phaser.Scene, _w: number, _h: number) {
-    // Escuridão da noite por igual na tela (não "anda" com a câmera)
-    scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0x8a93c8, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
-    // Focos dos refletores PRESOS NO GRAMADO: poças de luz em pontos fixos do campo, projetadas a cada quadro
-    const key = 'night_pool';
-    if (!scene.textures.exists(key)) {
-      const S = 256;
-      const cv = document.createElement('canvas');
-      cv.width = cv.height = S;
-      const ctx = cv.getContext('2d')!;
-      const g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-      // luz âmbar de refletor (não branca): realça o verde do gramado sem lavar a cor
-      g.addColorStop(0, 'rgba(255,214,140,1)');
-      g.addColorStop(0.4, 'rgba(255,200,120,0.5)');
-      g.addColorStop(1, 'rgba(255,190,110,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, S, S);
-      scene.textures.addCanvas(key, cv);
-    }
-    for (const y of [-2, 22, 50, 78, 102]) {
-      const img = scene.add.image(0, 0, key).setDepth(59.6).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.16).setVisible(false);
-      this.pools.push({ img, x: FIELD.width / 2, y });
+    // Noite: tudo escurece por igual (arquibancada, laterais, fora do campo)...
+    scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0x767eb4, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    // ...e os refletores iluminam o GRAMADO: degradê preso ao campo (redesenhado conforme a câmera)
+    this.lightG = scene.add.graphics().setDepth(59.6).setBlendMode(Phaser.BlendModes.ADD);
+  }
+
+  /**
+   * Luz dos refletores no campo: camadas de retângulos no chão (projetados), da maior (passa um pouco
+   * das linhas laterais e do fundo das end zones) à menor (85% do campo). Somadas, viram um degradê:
+   * forte no miolo, caindo nas extremidades e fora das linhas. Cor creme quente, sem "estourar" em branco.
+   */
+  update(proj: Projection) {
+    const g = this.lightG;
+    if (!g) return;
+    const key = `${proj.camY},${proj.tilt}`;
+    if (key === this.lastKey) return;
+    this.lastKey = key;
+    g.clear();
+    const FW = FIELD.width;
+    const near = Math.max(-16, proj.nearY);
+    const N = 9;
+    for (let i = 0; i < N; i++) {
+      const t = i / (N - 1); // 0 = camada de fora, 1 = miolo
+      const mx = -7 + t * (7 + FW * 0.075); // margem lateral: 7 jd fora da linha → 7,5% para dentro
+      const y0 = Math.max(near, -15 + t * 13);
+      const y1 = 115 - t * 13;
+      if (y1 <= y0) continue;
+      const a = proj.project(mx, y0);
+      const b = proj.project(FW - mx, y0);
+      const c = proj.project(FW - mx, y1);
+      const d = proj.project(mx, y1);
+      g.fillStyle(0xd6dc8a, 0.03);
+      g.fillPoints([a, b, c, d] as Phaser.Types.Math.Vector2Like[], true);
     }
   }
 
-  /** Reposiciona os focos de luz conforme a câmera (ficam fixos no campo). */
-  update(proj: Projection) {
-    for (const p of this.pools) {
-      const a = proj.project(p.x, p.y);
-      const u = proj.unitAt(p.y);
-      const d = u * 52; // ~52 jardas de diâmetro
-      const vis = p.y > proj.nearY - 30 && a.y > VIEW.y - d && u > 0;
-      p.img.setVisible(vis);
-      if (vis) p.img.setPosition(a.x, a.y).setDisplaySize(d, d * proj.flattenAt(p.y));
-    }
-  }
 
 }
