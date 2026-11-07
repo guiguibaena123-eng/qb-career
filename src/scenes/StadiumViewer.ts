@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CAMERA, GAME_H, GAME_W, applyMatchup, broadcast, finalGame, logoKey, matchConfig, playoffLogo, venue, LAYOUT } from '../config';
+import { CAMERA, GAME_H, GAME_W, applyMatchup, broadcast, finalGame, logoKey, matchConfig, playoffLogo, venue, LAYOUT, VIEW } from '../config';
 import { isDome } from '../data/stadiums';
 import { TEAM_LIST, teamById, uiColor } from '../data/teams';
 import { TeamRepository } from '../data/TeamRepository';
@@ -7,6 +7,8 @@ import { Daylight, type TimeOfDay } from '../systems/daytime';
 import { setupFitWidth } from '../systems/hires';
 import { Rng } from '../systems/rng';
 import { Weather, type WeatherKind } from '../systems/weather';
+
+type Vis = Phaser.GameObjects.GameObject & { visible: boolean; setVisible(v: boolean): unknown };
 import { World } from '../systems/world';
 import { bottomGradient } from '../ui/widgets';
 import { C, inkOn, plate, plateShadow, scoreBug, TV, TvButton, tvText, wipeTo } from '../ui/tv';
@@ -49,6 +51,12 @@ export class StadiumViewer extends Phaser.Scene {
     super('StadiumViewer');
   }
 
+  /** Começa sem as texturas geradas antes (arquibancada, cidade...): senão a remontagem falha (chave em uso). */
+  init() {
+    const keep = ['__', 'logo', 'layer_', 'face_', 'drsuit_', 'stad_', 'draftimg_'];
+    for (const k of this.textures.getTextureKeys()) if (!keep.some((p) => k.startsWith(p))) this.textures.remove(k);
+  }
+
   create(data: ViewerData) {
     const team = data.team ?? matchConfig.home;
     const dome = isDome(team);
@@ -88,14 +96,90 @@ export class StadiumViewer extends Phaser.Scene {
     });
 
     this.world = new World(this, this.d.camY, this.d.wx);
-    this.daylight = new Daylight(this, this.world.tod, GAME_W, GAME_H, this.d.wx);
-    this.weather = new Weather(this, this.d.wx, new Rng(7), this.world.tod === 'night');
-    this.weather.pill?.setVisible(false);
-    this.world.sideline.snow = this.d.wx === 'snow';
     this.world.field.showLines = false;
-
+    this.MH = MH;
+    this.dome = dome;
+    this.bundles.clear();
+    this.active = '';
+    this.buildAtmosphere();
     this.buildUi(MH, dome);
     this.bindDrag(MH);
+    this.warmUp();
+  }
+
+  private MH = GAME_H;
+  private dome = false;
+  /**
+   * Luz e clima de cada combinação horário × clima ("pacotes"): montados uma vez (os que faltam vão sendo
+   * montados aos poucos, escondidos, logo que a tela abre) e depois só mostrados/escondidos: troca na hora.
+   */
+  private bundles = new Map<string, { daylight: Daylight; weather: Weather; objs: { o: Vis; v: boolean }[] }>();
+  private active = '';
+
+  private bundle(tod: TimeOfDay, wx: WeatherKind) {
+    const key = `${tod}|${wx}`;
+    let b = this.bundles.get(key);
+    if (!b) {
+      const before = new Set(this.children.list);
+      const daylight = new Daylight(this, tod, GAME_W, GAME_H, wx);
+      const weather = new Weather(this, wx, new Rng(7), tod === 'night');
+      weather.pill?.setVisible(false);
+      const objs = this.children.list
+        .filter((o) => !before.has(o))
+        .map((o) => {
+          const x = o as unknown as Vis;
+          const v = x.visible;
+          x.setVisible(false);
+          return { o: x, v };
+        });
+      b = { daylight, weather, objs };
+      this.bundles.set(key, b);
+    }
+    return b;
+  }
+
+  /** Mostra a luz/clima do horário e clima atuais (e esconde os outros). */
+  private buildAtmosphere() {
+    const key = `${this.d.tod}|${this.d.wx}`;
+    const old = this.bundles.get(this.active);
+    if (old && this.active !== key) for (const it of old.objs) it.o.setVisible(false);
+    const b = this.bundle(this.d.tod, this.d.wx);
+    for (const it of b.objs) it.o.setVisible(it.v);
+    this.active = key;
+    this.daylight = b.daylight;
+    this.weather = b.weather;
+    this.world.sideline.snow = this.d.wx === 'snow';
+  }
+
+  /** Monta, um por vez e sem travar, a cidade e os pacotes das outras combinações (para trocas instantâneas). */
+  private warmUp() {
+    const jobs: (() => void)[] = [];
+    for (const t of TODS) for (const w of WXS) {
+      if (this.dome && w.key !== 'clear') continue;
+      jobs.push(() => this.world.stand.warmLook(t.key, w.key));
+    }
+    for (const t of TODS) for (const w of WXS) {
+      if (this.dome && w.key !== 'clear') continue;
+      jobs.push(() => this.bundle(t.key, w.key));
+    }
+    const next = () => {
+      const j = jobs.shift();
+      if (!j || !this.sys.isActive()) return;
+      j();
+      this.time.delayedCall(60, next);
+    };
+    this.time.delayedCall(400, next);
+  }
+
+  /** Troca horário/clima NA HORA: só céu, cidade (em cache), refletores, luz e chuva/neve. */
+  private setLook(tod: TimeOfDay, wx: WeatherKind) {
+    if (tod === this.d.tod && wx === this.d.wx) return;
+    this.d.tod = tod;
+    this.d.wx = wx;
+    matchConfig.time = tod;
+    this.world.setLook(tod, wx);
+    this.buildAtmosphere();
+    this.refreshChoices();
   }
 
   // ------------------------------------------------------------------ dedo: anda pelo campo
@@ -130,10 +214,13 @@ export class StadiumViewer extends Phaser.Scene {
     this.input.on('pointerupoutside', up);
   }
 
-  /** Jardas por px de arrasto (perto do foco da câmera, para o campo acompanhar o dedo). */
+  /** Jardas por px de arrasto: o gramado sob o dedo acompanha o dedo (perspectiva no ponto de foco). */
   private yardsPerPx() {
-    const u = this.world.proj.unitAt(this.world.proj.camY);
-    return 1 / Math.max(2, u * 1.6);
+    const pj = this.world.proj;
+    const y = pj.yAtScreen(GAME_H * 0.6);
+    const a = pj.project(pj.camX, y).y;
+    const b = pj.project(pj.camX, y + 1).y;
+    return 1 / Math.max(1, Math.abs(a - b));
   }
 
   private move(yards: number) {
@@ -177,9 +264,21 @@ export class StadiumViewer extends Phaser.Scene {
       eyeT.setText(this.d.hidden ? 'MOSTRAR' : 'OCULTAR');
     };
 
+    this.buildPanel();
+    void LAYOUT;
+  }
+
+  /** Painel de baixo: estádio, clima e horário (refeito a cada troca, para marcar a escolha). */
+  private buildPanel() {
+    this.choices = [];
+    const W = GAME_W;
+    const t = teamById(this.d.team);
+    const tc = uiColor(t);
+    const name = TeamRepository.get(this.d.team).stadium.name;
+    this.panel?.destroy();
     const p = (this.panel = this.add.container(0, 0).setDepth(880).setVisible(!this.d.hidden));
     p.add(bottomGradient(this, 300, 879));
-    const top = MH - 214;
+    const top = this.MH - 214;
     // dica
     p.add(tvText(this, W / 2, top - 14, 'ARRASTE O DEDO PARA ANDAR PELO ESTÁDIO', 12, C.muted, 700, 1.4).setOrigin(0.5));
 
@@ -194,9 +293,9 @@ export class StadiumViewer extends Phaser.Scene {
     const tn = tvText(this, 124, y1 - 9, name, 18, C.white, 800, 0.6).setOrigin(0, 0.5);
     if (tn.width > 196) tn.setScale(196 / tn.width, 1);
     p.add(tn);
-    p.add(tvText(this, 124, y1 + 12, `${t.name}${dome ? ' · COBERTO' : ''}`, 12, C.muted, 700, 1.2).setOrigin(0, 0.5));
+    p.add(tvText(this, 124, y1 + 12, `${t.name}${this.dome ? ' · COBERTO' : ''}`, 12, C.muted, 700, 1.2).setOrigin(0, 0.5));
     const idx = TEAM_LIST.findIndex((x) => x.id === t.id);
-    const step = (k: number) => this.restart({ team: TEAM_LIST[(idx + k + TEAM_LIST.length) % TEAM_LIST.length].id });
+    const step = (k: number) => this.loadTeam(TEAM_LIST[(idx + k + TEAM_LIST.length) % TEAM_LIST.length].id);
     p.add(this.arrowBtn(38, y1, -1, () => step(-1)));
     p.add(this.arrowBtn(W - 38, y1, 1, () => step(1)));
 
@@ -206,8 +305,9 @@ export class StadiumViewer extends Phaser.Scene {
     WXS.forEach((o, i) => {
       const on = this.d.wx === o.key;
       const b = this.choice(126 + i * 88, y2, o.name, on, tc);
-      if (dome && o.key !== 'clear') b.setEnabled(false);
-      else b.onTap = () => !on && this.restart({ wx: o.key });
+      this.choices.push({ b, kind: 'wx', key: o.key });
+      if (this.dome && o.key !== 'clear') b.setEnabled(false);
+      else b.onTap = () => this.setLook(this.d.tod, o.key);
       p.add(b);
     });
 
@@ -217,11 +317,37 @@ export class StadiumViewer extends Phaser.Scene {
     TODS.forEach((o, i) => {
       const on = this.d.tod === o.key;
       const b = this.choice(126 + i * 88, y3, o.name, on, tc);
-      b.onTap = () => !on && this.restart({ tod: o.key });
+      this.choices.push({ b, kind: 'tod', key: o.key });
+      b.onTap = () => this.setLook(o.key, this.d.wx);
       p.add(b);
     });
-    if (dome) p.add(tvText(this, W / 2, y3 + 34, 'ESTÁDIO COBERTO: SEM CHUVA NEM NEVE', 11, C.muted, 700, 1.2).setOrigin(0.5));
-    void LAYOUT;
+    if (this.dome) p.add(tvText(this, W / 2, y3 + 34, 'ESTÁDIO COBERTO: SEM CHUVA NEM NEVE', 11, C.muted, 700, 1.2).setOrigin(0.5));
+  }
+
+  /** Troca de estádio: precisa remontar a arquibancada nas cores do time (aviso na tela enquanto monta). */
+  private loadTeam(team: string) {
+    const W = GAME_W;
+    const c = this.add.container(0, 0).setDepth(2000);
+    c.add(this.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, TV.ink, 0.55).setOrigin(0));
+    const t = teamById(team);
+    c.add(this.add.image(W / 2, GAME_H * 0.42, logoKey(t.id, 'm')).setDisplaySize(84, 84));
+    c.add(tvText(this, W / 2, GAME_H * 0.42 + 64, TeamRepository.get(team).stadium.name, 20, C.white, 800, 0.8).setOrigin(0.5));
+    c.add(tvText(this, W / 2, GAME_H * 0.42 + 88, 'CARREGANDO...', 13, C.muted, 700, 2).setOrigin(0.5));
+    // deixa o aviso aparecer antes de montar
+    this.time.delayedCall(40, () => this.restart({ team }));
+  }
+
+  private choices: { b: TvButton; kind: 'wx' | 'tod'; key: string }[] = [];
+
+  /** Marca no painel o clima e o horário escolhidos (sem redesenhar o painel). */
+  private refreshChoices() {
+    const tc = uiColor(teamById(this.d.team));
+    for (const c of this.choices) {
+      const on = c.kind === 'wx' ? this.d.wx === c.key : this.d.tod === c.key;
+      c.b.setFill(on ? tc : TV.ink, on ? 1 : 0.92, on);
+      const txt = c.b.list.find((o) => o instanceof Phaser.GameObjects.Text) as Phaser.GameObjects.Text | undefined;
+      txt?.setColor(on ? inkOn(tc) : C.white);
+    }
   }
 
   private choice(x: number, y: number, text: string, on: boolean, tc: number) {

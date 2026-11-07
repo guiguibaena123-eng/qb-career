@@ -165,14 +165,14 @@ export class Daylight {
     g.clear();
     const y0 = Math.max(-40, proj.nearY - 3);
     const rows: number[] = [];
-    for (let y = y0; y < 136; y += y < 0 || y > 110 ? 6 : 3) rows.push(y);
+    for (let y = y0; y < 136; y += y < 0 || y > 110 ? 6 : 4) rows.push(y);
     rows.push(136);
     // Cada linha do chão (y) vira uma linha horizontal na tela; a posição x na tela é linear no x do campo.
     // Então o mapa é feito de faixas horizontais, cada uma com retângulos em degradê de 4 cantos (cores
     // calculadas no ponto do chão sob cada canto): sem emendas e sem depender de triângulos coloridos.
     const SX0 = VIEW.x - 4;
     const SX1 = VIEW.x + VIEW.w + 4;
-    const NC = 18;
+    const NC = 14;
     const sxs = Array.from({ length: NC + 1 }, (_, i) => SX0 + ((SX1 - SX0) * i) / NC);
     const rowCols = (y: number) => {
       const p0 = proj.project(0, y);

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CAMERA } from '../config';
+import { CAMERA, COLORS } from '../config';
 import { Sideline } from '../entities/Sideline';
 import { BillboardLayer } from './billboards';
 import { FieldRenderer } from './field';
@@ -18,13 +18,13 @@ export class World {
   readonly stadium: StadiumShader;
   readonly stand: Grandstand;
   /** Horário da partida (dia, tarde ou noite). */
-  readonly tod: TimeOfDay = pickTimeOfDay();
+  tod: TimeOfDay = pickTimeOfDay();
   readonly sideline: Sideline;
   readonly players: BillboardLayer;
   /** Para onde a câmera vai (jarda no foco); ela chega lá suavemente (lerp). */
   targetY: number;
 
-  readonly weather: SkyWeather;
+  weather: SkyWeather;
 
   constructor(scene: Phaser.Scene, camY: number, weather: SkyWeather = 'clear') {
     this.weather = weather;
@@ -33,13 +33,28 @@ export class World {
     this.stand = new Grandstand(scene, this.proj, this.tod, weather);
     this.field = new FieldRenderer(scene, this.proj);
     this.sideline = new Sideline(scene, this.proj);
-    this.field.lights = shadowLights(this.tod, weather);
+    this.players = new BillboardLayer(scene, 0.7);
+    this.applyLook();
+  }
+
+  /** Gramado e sombras pelo horário/clima. */
+  private applyLook() {
+    this.field.lights = shadowLights(this.tod, this.weather);
     // Gramado mais vivo à noite (refletores), mais quente na tarde
     if (this.tod === 'night') this.field.grass = [0x52b848, 0x5fc653];
     else if (this.tod === 'dusk') this.field.grass = [0x4a9a3d, 0x54a844];
-    this.players = new BillboardLayer(scene, 0.7);
-    this.players.setLights(shadowLights(this.tod, weather));
-    this.sideline.people.setLights(shadowLights(this.tod, weather)); // reservas, técnicos, fotógrafos e câmeras também projetam sombras
+    this.players.setLights(shadowLights(this.tod, this.weather));
+    this.sideline.people.setLights(shadowLights(this.tod, this.weather)); // reservas, técnicos, fotógrafos e câmeras também projetam sombras
+    if (this.tod === 'day') this.field.grass = [COLORS.grassA, COLORS.grassB];
+  }
+
+  /** Troca horário/clima sem remontar o estádio (visualizador). */
+  setLook(tod: TimeOfDay, weather: SkyWeather) {
+    this.tod = tod;
+    this.weather = weather;
+    this.stadium.setLook(tod, weather);
+    this.stand.setLook(tod, weather);
+    this.applyLook();
   }
 
   update(dt: number) {

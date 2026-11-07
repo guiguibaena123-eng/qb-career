@@ -100,6 +100,16 @@ export class StadiumShader {
       .setDepth(-2);
   }
 
+  /** Troca horário/clima na hora (só as cores do céu e do chão). */
+  setLook(tod: TimeOfDay, weather: SkyWeather) {
+    const t = todInfo(tod, weather);
+    const sh = this.shader;
+    sh.setUniform('uSkyTop.value', { x: t.skyTop[0], y: t.skyTop[1], z: t.skyTop[2] });
+    sh.setUniform('uSkyHor.value', { x: t.skyHor[0], y: t.skyHor[1], z: t.skyHor[2] });
+    sh.setUniform('uBg.value', { x: t.bg[0], y: t.bg[1], z: t.bg[2] });
+    sh.setUniform('uSurround.value', weather === 'snow' ? { x: 0.7, y: 0.75, z: 0.83 } : { x: 0.176, y: 0.416, z: 0.169 });
+  }
+
   update() {
     const sh = this.shader;
     sh.setUniform('uShift.value', this.proj.shift);

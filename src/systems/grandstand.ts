@@ -417,6 +417,7 @@ export class Grandstand {
   private fg!: Phaser.GameObjects.Graphics;
   /** Última câmera/estado desenhado (evita refazer tudo a cada quadro com a câmera parada). */
   private lastView = '';
+  private lookDirty = false;
   private lastWall = '';
   private crowdStill = false;
   private bgUsed = false;
@@ -441,7 +442,10 @@ export class Grandstand {
   /** Empolgação (0..1): as fileiras pulam e os flashes aumentam. */
   excite = 0;
 
+  private scene: Phaser.Scene;
+
   constructor(scene: Phaser.Scene, private proj: Projection, private tod: TimeOfDay = 'night', weather: SkyWeather = 'clear') {
+    this.scene = scene;
     const rng = new Rng(MATCH_SEED);
     this.model = pickStandModel();
     this.specs = buildRows(this.model);
@@ -727,6 +731,22 @@ export class Grandstand {
     });
   }
 
+  /** Troca horário/clima na hora: refaz só a cidade (cache) e os refletores. */
+  setLook(tod: TimeOfDay, weather: SkyWeather) {
+    this.tod = tod;
+    if (this.skyline) this.skyline.setTexture(this.warmLook(tod, weather));
+    this.lookDirty = true; // redesenha só a cidade e os refletores no próximo quadro
+  }
+
+  /** Textura da cidade pronta para um horário/clima (criada uma vez; a troca só aponta para ela). */
+  warmLook(tod: TimeOfDay, weather: SkyWeather) {
+    const key = `skyline_${tod}_${weather}`;
+    if (this.skyline && !this.scene.textures.exists(key)) {
+      makeSkylineTexture(this.scene, key, stadiumOf(venue.id ?? TEAMS.home.id).city, 11 + (venue.id ?? TEAMS.home.id).charCodeAt(0) * 7, tod, weather);
+    }
+    return key;
+  }
+
   /** Altura na tela (px do palco) do topo da arquibancada, no meio do fundo: acima disso só céu e cidade. */
   topScreenY() {
     const top = this.specs[this.specs.length - 1];
@@ -807,7 +827,8 @@ export class Grandstand {
     }
 
     this.drawScreen();
-    if (camMoved) {
+    if (camMoved || this.lookDirty) {
+      this.lookDirty = false;
       this.drawSkyline();
       this.drawLights();
     }

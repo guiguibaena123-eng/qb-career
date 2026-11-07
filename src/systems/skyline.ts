@@ -846,10 +846,25 @@ function drawSky(out: CanvasRenderingContext2D, city: CitySpec, seed: number, to
 }
 
 /** Cria a textura da cidade (SKY_W × SKY_H). */
+const SKY_CACHE = new Map<string, HTMLCanvasElement>();
+const skySig = (city: CitySpec, seed: number, tod: TimeOfDay, weather: SkyWeather) => `${seed}|${tod}|${weather}|${city.pieces.join(',')}|${city.density}|${city.glow}|${city.accent ?? ''}`;
+/** Desenha (se ainda não estiver no cache) a cidade num horário/clima: usado para deixar as trocas instantâneas. */
+export function warmSkyline(city: CitySpec, seed: number, tod: TimeOfDay, weather: SkyWeather) {
+  const sig = skySig(city, seed, tod, weather);
+  let cv = SKY_CACHE.get(sig);
+  if (!cv) {
+    cv = skylineCanvas(city, seed, tod, weather);
+    if (SKY_CACHE.size > 40) SKY_CACHE.clear();
+    SKY_CACHE.set(sig, cv);
+  }
+  return cv;
+}
 export function makeSkylineTexture(scene: Phaser.Scene, key: string, city: CitySpec, seed: number, tod: TimeOfDay = 'night', weather: SkyWeather = 'clear') {
   if (scene.textures.exists(key)) scene.textures.remove(key);
   const tex = scene.textures.createCanvas(key, SKY_W, SKY_H)!;
-  drawSky(tex.getContext(), city, seed, tod, weather);
+  // Já desenhada antes (mesma cidade, horário e clima): só copia (troca instantânea no visualizador)
+  const cv = warmSkyline(city, seed, tod, weather);
+  tex.getContext().drawImage(cv, 0, 0);
   tex.refresh();
   tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
 }
