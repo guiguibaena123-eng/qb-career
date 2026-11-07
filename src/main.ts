@@ -31,6 +31,7 @@ import { DraftEscolhido } from './scenes/DraftEscolhido';
 import { CarreiraMenu } from './scenes/CarreiraMenu';
 import { PreJogo } from './scenes/PreJogo';
 import { CareerSlots } from './scenes/CareerSlots';
+import { StadiumViewer } from './scenes/StadiumViewer';
 
 async function boot() {
   // Espera as fontes carregarem para os textos do Phaser não nascerem com fonte padrão
@@ -56,7 +57,7 @@ async function boot() {
     fps: { target: 60 },
     // Vários dedos ao mesmo tempo: segurar o joystick e apertar SPRINT/JUKE/SPIN/MERGULHO
     input: { activePointers: 4 },
-    scene: [Boot, MainMenu, CareerTest, PlayerTest, CareerHub, CareerCreate, CombineHub, Combine40, Combine3Cones, CombinePasse, CombineForca, CombineResultado, DraftEspera, DraftTelefone, DraftAnuncio, DraftEscolhido, CarreiraMenu, PreJogo, CareerSlots],
+    scene: [Boot, MainMenu, CareerTest, PlayerTest, CareerHub, CareerCreate, CombineHub, Combine40, Combine3Cones, CombinePasse, CombineForca, CombineResultado, DraftEspera, DraftTelefone, DraftAnuncio, DraftEscolhido, CarreiraMenu, PreJogo, CareerSlots, StadiumViewer],
   });
   // Trilha dos menus: toca fora da partida e dos testes do Combine (lá ela abaixa e pausa)
   const DRILLS = new Set(['Combine40', 'Combine3Cones', 'CombinePasse', 'CombineForca']);

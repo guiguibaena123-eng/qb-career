@@ -38,6 +38,8 @@ export class FieldRenderer {
   /** Linha de scrimmage e de first down (em jardas, eixo y). */
   scrimmageY = 25;
   firstDownY = 35;
+  /** false: sem as linhas da jogada (visualizador de estádios). */
+  showLines = true;
   /** Estado do último desenho: com a câmera e as linhas paradas, não redesenha nada. */
   private last = { camY: NaN, tilt: NaN, scr: NaN, fd: NaN, g0: NaN, g1: NaN };
 
@@ -133,8 +135,10 @@ export class FieldRenderer {
     this.quad(-t, 110, W + t, 110 + t, COLORS.line);
 
     // Linha de scrimmage (azul) e first down (amarela)
-    this.quad(0, this.scrimmageY - 0.2, W, this.scrimmageY + 0.2, COLORS.scrimmage, 1, T(this.scrimmageY));
-    this.quad(0, this.firstDownY - 0.2, W, this.firstDownY + 0.2, COLORS.firstDown, 1, T(this.firstDownY));
+    if (this.showLines) {
+      this.quad(0, this.scrimmageY - 0.2, W, this.scrimmageY + 0.2, COLORS.scrimmage, 1, T(this.scrimmageY));
+      this.quad(0, this.firstDownY - 0.2, W, this.firstDownY + 0.2, COLORS.firstDown, 1, T(this.firstDownY));
+    }
 
     this.updateTexts();
     this.layMidLogo();

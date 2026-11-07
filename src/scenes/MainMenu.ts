@@ -166,7 +166,34 @@ export class MainMenu extends Phaser.Scene {
     favB.add(fa);
     favB.onTap = () => this.go('favorite');
     v.add(favB);
-    slideIn(this, [favB], 0, 120);
+    // Visualizar estádios: qualquer estádio, em qualquer clima e horário, andando com o dedo
+    const stB = new TvButton(this, 20 + 116, 402, { w: 232, h: 38, fill: TV.ink, fillAlpha: 0.92 });
+    const sg = this.add.graphics();
+    plate(sg, -116, -19, 38, 38, TV.yellow, 1, true, true);
+    // ícone: arquibancada (arcos) sobre o gramado
+    sg.lineStyle(2, TV.ink, 1);
+    sg.beginPath();
+    sg.arc(-97, 6, 11, Math.PI, 0);
+    sg.strokePath();
+    sg.beginPath();
+    sg.arc(-97, 6, 6, Math.PI, 0);
+    sg.strokePath();
+    sg.fillStyle(TV.ink, 1);
+    sg.fillRect(-109, 7, 24, 2);
+    stB.add(sg);
+    stB.add(tvText(this, -66, -7, 'VER ESTÁDIOS', 15, C.white, 800, 0.8).setOrigin(0, 0.5));
+    stB.add(tvText(this, -66, 9, 'TODOS · CLIMA E HORÁRIO', 10, C.muted, 700, 1).setOrigin(0, 0.5));
+    const sa = this.add.graphics();
+    sa.lineStyle(2.5, TV.yellow, 1);
+    sa.beginPath();
+    sa.moveTo(96, -6);
+    sa.lineTo(102, 0);
+    sa.lineTo(96, 6);
+    sa.strokePath();
+    stB.add(sa);
+    stB.onTap = () => wipeTo(this, 'StadiumViewer', hc, { team: matchConfig.home });
+    v.add(stB);
+    slideIn(this, [favB, stB], 40, 120);
 
     // O astro da transmissão: o QB com o uniforme do seu time
     const u = uniformsOf(h)[matchConfig.homeUni];
