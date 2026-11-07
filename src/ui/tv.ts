@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { stadiumSlot } from './stadiumPhoto';
-import { GAME_H, GAME_W, VIEW } from '../config';
+import { GAME_H, GAME_W, LAYOUT } from '../config';
 import { TeamRepository } from '../data/TeamRepository';
 
 /*
@@ -372,10 +372,10 @@ export function underline(scene: Phaser.Scene, x: number, y: number, w: number, 
 /** Fundo: foto do estádio do time escurecida, com movimento lento de câmera. */
 export function feed(scene: Phaser.Scene, teamId: string | null, dim = 0.7) {
   const W = GAME_W;
-  const H = GAME_H;
+  const H = LAYOUT.h;
   const c = scene.add.container(0, 0).setDepth(-20);
   // cobre a tela inteira (inclusive atrás do notch e nas bordas)
-  const V = VIEW;
+  const V = LAYOUT.view;
   const base = scene.add.graphics();
   base.fillStyle(TV.ink, 1);
   base.fillRect(V.x, V.y, V.w, V.h);
@@ -489,9 +489,10 @@ export function scoreBug(scene: Phaser.Scene, o: BugOpts) {
 export function ticker(scene: Phaser.Scene, y: number, items: string[], tag = 'QFL', depth = 700) {
   const h = 30;
   // de ponta a ponta da tela; no rodapé, desce até a borda de baixo (barra de início do iPhone)
-  const x0 = VIEW.x;
-  const W = VIEW.x + VIEW.w;
-  const fillTo = y + h >= GAME_H - 1 ? VIEW.y + VIEW.h : y + h;
+  const VW = LAYOUT.view;
+  const x0 = VW.x;
+  const W = VW.x + VW.w;
+  const fillTo = y + h >= LAYOUT.h - 1 ? VW.y + VW.h : y + h;
   const c = scene.add.container(0, 0).setDepth(depth);
   const g = scene.add.graphics();
   g.fillStyle(TV.ink2, 1);

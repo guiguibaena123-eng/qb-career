@@ -139,9 +139,9 @@ export class Weather {
     const specs: [number, number, number, number][] =
       kind === 'rain'
         ? [
-            [34, 14, 0.32, 1050],
-            [26, 20, 0.5, 1250],
-            [16, 26, 0.68, 1480],
+            [19, 14, 0.28, 1050],
+            [14, 20, 0.42, 1250],
+            [9, 26, 0.58, 1480],
           ]
         : [
             [70, 2.5, 0.65, 95],
@@ -214,7 +214,7 @@ export class Weather {
         l.ts.tilePositionY -= cy * l.v * dt * RES;
       }
       // Respingos: ~80 por segundo, só em cima do gramado visível (nunca na arquibancada, fora do campo nem atrás da interface)
-      this.splashAcc += dt * 80;
+      this.splashAcc += dt * 50;
       while (this.splashAcc >= 1) {
         this.splashAcc -= 1;
         if (!proj) continue;

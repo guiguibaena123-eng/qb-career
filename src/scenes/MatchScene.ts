@@ -282,7 +282,7 @@ export class MatchScene extends Phaser.Scene {
     }
 
     // Clima e vento da partida
-    new Daylight(this, this.world.tod, GAME_W, GAME_H);
+    this.daylight = new Daylight(this, this.world.tod, GAME_W, GAME_H);
     this.weather = new Weather(this, weatherKind, this.rng, this.world.tod === 'night');
     this.world.sideline.snow = this.weather.kind === 'snow';
     this.state.wind = { dir: this.rng.chance(0.5) ? -1 : 1, mph: this.rng.int(0, 18) };
@@ -790,6 +790,8 @@ export class MatchScene extends Phaser.Scene {
 
   // -------------------------------------------------------------- desenho
 
+  private daylight?: Daylight;
+
   update(_t: number, dtMs: number) {
     // Pause: o botão fica visível só quando faz sentido
     this.pauseBtn.setVisible(!this.paused && (this.phase === 'kickoff' || this.phase === 'pre' || this.phase === 'live' || this.phase === 'post' || this.phase === 'kick'));
@@ -857,6 +859,7 @@ export class MatchScene extends Phaser.Scene {
     this.ball.draw();
     this.ui.update(real);
     this.weather.update(real, this.world.proj);
+    this.daylight?.update(this.world.proj);
     this.kickUi.update(real);
     this.defenseScreen.update(real);
     this.weather.setPillVisible(this.phase === 'pre' || (this.phase === 'live' && this.live?.phase === 'pocket'));

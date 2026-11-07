@@ -3,6 +3,10 @@ import { isDome, STAND_NAMES, stadiumOf } from '../data/stadiums';
 import { stadiumPhoto, stadiumSlot } from '../ui/stadiumPhoto';
 import { type SkyWeather, type TimeChoice, type TimeOfDay } from '../systems/daytime';
 import { GAME_H, GAME_W, applyMatchup, broadcast, finalGame, getFavorite, logoKey, matchRecords, setFavorite, playoffLogo, matchConfig, saveMatchConfig, venue, type PrimeKey, type WeatherChoice, VIEW } from '../config';
+
+/** Altura útil e área visível desta tela (palco um pouco maior no iPhone: ver setupFitWidth). */
+let MH = GAME_H;
+let MV = VIEW;
 import { PRIME } from '../career/season';
 import { ROUND_INFO } from '../career/playoffs';
 import { TeamRepository, type KitDef } from '../data/TeamRepository';
@@ -10,7 +14,7 @@ import { PlayerBody } from '../player/PlayerBody';
 import { DEFAULT_LOOK, peekSlot, SLOT_COUNT } from '../player/PlayerSave';
 import { TEAM_LIST, autoUniform, teamById, uiColor, uniformsOf, type TeamDef, type Uniform } from '../data/teams';
 import { difficulty, LEVELS, type Level } from '../systems/difficulty';
-import { setupHiRes } from '../systems/hires';
+import { setupFitWidth } from '../systems/hires';
 import { arrowAfter, C, feed, FONT_TV, inkOn, onInk, underline, plate, plateShadow, scoreBug, sectionHead, slideIn, ticker, TV, tvEnter, TvButton, tvText, wipe, wipeTo } from '../ui/tv';
 import { fontWarmJobs } from '../systems/perf';
 import { music } from '../systems/music';
@@ -45,7 +49,7 @@ export class MainMenu extends Phaser.Scene {
   }
 
   create() {
-    setupHiRes(this);
+    ({ h: MH, view: MV } = setupFitWidth(this, 820, 0.6));
     // Parâmetros de depuração entram direto na partida
     const q = new URLSearchParams(location.search);
     const debug = ['auto', 'los', 'fim', 'chute', 'defesa', 'descida', 'tatica', 'semintro', 'semmenu', 'jog', 'intro', 'treino'].some((k) => q.has(k));
@@ -116,7 +120,7 @@ export class MainMenu extends Phaser.Scene {
 
   private home() {
     const W = GAME_W;
-    const H = GAME_H;
+    const H = MH;
     const v = this.view!;
     const [h, a] = this.teams();
     const hc = uiColor(h);
@@ -299,7 +303,7 @@ export class MainMenu extends Phaser.Scene {
       v.add(ft);
     });
     v.addAt(g, 0);
-    v.add(ticker(this, GAME_H - 30, ['CONFIGURAÇÕES FICAM SALVAS NO APARELHO', 'A DIFICULDADE VALE PARA PARTIDA RÁPIDA E CARREIRA', 'NO IPHONE, A CHAVE DE SILENCIOSO TAMBÉM DESLIGA A MÚSICA']));
+    v.add(ticker(this, MH - 30, ['CONFIGURAÇÕES FICAM SALVAS NO APARELHO', 'A DIFICULDADE VALE PARA PARTIDA RÁPIDA E CARREIRA', 'NO IPHONE, A CHAVE DE SILENCIOSO TAMBÉM DESLIGA A MÚSICA']));
   }
 
   /** Tarja do menu: bloco de cor com logo/ícone, título e linha de apoio, seta à direita. */
@@ -468,8 +472,8 @@ export class MainMenu extends Phaser.Scene {
       const col = uiColor(t);
       const fg = inkOn(col);
       // painéis vão até as bordas da tela
-      const L0 = VIEW.x;
-      const R0 = VIEW.x + VIEW.w;
+      const L0 = MV.x;
+      const R0 = MV.x + MV.w;
       const pts = side === 'home'
         ? [[L0, top], [mid + sk - 3, top], [mid - sk - 3, top + ph], [L0, top + ph]]
         : [[mid + sk + 3, top], [R0, top], [R0, top + ph], [mid - sk + 3, top + ph]];
@@ -515,7 +519,7 @@ export class MainMenu extends Phaser.Scene {
     const ty = top + ph + 12;
     const tg = this.add.graphics();
     tg.fillStyle(TV.ink, 0.9);
-    tg.fillRect(VIEW.x, ty, VIEW.w, 76);
+    tg.fillRect(MV.x, ty, MV.w, 76);
     v.add(tg);
     const rows: [string, number, number][] = [
       ['ATAQUE', h.atk, a.atk],
@@ -580,7 +584,7 @@ export class MainMenu extends Phaser.Scene {
     this.uniformRow(v, 'away', uy + 16 + 118);
 
     // ---- próximo
-    const next = new TvButton(this, W / 2, GAME_H - 44, { w: W - 32, h: 58, fill: TV.yellow, fillAlpha: 1, primary: true });
+    const next = new TvButton(this, W / 2, MH - 44, { w: W - 32, h: 58, fill: TV.yellow, fillAlpha: 1, primary: true });
     next.add(tvText(this, -(W - 32) / 2 + 22, 0, 'PRÓXIMO', 26, C.ink, 800, 1).setOrigin(0, 0.5));
     const nx = tvText(this, (W - 32) / 2 - 30, 0, 'CLIMA E ESTÁDIO', 16, C.ink, 700, 1).setOrigin(1, 0.5);
     next.add(nx);
@@ -649,9 +653,9 @@ export class MainMenu extends Phaser.Scene {
     const fr = this.add.graphics();
     fr.fillStyle(TV.ink2, 1);
     // foto de ponta a ponta da tela (bordas do iPhone incluídas)
-    const PW = Math.ceil(VIEW.w);
-    const PX = VIEW.x + VIEW.w / 2;
-    fr.fillRect(VIEW.x, py, VIEW.w, ph);
+    const PW = Math.ceil(MV.w);
+    const PX = MV.x + MV.w / 2;
+    fr.fillRect(MV.x, py, MV.w, ph);
     v.add(fr);
     const photo = hostR.stadium.image;
     if (photo) v.add(stadiumSlot(this, photo, (slot) => slot.add(this.add.image(PX, py + ph / 2, stadiumPhoto(this, photo, PW, ph)).setDisplaySize(PW, ph))));
@@ -669,9 +673,9 @@ export class MainMenu extends Phaser.Scene {
     paintMood();
     // tarja do estádio
     const lt = this.add.graphics();
-    plateShadow(lt, VIEW.x, py + ph - 62, W - 70 - VIEW.x, 50, false, true);
-    plate(lt, VIEW.x, py + ph - 62, W - 70 - VIEW.x, 50, TV.ink, 0.94, false, true);
-    plate(lt, VIEW.x, py + ph - 62, 56 - VIEW.x, 50, uiColor(host), 1, false, true);
+    plateShadow(lt, MV.x, py + ph - 62, W - 70 - MV.x, 50, false, true);
+    plate(lt, MV.x, py + ph - 62, W - 70 - MV.x, 50, TV.ink, 0.94, false, true);
+    plate(lt, MV.x, py + ph - 62, 56 - MV.x, 50, uiColor(host), 1, false, true);
     v.add(lt);
     v.add(this.add.image(26, py + ph - 37, logoKey(host.id, 's')).setDisplaySize(32, 32));
     const sn = tvText(this, 66, py + ph - 47, fin ? 'QFL BOWL · ' + hostR.stadium.name : hostR.stadium.name, 19, C.white, 800, 0.6).setOrigin(0, 0.5);
@@ -861,7 +865,7 @@ export class MainMenu extends Phaser.Scene {
 
     // ---- jogar
     const hc = uiColor(h);
-    const play = new TvButton(this, W / 2, GAME_H - 44, { w: W - 32, h: 62, fill: hc, fillAlpha: 1, primary: true });
+    const play = new TvButton(this, W / 2, MH - 44, { w: W - 32, h: 62, fill: hc, fillAlpha: 1, primary: true });
     const fg = inkOn(hc);
     play.add(this.add.image(-(W - 32) / 2 + 36, 0, logoKey(h.id, 's')).setDisplaySize(34, 34));
     play.add(tvText(this, -(W - 32) / 2 + 64, 0, 'JOGAR', 30, fg, 800, 1.5).setOrigin(0, 0.5));

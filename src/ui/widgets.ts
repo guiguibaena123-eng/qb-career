@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FONT_LABEL, FONT_TITLE, GAME_H, GAME_W, VIEW } from '../config';
+import { FONT_LABEL, FONT_TITLE, GAME_H, GAME_W, LAYOUT } from '../config';
 
 /*
  * Componentes de interface do design: botões de "vidro fosco" arredondados
@@ -166,7 +166,8 @@ export class Tag extends Phaser.GameObjects.Container {
 export function bottomGradient(scene: Phaser.Scene, height: number, depth: number) {
   const g = scene.add.graphics().setDepth(depth);
   const W = GAME_W;
-  const H = GAME_H;
+  const H = LAYOUT.h;
+  const VIEW = LAYOUT.view;
   const top = H - height;
   const c = 0x0a0c1a;
   const stops: [number, number][] = [

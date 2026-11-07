@@ -53,6 +53,9 @@ export const VIEW = (() => {
   return { x: vx, y: vy, w: vw, h: vh, top: -vy, bottom: vy + vh - GAME_H, inset: { t, r, b, l }, screen: { w: W, h: H } };
 })();
 
+/** Layout da tela atual: visível (`view`) e altura útil do palco (`h`). setupHiRes volta ao padrão; setupFitWidth amplia. */
+export const LAYOUT: { view: typeof VIEW; h: number } = { view: VIEW, h: GAME_H };
+
 /** Área segura do aparelho em px da tela (notch, barra de início, bordas), lida do CSS env(). */
 export function readSafeInsets() {
   if (typeof document === 'undefined' || !document.body) return { t: 0, r: 0, b: 0, l: 0 };

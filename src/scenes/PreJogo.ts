@@ -5,13 +5,17 @@ import { ROUND_INFO } from '../career/playoffs';
 import { KIT_IDS, kitAccents, type KitId } from '../career/kits';
 import { careerTeam, coachOf, nextGame, PRIME } from '../career/season';
 import { GAME_H, GAME_W, VIEW } from '../config';
+
+/** Altura útil e área visível desta tela (palco um pouco maior no iPhone: ver setupFitWidth). */
+let MH = GAME_H;
+let MV = VIEW;
 import type { CareerTeam } from '../data/TeamRepository';
 import { teamById } from '../data/teams';
 import { startCareerMatch } from '../integration/MatchBridge';
 import { PlayerBody } from '../player/PlayerBody';
 import type { FaceLook } from '../player/PlayerFace';
 import { getSave, updateSave } from '../player/PlayerSave';
-import { setupHiRes } from '../systems/hires';
+import { setupFitWidth } from '../systems/hires';
 import { portraitTexture } from '../ui/portrait';
 import { C, feed, inkOn, mix, onInk, plate, plateShadow, underline, scoreBug, sectionHead, slideIn, TV, tvEnter, TvButton, tvText, wipeTo } from '../ui/tv';
 import { weatherIcon, WX_NAME } from '../ui/weatherIcon';
@@ -33,7 +37,7 @@ export class PreJogo extends Phaser.Scene {
   }
 
   create() {
-    setupHiRes(this);
+    ({ h: MH, view: MV } = setupFitWidth(this, 800, 0.6));
     this.kitCards = [];
     this.kitRing = null;
     const g = nextGame();
@@ -52,9 +56,9 @@ export class PreJogo extends Phaser.Scene {
     let top = 66;
     if (pr) {
       const pg = this.add.graphics();
-      plate(pg, VIEW.x, 60, VIEW.w, 30, TV.plate, 1, false, false);
+      plate(pg, MV.x, 60, MV.w, 30, TV.plate, 1, false, false);
       pg.fillStyle(TV.yellow, 1);
-      pg.fillRect(VIEW.x, 88, VIEW.w, 3);
+      pg.fillRect(MV.x, 88, MV.w, 3);
       tvText(this, W / 2, 75, `${pr.pt} · ${g.when}`, 16, C.ink, 800, 2.4).setOrigin(0.5);
       top = 96;
     }
@@ -73,8 +77,8 @@ export class PreJogo extends Phaser.Scene {
       const fg = inkOn(col);
       // painéis vão até as bordas da tela
       const pts = left
-        ? [[VIEW.x, top], [mid + sk - 3, top], [mid - sk - 3, top + ph], [VIEW.x, top + ph]]
-        : [[mid + sk + 3, top], [VIEW.x + VIEW.w, top], [VIEW.x + VIEW.w, top + ph], [mid - sk + 3, top + ph]];
+        ? [[MV.x, top], [mid + sk - 3, top], [mid - sk - 3, top + ph], [MV.x, top + ph]]
+        : [[mid + sk + 3, top], [MV.x + MV.w, top], [MV.x + MV.w, top + ph], [mid - sk + 3, top + ph]];
       const pg = this.add.graphics();
       pg.fillStyle(col, 1);
       pg.fillPoints(pts.map(([x, y]) => new Phaser.Math.Vector2(x, y)), true);
@@ -95,7 +99,7 @@ export class PreJogo extends Phaser.Scene {
     const sameDiv = divisionOf(me).div === divisionOf(opp).div;
     const ig = this.add.graphics();
     ig.fillStyle(TV.ink, 0.94);
-    ig.fillRect(VIEW.x, top + ph, VIEW.w, 28);
+    ig.fillRect(MV.x, top + ph, MV.w, 28);
     tvText(this, W / 2, top + ph + 14, sameDiv ? `CLÁSSICO DA ${divisionOf(me).full}` : `${divisionOf(opp).full} · TÉC. ${coachOf(opp).name}`, 14, sameDiv ? C.yellow : C.muted, 700, 1.2).setOrigin(0.5);
 
     // Cartão escuro padrão das faixas de informação (mesma margem, mesma cor, traço amarelo no topo)
@@ -215,7 +219,7 @@ export class PreJogo extends Phaser.Scene {
     const face: FaceLook = { face: save.face, skin: save.skin, hair: save.hair, hairColor: save.hairColor, beard: save.beard };
     const cw = (W - 32 - 8) / 3;
     const ky = y5 + 16;
-    const ch = GAME_H - 92 - ky;
+    const ch = MH - 92 - ky;
     KIT_IDS.forEach((id, i) => {
       const x = 16 + cw / 2 + i * (cw + 4);
       const kit = me.kits[id];
@@ -242,7 +246,7 @@ export class PreJogo extends Phaser.Scene {
 
     // ---- entrar em campo
     const hc = me.colors.primary;
-    const btn = new TvButton(this, W / 2, GAME_H - 46, { w: W - 32, h: 62, fill: hc, fillAlpha: 1, primary: true });
+    const btn = new TvButton(this, W / 2, MH - 46, { w: W - 32, h: 62, fill: hc, fillAlpha: 1, primary: true });
     btn.add(this.add.image(-(W - 32) / 2 + 36, 0, me.logo.small).setDisplaySize(32, 32));
     btn.add(tvText(this, -(W - 32) / 2 + 62, 0, 'ENTRAR EM CAMPO', 26, inkOn(hc), 800, 1.2).setOrigin(0, 0.5));
     const ar = this.add.graphics();

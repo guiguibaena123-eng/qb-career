@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_H, GAME_W, RES, VIEW } from '../config';
+import { GAME_H, GAME_W, LAYOUT, RES, VIEW } from '../config';
 
 /*
  * Alta resolução: o canvas tem RES× o tamanho lógico (390×844) e cada câmera dá zoom RES,
@@ -66,6 +66,8 @@ export function setupHiRes(scene: Phaser.Scene) {
   const cam = scene.cameras.main;
   cam.setZoom(RES);
   cam.centerOn(VIEW.x + VIEW.w / 2, VIEW.y + VIEW.h / 2);
+  LAYOUT.view = VIEW;
+  LAYOUT.h = GAME_H;
 }
 
 /**
@@ -74,12 +76,15 @@ export function setupHiRes(scene: Phaser.Scene) {
  * Devolve a altura útil (`h`, em unidades do palco, no lugar de GAME_H) e o retângulo visível (`view`,
  * no lugar de VIEW). Sem ganho (computador, tela já cheia) fica igual a setupHiRes.
  */
-export function setupFitWidth(scene: Phaser.Scene) {
+export function setupFitWidth(scene: Phaser.Scene, minH = 0, bottomUse = 0) {
   const cam = scene.cameras.main;
   const { w: Ws, h: Hs } = VIEW.screen;
   const { t, r, b, l } = VIEW.inset;
   const s = Math.max(Ws / VIEW.w, Hs / VIEW.h); // pt da tela por unidade, no modo normal
-  const S2 = (Ws - l - r) / GAME_W; // pt por unidade com o palco na largura toda
+  // altura disponível: área segura + parte do espaço da barra de início (bottomUse 0..1)
+  const avail = Hs - t - b * (1 - bottomUse);
+  // pt por unidade: palco na largura toda, mas sem deixar a altura útil abaixo de minH
+  const S2 = Math.min((Ws - l - r) / GAME_W, minH > 0 ? avail / minH : Infinity);
   const k = S2 / s;
   const envelop = Math.abs(Ws / Hs - VIEW.w / VIEW.h) < 0.03;
   if (!envelop || k < 1.02) {
@@ -87,7 +92,12 @@ export function setupFitWidth(scene: Phaser.Scene) {
     return { h: GAME_H, view: VIEW };
   }
   cam.setZoom(RES * k);
-  cam.centerOn((Ws / 2 - l) / S2, (Hs / 2 - t) / S2);
-  const view = { ...VIEW, x: -l / S2 - 2, y: -t / S2 - 2, w: Ws / S2 + 4, h: Hs / S2 + 4 };
-  return { h: (Hs - t - b) / S2, view };
+  // centro horizontal: palco no meio da área segura (sobra igual dos dois lados quando a altura limita)
+  const cx = GAME_W / 2 + (r - l) / (2 * S2);
+  const cy = (Hs / 2 - t) / S2;
+  cam.centerOn(cx, cy);
+  const view = { ...VIEW, x: cx - Ws / 2 / S2 - 2, y: -t / S2 - 2, w: Ws / S2 + 4, h: Hs / S2 + 4 };
+  LAYOUT.view = view;
+  LAYOUT.h = avail / S2;
+  return { h: LAYOUT.h, view };
 }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { matchConfig, VIEW } from '../config';
+import { FIELD, matchConfig, VIEW } from '../config';
+import type { Projection } from './projection';
 
 /*
  * Horário da partida: DIA (céu azul, refletores apagados), TARDE (pôr do sol alaranjado, refletores
@@ -86,6 +87,7 @@ export function pickTimeOfDay(): TimeOfDay {
 /** Camada de luz: multiplica as cores do jogo pela cor do horário (tarde quente, noite azulada). */
 export class Daylight {
   private rect: Phaser.GameObjects.Rectangle | null = null;
+  private pools: { img: Phaser.GameObjects.Image; x: number; y: number }[] = [];
 
   constructor(scene: Phaser.Scene, readonly tod: TimeOfDay, w: number, h: number) {
     const c = TOD[tod].light;
@@ -102,53 +104,40 @@ export class Daylight {
    * (camada que multiplica), e por cima entram os fachos dos refletores e um brilho branco-quente sobre o
    * campo (camada aditiva). Tudo em textura de canvas na resolução da tela.
    */
-  private night(scene: Phaser.Scene, w: number, h: number) {
-    const k = Math.max(1, Math.round(scene.scale.width / w));
-    const mk = (key: string, draw: (ctx: CanvasRenderingContext2D) => void) => {
-      if (scene.textures.exists(key)) scene.textures.remove(key);
+  private night(scene: Phaser.Scene, _w: number, _h: number) {
+    // Escuridão da noite por igual na tela (não "anda" com a câmera)
+    scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0xa9b0dc, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    // Focos dos refletores PRESOS NO GRAMADO: poças de luz em pontos fixos do campo, projetadas a cada quadro
+    const key = 'night_pool';
+    if (!scene.textures.exists(key)) {
+      const S = 256;
       const cv = document.createElement('canvas');
-      // cobre a tela inteira (VIEW); os gradientes continuam medidos no palco 390×844
-      cv.width = Math.ceil(VIEW.w * k);
-      cv.height = Math.ceil(VIEW.h * k);
+      cv.width = cv.height = S;
       const ctx = cv.getContext('2d')!;
-      ctx.scale(k, k);
-      ctx.translate(-VIEW.x, -VIEW.y);
-      draw(ctx);
-      scene.textures.addCanvas(key, cv);
-      return key;
-    };
-    // Luz (multiplica): centro quase branco, bordas azul-escuras, topo (arquibancada) na penumbra
-    const shade = mk('night_shade', (ctx) => {
-      ctx.fillStyle = '#4b5384';
-      ctx.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
-      const g = ctx.createRadialGradient(w / 2, h * 0.52, h * 0.08, w / 2, h * 0.52, h * 0.62);
-      g.addColorStop(0, '#fbfcff');
-      g.addColorStop(0.55, '#dfe5fb');
-      g.addColorStop(0.85, '#8f98c6');
-      g.addColorStop(1, '#4b5384');
+      const g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+      g.addColorStop(0, 'rgba(255,248,228,1)');
+      g.addColorStop(0.45, 'rgba(255,246,222,0.55)');
+      g.addColorStop(1, 'rgba(255,246,222,0)');
       ctx.fillStyle = g;
-      ctx.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
-      // laterais (fora das linhas) um pouco mais escuras
-      const side = ctx.createLinearGradient(0, 0, w, 0);
-      side.addColorStop(0, 'rgba(60,66,110,0.55)');
-      side.addColorStop(0.16, 'rgba(255,255,255,0)');
-      side.addColorStop(0.84, 'rgba(255,255,255,0)');
-      side.addColorStop(1, 'rgba(60,66,110,0.55)');
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.fillStyle = side;
-      ctx.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
-    });
-    scene.add.image(VIEW.x, VIEW.y, shade).setOrigin(0).setDisplaySize(VIEW.w, VIEW.h).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
-    // Fachos e brilho (soma)
-    const glow = mk('night_glow', (ctx) => {
-      // Sem fachos dos refletores: só o gramado bem iluminado
-      // poça de luz sobre o gramado
-      const p = ctx.createRadialGradient(w / 2, h * 0.48, 0, w / 2, h * 0.48, w * 0.75);
-      p.addColorStop(0, 'rgba(255,250,235,0.1)');
-      p.addColorStop(1, 'rgba(255,250,235,0)');
-      ctx.fillStyle = p;
-      ctx.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
-    });
-    scene.add.image(VIEW.x, VIEW.y, glow).setOrigin(0).setDisplaySize(VIEW.w, VIEW.h).setDepth(59.6).setBlendMode(Phaser.BlendModes.ADD);
+      ctx.fillRect(0, 0, S, S);
+      scene.textures.addCanvas(key, cv);
+    }
+    for (const y of [-2, 22, 50, 78, 102]) {
+      const img = scene.add.image(0, 0, key).setDepth(59.6).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.3).setVisible(false);
+      this.pools.push({ img, x: FIELD.width / 2, y });
+    }
   }
+
+  /** Reposiciona os focos de luz conforme a câmera (ficam fixos no campo). */
+  update(proj: Projection) {
+    for (const p of this.pools) {
+      const a = proj.project(p.x, p.y);
+      const u = proj.unitAt(p.y);
+      const d = u * 52; // ~52 jardas de diâmetro
+      const vis = p.y > proj.nearY - 30 && a.y > VIEW.y - d && u > 0;
+      p.img.setVisible(vis);
+      if (vis) p.img.setPosition(a.x, a.y).setDisplaySize(d, d * proj.flattenAt(p.y));
+    }
+  }
+
 }
