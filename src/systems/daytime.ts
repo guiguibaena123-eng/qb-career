@@ -106,7 +106,7 @@ export class Daylight {
    */
   private night(scene: Phaser.Scene, _w: number, _h: number) {
     // Escuridão da noite por igual na tela (não "anda" com a câmera)
-    scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0xa9b0dc, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0x8a93c8, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
     // Focos dos refletores PRESOS NO GRAMADO: poças de luz em pontos fixos do campo, projetadas a cada quadro
     const key = 'night_pool';
     if (!scene.textures.exists(key)) {
@@ -115,15 +115,16 @@ export class Daylight {
       cv.width = cv.height = S;
       const ctx = cv.getContext('2d')!;
       const g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-      g.addColorStop(0, 'rgba(255,248,228,1)');
-      g.addColorStop(0.45, 'rgba(255,246,222,0.55)');
-      g.addColorStop(1, 'rgba(255,246,222,0)');
+      // luz âmbar de refletor (não branca): realça o verde do gramado sem lavar a cor
+      g.addColorStop(0, 'rgba(255,214,140,1)');
+      g.addColorStop(0.4, 'rgba(255,200,120,0.5)');
+      g.addColorStop(1, 'rgba(255,190,110,0)');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, S, S);
       scene.textures.addCanvas(key, cv);
     }
     for (const y of [-2, 22, 50, 78, 102]) {
-      const img = scene.add.image(0, 0, key).setDepth(59.6).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.3).setVisible(false);
+      const img = scene.add.image(0, 0, key).setDepth(59.6).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.16).setVisible(false);
       this.pools.push({ img, x: FIELD.width / 2, y });
     }
   }

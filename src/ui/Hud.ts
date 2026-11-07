@@ -12,7 +12,7 @@ import { label, title, UI } from './widgets';
  *  - card do QB (#12 · ROOKIE · OVR 68) com barra de CONFIANÇA.
  */
 /** Tamanho do HUD do topo (1 = original). Tudo fica dentro de um container que escala em volta do centro. */
-const HUD_SCALE = 0.8;
+const HUD_SCALE = 0.9;
 
 export class Hud {
   private root: Phaser.GameObjects.Container;
