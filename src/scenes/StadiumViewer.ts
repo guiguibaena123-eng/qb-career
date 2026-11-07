@@ -151,7 +151,7 @@ export class StadiumViewer extends Phaser.Scene {
     }
     this.world.update(dt);
     this.weather.update(dt, this.world.proj);
-    this.daylight.update(this.world.proj);
+    this.daylight.update(this.world.proj, this.world.stand.topScreenY());
   }
 
   // ------------------------------------------------------------------ interface

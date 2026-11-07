@@ -240,9 +240,9 @@ function drawSky(out: CanvasRenderingContext2D, city: CitySpec, seed: number, to
     const cw = glassy ? 1.75 : 2; // largura da janela + caixilho
     if (night || dusk) {
       // janelas acesas (andares inteiros de escritório às vezes)
-      const pOn = (side ? 0.18 : 0.32) * winMul * (depth === 0 ? 0.5 : 1);
+      const pOn = (side ? 0.3 : 0.5) * winMul * (depth === 0 ? 0.6 : 1);
       for (let wy = y + 1; wy < y + h - 1.5; wy += fh) {
-        const full = rng.chance(0.06 * winMul);
+        const full = rng.chance(0.12 * winMul);
         const tint = rng.chance(0.2) ? COOL : rng.chance(0.12) ? accent : WIN;
         for (let wx = x + 0.5; wx < x + w - 0.75; wx += cw) {
           if (full || rng.chance(pOn)) rect(wx, wy, cw - 0.75, fh * 0.5, side ? mix(tint, '#000000', 0.35) : tint);
@@ -367,7 +367,18 @@ function drawSky(out: CanvasRenderingContext2D, city: CitySpec, seed: number, to
       if (lamps) rect(x + 0.5, H - 2.5, fw - 1, 1.25, rng.chance(0.5) ? WIN : rgba(accent, 0.9));
       else rect(x + 0.5, H - 2.5, fw - 1, 1.25, 'rgba(180,200,230,0.45)');
     }
-    if (near && lamps && rng.chance(0.08)) rect(x + 1, top + h * 0.2, fw - 2, 1.5, accent); // letreiro aceso
+    if (near && lamps && rng.chance(0.1)) rect(x + 1, top + h * 0.2, fw - 2, 1.5, accent); // letreiro aceso
+    // à noite: contorno de LED no topo e brilho das janelas sobre a fachada
+    if (night && depth >= 1) {
+      if (rng.chance(depth >= 2 ? 0.35 : 0.2)) {
+        const led = rng.pick([accent, COOL, WIN, '#ff5ab0', '#5affc8']);
+        rect(x, top, fw, 0.5, led);
+        rect(x, top, 0.5, Math.min(h, 6), led);
+        rect(x + fw - 0.5, top, 0.5, Math.min(h, 6), led);
+        glow(x + fw / 2, top, fw * 0.7, led, 0.2);
+      }
+      glow(x + fw / 2, top + h * 0.5, Math.max(fw, h * 0.5), WIN, depth >= 2 ? 0.07 : 0.05);
+    }
   };
 
   /** Uma camada de prédios. */
@@ -801,7 +812,7 @@ function drawSky(out: CanvasRenderingContext2D, city: CitySpec, seed: number, to
     for (let x = 10; x < W; x += 22) {
       rect(x, H - 13, 0.5, 9, NEAR2);
       rect(x - 1.5, H - 13.5, 3.5, 0.5, NEAR2);
-      if (lamps) glow(x, H - 12.5, 6, '#ffd98a', 0.4);
+      if (lamps) glow(x, H - 12.5, 7, '#ffd98a', night ? 0.6 : 0.4);
     }
   }
   for (let i = 0; i < (urban ? 16 : 8); i++) tree(rng.range(0, W), rng.range(2.5, 4.5));
@@ -826,7 +837,7 @@ function drawSky(out: CanvasRenderingContext2D, city: CitySpec, seed: number, to
   // Neblina no pé da cidade (profundidade)
   const haze = ctx.createLinearGradient(0, H - 40, 0, H);
   haze.addColorStop(0, rgba(day ? HOR : city.glow, 0));
-  haze.addColorStop(1, rgba(day ? HOR : city.glow, day ? 0.28 : 0.2));
+  haze.addColorStop(1, rgba(day ? HOR : city.glow, day ? 0.28 : night ? 0.32 : 0.2));
   ctx.globalCompositeOperation = 'source-atop';
   ctx.fillStyle = haze;
   ctx.fillRect(0, H - 40, W, 40);

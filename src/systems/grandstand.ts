@@ -24,6 +24,9 @@ const CX_R = 55.3; // centro do arco do canto direito (x)
 export const STAND_GAP = 5;
 
 /** Combine: arquibancada vazia (só os degraus, sem torcida). */
+/** Meio do campo na largura (jardas). */
+const FIELD_MIDX = 53.3 / 2;
+
 export const standOptions = { empty: false };
 const CY = 103.2 + STAND_GAP; // y dos centros dos arcos (onde a arquibancada encosta na lateral)
 const R0 = 16.9; // raio da 1ª fileira (logo atrás do muro)
@@ -429,6 +432,9 @@ export class Grandstand {
   private glows: Phaser.GameObjects.Image[] = [];
   /** Painel de lâmpadas de cada torre (textura em alta resolução). */
   private panels: Phaser.GameObjects.Image[] = [];
+  /** Refletor aceso: facho de luz descendo ao campo e reflexo de lente (risco horizontal). */
+  private beams: Phaser.GameObjects.Image[] = [];
+  private flares: Phaser.GameObjects.Image[] = [];
   private fx = new Rng(MATCH_SEED + 9);
   private flashes: { k: number; u: number; life: number }[] = [];
   private time = 0;
@@ -471,7 +477,10 @@ export class Grandstand {
       gt.refresh();
       gt.setFilter(Phaser.Textures.FilterMode.LINEAR);
       makeFloodPanels(scene);
+      makeBeamTexture(scene);
       for (let i = 0; i < 4; i++) {
+        this.beams.push(scene.add.image(0, 0, 'flood_beam').setOrigin(0.5, 0).setBlendMode(Phaser.BlendModes.ADD).setDepth(59.45).setVisible(false));
+        this.flares.push(scene.add.image(0, 0, 'glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(59.5).setVisible(false));
         this.glows.push(scene.add.image(0, 0, 'glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(59.5).setVisible(false));
         this.panels.push(scene.add.image(0, 0, 'flood_off').setDepth(3.46).setVisible(false));
       }
@@ -697,10 +706,33 @@ export class Grandstand {
       const ph = Math.abs(proj.project(x, y, ht - 0.3, pb).y - proj.project(x, y, ht + 3.8, pa).y);
       proj.project(x, y, ht + 1.75, pa);
       panel.setTexture(lit ? 'flood_on' : 'flood_off').setVisible(pa.y > VIEW.y - 80).setPosition(pa.x, pa.y).setDisplaySize(pw, ph);
-      // Brilho: mais fraco que antes (a luz do campo já vem da camada da noite)
-      // Sem brilho em volta dos refletores (a luz fica só no campo)
-      img.setVisible(false);
+      // Aceso: halo em volta do painel, reflexo de lente (risco horizontal) e o facho descendo ao campo
+      const beam = this.beams[i];
+      const flare = this.flares[i];
+      const on = lit && pa.y > VIEW.y - 80;
+      img.setVisible(on);
+      flare.setVisible(on);
+      beam.setVisible(on);
+      if (!on) return;
+      img.setPosition(pa.x, pa.y).setDisplaySize(pw * 4.2, pw * 4.2).setAlpha(0.5 * lvl);
+      flare.setPosition(pa.x, pa.y).setDisplaySize(pw * 9, Math.max(2, pw * 0.42)).setAlpha(0.55 * lvl);
+      // facho: do painel até um ponto do gramado na frente da torre (mirado para o meio do campo)
+      const tx = FIELD_MIDX + (x < FIELD_MIDX ? -9 : 9);
+      const ty = Math.max(proj.nearY + 4, y - 48);
+      const tp = proj.project(tx, ty);
+      const dx = tp.x - pa.x;
+      const dy = tp.y - pa.y;
+      const len = Math.hypot(dx, dy);
+      beam.setPosition(pa.x, pa.y + ph * 0.3).setRotation(Math.atan2(dy, dx) - Math.PI / 2).setDisplaySize(Math.max(pw * 3.2, len * 0.55), len).setAlpha(0.3 * lvl);
     });
+  }
+
+  /** Altura na tela (px do palco) do topo da arquibancada, no meio do fundo: acima disso só céu e cidade. */
+  topScreenY() {
+    const top = this.specs[this.specs.length - 1];
+    const geom = rowGeom(top.r);
+    const [x, y] = pointAt(top.r, geom.arc + STRAIGHT / 2);
+    return this.proj.project(x, y, top.h + (this.model.roofRows ? 1 : 0)).y;
   }
 
   /** Cidade ao fundo: faixa larga bem atrás da última fileira, com a base escondida atrás das cadeiras. */
@@ -901,4 +933,37 @@ function makeFloodPanels(scene: Phaser.Scene) {
     t.refresh();
     t.setFilter(Phaser.Textures.FilterMode.LINEAR);
   }
+}
+
+/** Facho de refletor: cone que abre para baixo, claro no topo e sumindo no fim (soma de luz). */
+function makeBeamTexture(scene: Phaser.Scene) {
+  if (scene.textures.exists('flood_beam')) return;
+  const W = 128;
+  const H = 256;
+  const t = scene.textures.createCanvas('flood_beam', W, H)!;
+  const c = t.getContext();
+  const g = c.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, 'rgba(255,246,220,0.9)');
+  g.addColorStop(0.25, 'rgba(255,242,210,0.45)');
+  g.addColorStop(0.7, 'rgba(255,240,205,0.12)');
+  g.addColorStop(1, 'rgba(255,240,205,0)');
+  c.fillStyle = g;
+  c.beginPath();
+  c.moveTo(W / 2 - 6, 0);
+  c.lineTo(W / 2 + 6, 0);
+  c.lineTo(W, H);
+  c.lineTo(0, H);
+  c.closePath();
+  c.fill();
+  // bordas do cone mais suaves
+  const e = c.createLinearGradient(0, 0, W, 0);
+  e.addColorStop(0, 'rgba(0,0,0,1)');
+  e.addColorStop(0.3, 'rgba(0,0,0,0)');
+  e.addColorStop(0.7, 'rgba(0,0,0,0)');
+  e.addColorStop(1, 'rgba(0,0,0,1)');
+  c.globalCompositeOperation = 'destination-out';
+  c.fillStyle = e;
+  c.fillRect(0, 0, W, H);
+  t.refresh();
+  t.setFilter(Phaser.Textures.FilterMode.LINEAR);
 }

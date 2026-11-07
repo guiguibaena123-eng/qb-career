@@ -859,7 +859,7 @@ export class MatchScene extends Phaser.Scene {
     this.ball.draw();
     this.ui.update(real);
     this.weather.update(real, this.world.proj);
-    this.daylight?.update(this.world.proj);
+    this.daylight?.update(this.world.proj, this.world.stand.topScreenY());
     this.kickUi.update(real);
     this.defenseScreen.update(real);
     this.weather.setPillVisible(this.phase === 'pre' || (this.phase === 'live' && this.live?.phase === 'pocket'));

@@ -87,12 +87,24 @@ export function pickTimeOfDay(): TimeOfDay {
 }
 
 /** Camada de luz: multiplica as cores do jogo pela cor do horário (tarde quente, noite azulada). */
+/** Focos dos refletores mirados no gramado (jardas): duas colunas × cinco faixas ao longo do campo. */
+const POOLS: [number, number][] = [];
+for (const y of [5, 30, 55, 80, 105]) for (const x of [13.3, 40]) POOLS.push([x, y]);
+const POOL_R2 = 13.5 * 13.5;
+
+
+type V3 = [number, number, number];
+
 export class Daylight {
   private rect: Phaser.GameObjects.Rectangle | null = null;
   private lightG: Phaser.GameObjects.Graphics | null = null;
   private lastKey = '';
-  /** Cor de cada camada de escuro em volta do campo (multiplica; noite mais forte, tarde mais fraca). */
-  private layerCol = 0xd9dcef;
+  /** Luz mínima (longe dos focos) e ganho dos focos. */
+  private amb = 0.55;
+  private gain = 0.42;
+  /** Cor (multiplica) do escuro e da luz plena. */
+  private dark: V3 = [0.56, 0.58, 0.76];
+  private full: V3 = [1, 0.99, 0.955];
 
   constructor(scene: Phaser.Scene, readonly tod: TimeOfDay, w: number, h: number, weather: SkyWeather = 'clear') {
     // Dia e tarde com chuva/neve: céu nublado, luz cinza e difusa (a noite fica como no tempo limpo)
@@ -102,73 +114,94 @@ export class Daylight {
     };
     const c = tod !== 'night' && weather !== 'clear' ? overcast[tod][weather] : TOD[tod].light;
     if (c === null) return;
+    void w;
+    void h;
     if (tod === 'night') {
-      this.night(scene, w, h);
+      // Noite: só o mapa de luz dos refletores (o gramado mantém as cores vivas)
+      this.lightG = scene.add.graphics().setDepth(59.6).setBlendMode(Phaser.BlendModes.MULTIPLY);
       return;
     }
     this.rect = scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, c, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
-    // Tarde: os refletores já acesos dão um toque da luz da noite no gramado (mais fraco)
+    // Tarde: os refletores já acesos marcam o gramado de leve (mesmo mapa, bem mais suave)
     if (tod === 'dusk') {
-      this.layerCol = weather === 'clear' ? 0xeceef6 : 0xf1f2f7;
+      this.amb = 0.8;
+      this.gain = 0.2;
+      this.dark = weather === 'clear' ? [0.72, 0.7, 0.8] : [0.8, 0.79, 0.84];
       this.lightG = scene.add.graphics().setDepth(59.6).setBlendMode(Phaser.BlendModes.MULTIPLY);
     }
   }
 
-  /**
-   * Noite de estádio: o gramado fica bem iluminado no centro e escurece para as bordas e a arquibancada
-   * (camada que multiplica), e por cima entram os fachos dos refletores e um brilho branco-quente sobre o
-   * campo (camada aditiva). Tudo em textura de canvas na resolução da tela.
-   */
-  private night(scene: Phaser.Scene, _w: number, _h: number) {
-    // Noite: um tom azulado leve em tudo (o gramado mantém as cores vivas)...
-    scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0xdde2f8, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
-    // ...e o ESCURO fica fora da luz dos refletores: camadas que escurecem tudo em volta do campo
-    this.lightG = scene.add.graphics().setDepth(59.6).setBlendMode(Phaser.BlendModes.MULTIPLY);
-    this.layerCol = 0xd9dcef;
+  /** Luz (0..1) num ponto do chão: luz mínima + soma dos focos (queda gaussiana suave). */
+  private lightAt(x: number, y: number) {
+    let s = 0;
+    for (const [px, py] of POOLS) {
+      const dx = x - px;
+      const dy = y - py;
+      s += Math.exp(-(dx * dx + dy * dy) / POOL_R2);
+    }
+    return Math.min(1, this.amb + this.gain * s);
+  }
+
+  /** Cor (multiplica) para uma luz L. */
+  private colorFor(L: number) {
+    const t = Math.pow(Math.min(1, Math.max(0, (L - this.amb) / (1 - this.amb))), 0.8);
+    const ch = (i: number) => Math.round(255 * (this.dark[i] + (this.full[i] - this.dark[i]) * t));
+    return (ch(0) << 16) | (ch(1) << 8) | ch(2);
   }
 
   /**
-   * Luz dos refletores presa ao campo. Em vez de clarear (que deixa tudo esbranquiçado), escurece o que
-   * está FORA da área iluminada: N camadas, cada uma cobre tudo fora de um retângulo do chão (projetado),
-   * do maior (7 jd além das linhas) ao menor (85% do campo). Somadas, viram um degradê: o miolo do campo
-   * com as cores originais e vivas, caindo para o escuro nas laterais, nas end zones e na arquibancada.
+   * Mapa de luz dos refletores, PRESO NO GRAMADO: uma malha de pontos no chão (de bem antes da end zone
+   * até atrás da arquibancada, e muito além das laterais) com a luz de cada ponto; projetada pela câmera
+   * a cada quadro e pintada em triângulos com cor por vértice (degradê suave), multiplicando a imagem.
+   * Os focos fazem manchas suaves de luz que ficam no mesmo lugar do campo quando a câmera anda.
+   * Acima da arquibancada (`standTopY`, céu e cidade) não escurece nada: a cidade fica viva.
    */
-  update(proj: Projection) {
+  update(proj: Projection, standTopY?: number) {
     const g = this.lightG;
     if (!g) return;
-    const key = `${proj.camY},${proj.tilt}`;
+    const key = `${proj.camY},${proj.tilt},${standTopY ?? ''}`;
     if (key === this.lastKey) return;
     this.lastKey = key;
     g.clear();
-    const FW = FIELD.width;
-    const near = Math.max(-16, proj.nearY);
-    const L = VIEW.x - 4;
-    const R = VIEW.x + VIEW.w + 4;
-    const T = VIEW.y - 4;
-    const B = VIEW.y + VIEW.h + 4;
-    const N = 8;
-    g.fillStyle(this.layerCol, 1);
-    for (let i = 0; i < N; i++) {
-      const t = i / (N - 1); // 0 = camada de fora, 1 = miolo
-      const mx = -7 + t * (7 + FW * 0.075);
-      const y0 = Math.max(near, -15 + t * 13);
-      const y1 = 115 - t * 13;
-      const a = proj.project(mx, y0);
-      const b = proj.project(FW - mx, y0);
-      const c = proj.project(FW - mx, y1);
-      const d = proj.project(mx, y1);
-      const top = Math.max(T, Math.min(c.y, d.y));
-      const bot = Math.min(B, Math.max(a.y, b.y));
-      // acima (fundo do campo, arquibancada, céu)
-      g.fillRect(L, T, R - L, top - T);
-      // abaixo (atrás da câmera)
-      if (bot < B) g.fillRect(L, bot, R - L, B - bot);
-      // laterais (trapézios entre a linha do chão e a borda da tela)
-      g.fillPoints([{ x: L, y: top }, { x: d.x, y: top }, { x: a.x, y: bot }, { x: L, y: bot }] as Phaser.Types.Math.Vector2Like[], true);
-      g.fillPoints([{ x: c.x, y: top }, { x: R, y: top }, { x: R, y: bot }, { x: b.x, y: bot }] as Phaser.Types.Math.Vector2Like[], true);
+    const y0 = Math.max(-40, proj.nearY - 3);
+    const rows: number[] = [];
+    for (let y = y0; y < 136; y += y < 0 || y > 110 ? 6 : 3) rows.push(y);
+    rows.push(136);
+    // Cada linha do chão (y) vira uma linha horizontal na tela; a posição x na tela é linear no x do campo.
+    // Então o mapa é feito de faixas horizontais, cada uma com retângulos em degradê de 4 cantos (cores
+    // calculadas no ponto do chão sob cada canto): sem emendas e sem depender de triângulos coloridos.
+    const SX0 = VIEW.x - 4;
+    const SX1 = VIEW.x + VIEW.w + 4;
+    const NC = 18;
+    const sxs = Array.from({ length: NC + 1 }, (_, i) => SX0 + ((SX1 - SX0) * i) / NC);
+    const rowCols = (y: number) => {
+      const p0 = proj.project(0, y);
+      const p1 = proj.project(1, y);
+      const k = p1.x - p0.x || 1e-6;
+      return { sy: p0.y, cols: sxs.map((sx) => this.colorFor(this.lightAt((sx - p0.x) / k, y))) };
+    };
+    let prev = rowCols(rows[0]);
+    let farY = prev.sy;
+    for (let r = 1; r < rows.length; r++) {
+      const cur = rowCols(rows[r]);
+      const top = cur.sy;
+      const bot = prev.sy;
+      if (bot > top + 0.01 && bot > VIEW.y - 8 && top < VIEW.y + VIEW.h + 8) {
+        for (let i = 0; i < NC; i++) {
+          g.fillGradientStyle(cur.cols[i], cur.cols[i + 1], prev.cols[i], prev.cols[i + 1], 1, 1, 1, 1);
+          g.fillRect(sxs[i], top, sxs[i + 1] - sxs[i], bot - top);
+        }
+      }
+      farY = Math.min(farY, top);
+      prev = cur;
+    }
+    // Da última linha (atrás da arquibancada) até o topo da arquibancada: luz ambiente (torcida na penumbra)
+    {
+      const top = Math.max(VIEW.y - 4, standTopY ?? VIEW.y - 4);
+      if (farY > top) {
+        g.fillStyle(this.colorFor(this.amb), 1);
+        g.fillRect(VIEW.x - 4, top, VIEW.w + 8, farY - top + 1);
+      }
     }
   }
-
-
-
 }
