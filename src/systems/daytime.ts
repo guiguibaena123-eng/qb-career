@@ -28,7 +28,7 @@ export interface TodInfo {
 
 export const TOD: Record<TimeOfDay, TodInfo> = {
   day: { label: 'DIA', skyTop: [0.28, 0.55, 0.9], skyHor: [0.68, 0.84, 0.97], bg: [0.3, 0.42, 0.58], light: null, lamps: 0 },
-  dusk: { label: 'TARDE', skyTop: [0.17, 0.12, 0.34], skyHor: [0.98, 0.5, 0.25], bg: [0.2, 0.13, 0.22], light: 0xffcfa6, lamps: 0.6 },
+  dusk: { label: 'TARDE', skyTop: [0.17, 0.12, 0.34], skyHor: [0.98, 0.5, 0.25], bg: [0.2, 0.13, 0.22], light: 0xffe9d6, lamps: 0.6 },
   night: { label: 'NOITE', skyTop: [0.02, 0.025, 0.07], skyHor: [0.09, 0.1, 0.23], bg: [0.051, 0.051, 0.071], light: 0xd2daf8, lamps: 1 },
 };
 
@@ -110,7 +110,7 @@ export class Daylight {
     // Dia e tarde com chuva/neve: céu nublado, luz cinza e difusa (a noite fica como no tempo limpo)
     const overcast: Record<'day' | 'dusk', Record<'rain' | 'snow', number>> = {
       day: { rain: 0xa3abb8, snow: 0xc9ced8 },
-      dusk: { rain: 0x9c95a0, snow: 0xbdb3b8 },
+      dusk: { rain: 0xaea9b2, snow: 0xcbc5c9 },
     };
     const c = tod !== 'night' && weather !== 'clear' ? overcast[tod][weather] : TOD[tod].light;
     if (c === null) return;
@@ -124,9 +124,9 @@ export class Daylight {
     this.rect = scene.add.rectangle(VIEW.x, VIEW.y, VIEW.w, VIEW.h, c, 1).setOrigin(0).setDepth(59).setBlendMode(Phaser.BlendModes.MULTIPLY);
     // Tarde: os refletores já acesos marcam o gramado de leve (mesmo mapa, bem mais suave)
     if (tod === 'dusk') {
-      this.amb = 0.8;
-      this.gain = 0.2;
-      this.dark = weather === 'clear' ? [0.72, 0.7, 0.8] : [0.8, 0.79, 0.84];
+      this.amb = 0.86;
+      this.gain = 0.16;
+      this.dark = weather === 'clear' ? [0.84, 0.83, 0.88] : [0.86, 0.86, 0.9];
       this.lightG = scene.add.graphics().setDepth(59.6).setBlendMode(Phaser.BlendModes.MULTIPLY);
     }
   }

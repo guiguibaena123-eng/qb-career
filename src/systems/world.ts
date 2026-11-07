@@ -42,7 +42,7 @@ export class World {
     this.field.lights = shadowLights(this.tod, this.weather);
     // Gramado mais vivo à noite (refletores), mais quente na tarde
     if (this.tod === 'night') this.field.grass = [0x52b848, 0x5fc653];
-    else if (this.tod === 'dusk') this.field.grass = [0x4a9a3d, 0x54a844];
+    else if (this.tod === 'dusk') this.field.grass = [0x4fa443, 0x5ab24b];
     this.players.setLights(shadowLights(this.tod, this.weather));
     this.sideline.people.setLights(shadowLights(this.tod, this.weather)); // reservas, técnicos, fotógrafos e câmeras também projetam sombras
     if (this.tod === 'day') this.field.grass = [COLORS.grassA, COLORS.grassB];
