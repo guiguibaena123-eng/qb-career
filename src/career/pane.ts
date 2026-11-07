@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { GAME_W, VIEW } from '../config';
 
 /*
  * Área rolável (vertical ou horizontal) com recorte: arrastar rola (com inércia), tocar sem arrastar
@@ -17,6 +18,9 @@ export class Pane {
   readonly content: Phaser.GameObjects.Container;
   private hits: Hit[] = [];
   private maskG: Phaser.GameObjects.Graphics;
+  /** Recorte na horizontal: área de largura total vai até as bordas da tela (sem corte no meio da borda). */
+  private mx: number;
+  private mw: number;
   private extent = 0;
   private scroll = 0;
   private vel = 0;
@@ -33,9 +37,12 @@ export class Pane {
   ) {
     this.content = scene.add.container(x, y).setDepth(depth);
     this.maskG = scene.make.graphics({}, false);
-    this.maskG.fillRect(x, y, w, h);
+    const full = x <= 0 && x + w >= GAME_W;
+    this.mx = full ? Math.min(x, VIEW.x) : x;
+    this.mw = full ? Math.max(x + w, VIEW.x + VIEW.w) - this.mx : w;
+    this.maskG.fillRect(this.mx, y, this.mw, h);
     this.content.setMask(this.maskG.createGeometryMask());
-    const inside = (p: Phaser.Input.Pointer) => p.worldX >= x && p.worldX <= x + w && p.worldY >= this.y && p.worldY <= this.y + this.h;
+    const inside = (p: Phaser.Input.Pointer) => p.worldX >= this.mx && p.worldX <= this.mx + this.mw && p.worldY >= this.y && p.worldY <= this.y + this.h;
     const pos = (p: Phaser.Input.Pointer) => (axis === 'y' ? p.worldY : p.worldX);
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (!this.content.visible || !inside(p) || this.drag) return;
@@ -67,8 +74,8 @@ export class Pane {
         if (lx >= hh.x && lx <= hh.x + hh.w && ly >= hh.y && ly <= hh.y + hh.h) {
           navigator.vibrate?.(8);
           // retorno do toque: um clarão rápido sobre o item (fora do conteúdo, que pode ser redesenhado)
-          const fx0 = Math.max(this.x, this.content.x + hh.x);
-          const fx1 = Math.min(this.x + this.w, this.content.x + hh.x + hh.w);
+          const fx0 = Math.max(this.mx, this.content.x + hh.x);
+          const fx1 = Math.min(this.mx + this.mw, this.content.x + hh.x + hh.w);
           const fy0 = Math.max(this.y, this.content.y + hh.y);
           const fy1 = Math.min(this.y + this.h, this.content.y + hh.y + hh.h);
           const fl = scene.add.rectangle(fx0, fy0, Math.max(0, fx1 - fx0), Math.max(0, fy1 - fy0), 0xffffff, 0.16).setOrigin(0).setDepth(this.content.depth + 1);
@@ -126,7 +133,7 @@ export class Pane {
     this.h = h;
     if (this.axis === 'y') this.content.y = y - this.scroll;
     this.maskG.clear();
-    this.maskG.fillRect(this.x, y, this.w, h);
+    this.maskG.fillRect(this.mx, y, this.mw, h);
     if (this.axis === 'x') this.content.y = y;
     this.setScroll(this.scroll);
   }
